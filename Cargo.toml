@@ -17,3 +17,6 @@ tokio = { version = "1.38.0", features = ["macros", "rt", "rt-multi-thread"] }
 [dev-dependencies]
 tempdir = "0.3.7"
 tempfile = "3.10.1"
+
+[profile.release]
+debug = "limited"
