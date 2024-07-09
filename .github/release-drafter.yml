@@ -1,0 +1,50 @@
+name-template: "Version $NEXT_PATCH_VERSION"
+tag-template: "v$NEXT_PATCH_VERSION"
+categories:
+  - title: "New Features"
+    labels:
+      - feature
+      - enhancement
+  - title: "Fixes and Improvements"
+    labels:
+      - refactor
+      - bug
+  - title: "Documentation Updates"
+    labels:
+      - docs
+  - title: "Maintenance"
+    labels:
+      - dependencies
+
+category-template: "### $TITLE"
+
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+version-resolver:
+  major:
+    labels:
+      - major
+  minor:
+    labels:
+      - feat
+      - minor
+  default: patch
+
+autolabeler:
+  - label: chore
+    branch:
+      - '/chore\/.+/'
+  - label: feature
+    branch:
+      - '/feature\/.+/'
+      - '/feat\/.+/'
+  - label: bug
+    branch:
+      - '/fix\/.+/'
+  - label: docs
+    files:
+      - "*.md"

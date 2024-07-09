@@ -1,0 +1,174 @@
+name: Rust
+on:
+  push: {}
+  release:
+    types: [published]
+
+env:
+  PROTOC_VERSION: "26.0"
+  VERSION: "0.0.0-dev"
+
+jobs:
+  version:
+    name: Start Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Generate Package Version (Release Tag)
+        shell: pwsh
+        if: github.event_name == 'release'
+        run: Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$('${{ github.event.release.tag_name }}'.substring(1))"
+
+      - name: Set Package Version
+        run: sed -i "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/g" Cargo.toml
+
+      - name: Stash Versioned Cargo.toml
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargofile
+          path: Cargo.toml
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: llvm-tools-preview
+
+      - name: install protoc
+        run: |
+          Invoke-WebRequest -OutFile /tmp/protoc.zip -Uri https://github.com/protocolbuffers/protobuf/releases/download/v${env:PROTOC_VERSION}/protoc-${env:PROTOC_VERSION}-linux-x86_64.zip
+          Expand-Archive /tmp/protoc.zip -DestinationPath ../tools
+          Add-Content -Path $env:GITHUB_PATH -Value "$((get-item ./).parent.fullname)/tools/bin"
+          Get-Content $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: cargo install grcov
+        uses: SierraSoftworks/setup-grcov@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features --no-fail-fast
+        env:
+            RUSTFLAGS: -Cinstrument-coverage
+
+      - name: grcov
+        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../**' --ignore '/*' --ignore 'C:/' -o ./lcov.info
+
+      - name: codecov upload
+        uses: codecov/codecov-action@v4.5.0
+        with:
+          files: ./lcov.info
+
+  build:
+    name: ${{ matrix.os }}-${{ matrix.arch }}-release
+    runs-on: ${{ matrix.run_on }}
+
+    needs:
+      - version
+
+    strategy:
+      matrix:
+        include:
+          # Windows builds
+          - arch: amd64
+            os: windows
+            run_on: windows-latest
+            target: x86_64-pc-windows-msvc
+            extension: .exe
+            setup: |
+              Invoke-WebRequest -OutFile protoc.zip -Uri https://github.com/protocolbuffers/protobuf/releases/download/v${env:PROTOC_VERSION}/protoc-${env:PROTOC_VERSION}-win64.zip
+              Expand-Archive protoc.zip -DestinationPath ../tools
+              Add-Content -Path $env:GITHUB_PATH -Value "$((get-item ./).parent.fullname)/tools/bin"
+
+          # Linux builds
+          - arch: amd64
+            run_on: ubuntu-latest
+            os: linux
+            target: x86_64-unknown-linux-gnu
+            test: true
+            setup: |
+              Invoke-WebRequest -OutFile /tmp/protoc.zip -Uri https://github.com/protocolbuffers/protobuf/releases/download/v${env:PROTOC_VERSION}/protoc-${env:PROTOC_VERSION}-linux-x86_64.zip
+              Expand-Archive /tmp/protoc.zip -DestinationPath ../tools
+              Add-Content -Path $env:GITHUB_PATH -Value "$((get-item ./).parent.fullname)/tools/bin"
+          - arch: "arm64"
+            os: linux
+            run_on: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            cross: true
+            flags: --features openssl_src
+
+          # Apple MacOS builds
+          - arch: amd64
+            run_on: macos-latest
+            os: darwin
+            target: x86_64-apple-darwin
+            setup: |
+              Invoke-WebRequest -OutFile /tmp/protoc.zip -Uri https://github.com/protocolbuffers/protobuf/releases/download/v${env:PROTOC_VERSION}/protoc-${env:PROTOC_VERSION}-osx-x86_64.zip
+              Expand-Archive /tmp/protoc.zip -DestinationPath ../tools
+              Add-Content -Path $env:GITHUB_PATH -Value "$((get-item ./).parent.fullname)/tools/bin"
+          - arch: arm64
+            run_on: macos-latest
+            os: darwin
+            target: aarch64-apple-darwin
+            setup: |
+              Invoke-WebRequest -OutFile /tmp/protoc.zip -Uri https://github.com/protocolbuffers/protobuf/releases/download/v${env:PROTOC_VERSION}/protoc-${env:PROTOC_VERSION}-osx-x86_64.zip
+              Expand-Archive /tmp/protoc.zip -DestinationPath ../tools
+              Add-Content -Path $env:GITHUB_PATH -Value "$((get-item ./).parent.fullname)/tools/bin"
+
+    steps:
+      - name: setup dependencies
+        run: ${{ matrix.setup }}
+        shell: pwsh
+        if: matrix.setup
+
+      - name: Get Rust Stable
+        uses: actions-rs/toolchain@v1.0.7
+        with:
+          toolchain: stable
+          override: true
+          target: ${{ matrix.target }}
+          components: llvm-tools-preview
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Fetch Versioned Cargo.toml
+        uses: actions/download-artifact@v4
+        with:
+          name: cargofile
+
+      - name: cargo build
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          use-cross: ${{ matrix.cross }}
+          command: build
+          args: --release --target ${{ matrix.target }} ${{ matrix.flags }}
+
+      - name: Upload GitHub Release Artifacts
+        uses: SierraSoftworks/gh-releases@v1.0.7
+        if: github.event_name == 'release'
+        with:
+          files: "target/${{ matrix.target }}/release/github-backup${{ matrix.extension }} | github-backup-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          overwrite: "true"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: github-backup-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
+          path: target/${{ matrix.target }}/release/github-backup${{ matrix.extension }}
