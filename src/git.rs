@@ -123,7 +123,7 @@ mod tests {
 
         let agent = GitBackupAgent {
             target: Arc::new(temp_dir.path().to_path_buf()),
-            cancel: AtomicBool::new(false),
+            cancel: Arc::new(AtomicBool::new(false)),
         };
 
         let repo = GitHubRepo {
