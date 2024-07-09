@@ -43,6 +43,7 @@
           ] ++ lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
 
           # Additional environment variables can be set directly
