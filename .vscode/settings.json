@@ -3,5 +3,6 @@
         "!All",
         "!Include",
         "!Exclude",
-    ]
+    ],
+    "ansible.python.interpreterPath": "/nix/store/a2lrpp8x5x8iqfkdnm2grnircmcbqs01-python3-3.12.2/bin/python3.12"
 }

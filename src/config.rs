@@ -1,22 +1,22 @@
 use std::path::PathBuf;
 
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
-use crate::{errors, Args};
+use crate::{errors, policy::BackupPolicy, Args};
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct Config {
-    #[serde(default="default_github_api_url")]
-    pub github_api_url: String,
-
     #[serde(default)]
-    pub github_token: Option<String>,
+    pub github: GitHubConfig,
+
+    #[serde(deserialize_with="deserialize_cron")]
+    pub schedule: Option<croner::Cron>,
 
     #[serde(default="default_backup_path")]
     pub backup_path: PathBuf,
 
     #[serde(default)]
-    pub backups: Vec<BackupPolicyConfig>,
+    pub backups: Vec<BackupPolicy>,
 }
 
 impl TryFrom<&Args> for Config {
@@ -38,23 +38,21 @@ impl TryFrom<&Args> for Config {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BackupPolicyConfig {
-    pub org: String,
+pub struct GitHubConfig {
+    #[serde(default="default_github_api_url")]
+    pub api_url: String,
+
     #[serde(default)]
-    pub filters: Vec<RepoFilter>,
+    pub access_token: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub enum RepoFilter {
-    Include(Vec<String>),
-    Exclude(Vec<String>),
-    Public,
-    Private,
-    NonEmpty,
-    Fork,
-    NonFork,
-    Archived,
-    NonArchived,
+impl Default for GitHubConfig {
+    fn default() -> Self {
+        GitHubConfig {
+            api_url: default_github_api_url(),
+            access_token: None,
+        }
+    }
 }
 
 fn default_github_api_url() -> String {
@@ -63,4 +61,16 @@ fn default_github_api_url() -> String {
 
 fn default_backup_path() -> PathBuf {
     PathBuf::from("./backups")
+}
+
+fn deserialize_cron<'de, D>(deserializer: D) -> Result<Option<croner::Cron>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    if let Some(s) = Deserialize::deserialize(deserializer)? {
+        let s: String = s;
+        return croner::Cron::new(&s).parse().map_err(serde::de::Error::custom).map(Some);
+    }
+    
+    Ok(None)
 }
