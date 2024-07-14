@@ -9,10 +9,10 @@ pub struct Config {
     #[serde(default)]
     pub github: GitHubConfig,
 
-    #[serde(deserialize_with="deserialize_cron")]
+    #[serde(deserialize_with = "deserialize_cron")]
     pub schedule: Option<croner::Cron>,
 
-    #[serde(default="default_backup_path")]
+    #[serde(default = "default_backup_path")]
     pub backup_path: PathBuf,
 
     #[serde(default)]
@@ -23,15 +23,20 @@ impl TryFrom<&Args> for Config {
     type Error = errors::Error;
 
     fn try_from(value: &Args) -> Result<Self, Self::Error> {
-        let content = std::fs::read_to_string(&value.config)
-            .map_err(|e| errors::user_with_internal(
+        let content = std::fs::read_to_string(&value.config).map_err(|e| {
+            errors::user_with_internal(
                 &format!("Failed to read the config file {}.", &value.config),
-                "Make sure that the configuration file exists and can be ready by the process.", e))?;
-        let config: Config = serde_yaml::from_str(&content)
-            .map_err(|e| errors::user_with_internal(
+                "Make sure that the configuration file exists and can be ready by the process.",
+                e,
+            )
+        })?;
+        let config: Config = serde_yaml::from_str(&content).map_err(|e| {
+            errors::user_with_internal(
                 "Failed to parse your configuration file, as it is not recognized as valid YAML.",
                 "Make sure that your configuration file is formatted correctly.",
-            e))?;
+                e,
+            )
+        })?;
 
         Ok(config)
     }
@@ -39,7 +44,7 @@ impl TryFrom<&Args> for Config {
 
 #[derive(Debug, Deserialize)]
 pub struct GitHubConfig {
-    #[serde(default="default_github_api_url")]
+    #[serde(default = "default_github_api_url")]
     pub api_url: String,
 
     #[serde(default)]
@@ -69,8 +74,11 @@ where
 {
     if let Some(s) = Deserialize::deserialize(deserializer)? {
         let s: String = s;
-        return croner::Cron::new(&s).parse().map_err(serde::de::Error::custom).map(Some);
+        return croner::Cron::new(&s)
+            .parse()
+            .map_err(serde::de::Error::custom)
+            .map(Some);
     }
-    
+
     Ok(None)
 }

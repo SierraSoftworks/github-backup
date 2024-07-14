@@ -12,8 +12,26 @@ pub struct BackupPolicy {
 impl Display for BackupPolicy {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match (self.user.as_ref(), self.org.as_ref()) {
-            (Some(user), None) => write!(f, "@{} ({})", user, self.filters.iter().map(|f| f.to_string()).collect::<Vec<String>>().join(", ")),
-            (None, Some(org)) => write!(f, "@{} ({})", org, self.filters.iter().map(|f| f.to_string()).collect::<Vec<String>>().join(", ")),
+            (Some(user), None) => write!(
+                f,
+                "@{} ({})",
+                user,
+                self.filters
+                    .iter()
+                    .map(|f| f.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            (None, Some(org)) => write!(
+                f,
+                "@{} ({})",
+                org,
+                self.filters
+                    .iter()
+                    .map(|f| f.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
             _ => write!(f, "<INVALID POLICY>"),
         }
     }

@@ -1,9 +1,9 @@
 use clap::Parser;
 use errors::Error;
 use policy::BackupPolicy;
-use tokio::task::JoinSet;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
+use tokio::task::JoinSet;
 
 #[macro_use]
 mod macros;
@@ -44,8 +44,12 @@ pub trait BackupEntity {
 
     fn matches(&self, filter: &policy::RepoFilter) -> bool {
         match filter {
-            policy::RepoFilter::Include(names) => names.iter().any(|n| self.full_name().eq_ignore_ascii_case(n)),
-            policy::RepoFilter::Exclude(names) => !names.iter().any(|n| self.full_name().eq_ignore_ascii_case(n)),
+            policy::RepoFilter::Include(names) => names
+                .iter()
+                .any(|n| self.full_name().eq_ignore_ascii_case(n)),
+            policy::RepoFilter::Exclude(names) => !names
+                .iter()
+                .any(|n| self.full_name().eq_ignore_ascii_case(n)),
             _ => true,
         }
     }
@@ -70,8 +74,7 @@ async fn run(args: Args) -> Result<(), Error> {
             println!("Backing up repositories for: {}", &policy);
             let repos = github.get_repos(policy, &cancel).await?;
 
-            let mut join_set: JoinSet<Result<(_, String), (_, errors::Error)>> =
-                JoinSet::new();
+            let mut join_set: JoinSet<Result<(_, String), (_, errors::Error)>> = JoinSet::new();
             for repo in repos {
                 if policy.filters.iter().all(|p| repo.matches(p)) {
                     if args.dry_run {
@@ -114,11 +117,11 @@ async fn run(args: Args) -> Result<(), Error> {
                     let wait = next - now;
                     println!("Next backup scheduled for: {}", next);
                     tokio::time::sleep(wait.to_std().unwrap()).await;
-                },
+                }
                 Err(err) => {
                     eprintln!("Failed to calculate the next backup time: {}", err);
                     break;
-                },
+                }
             }
         } else {
             break;

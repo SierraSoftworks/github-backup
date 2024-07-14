@@ -1,10 +1,13 @@
-use std::{sync::Arc, path::PathBuf, sync::atomic::AtomicBool};
+use std::{path::PathBuf, sync::atomic::AtomicBool, sync::Arc};
 
 use reqwest::{header::LINK, Method, StatusCode, Url};
 use tracing::instrument;
 
 use crate::{
-    config::Config, errors, policy::{BackupPolicy, RepoFilter}, BackupEntity, RepositorySource
+    config::Config,
+    errors,
+    policy::{BackupPolicy, RepoFilter},
+    BackupEntity, RepositorySource,
 };
 
 #[derive(Clone)]
@@ -21,19 +24,18 @@ impl RepositorySource<GitHubRepo> for GitHubSource {
     async fn get_repos(
         &self,
         policy: &BackupPolicy,
-        cancel: &AtomicBool
+        cancel: &AtomicBool,
     ) -> Result<Vec<GitHubRepo>, errors::Error> {
-        let url = match (policy.user.as_ref(), policy.org.as_ref()) {
-            (Some(user), None) => format!("/users/{}/repos", user),
-            (None, Some(org)) => format!("/orgs/{}/repos", org),
-            _ => return Err(errors::user(
-                "You must specify either a user or an organization to backup repositories for.",
-                "Please check your configuration and try again."
-            ))
-        };
-        self
-            .get_paginated(&url, cancel)
-            .await
+        let url =
+            match (policy.user.as_ref(), policy.org.as_ref()) {
+                (Some(user), None) => format!("/users/{}/repos", user),
+                (None, Some(org)) => format!("/orgs/{}/repos", org),
+                _ => return Err(errors::user(
+                    "You must specify either a user or an organization to backup repositories for.",
+                    "Please check your configuration and try again.",
+                )),
+            };
+        self.get_paginated(&url, cancel).await
     }
 }
 
