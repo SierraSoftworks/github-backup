@@ -48,10 +48,8 @@
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
 
-          cargoExtraArgs = if pkgs.stdenv.isLinux then "--features=openssl_src" else "";
-
           # Additional environment variables can be set directly
-          # MY_CUSTOM_VAR = "some value";
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
         };
 
         craneLibLLvmTools = craneLib.overrideToolchain
