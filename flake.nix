@@ -104,6 +104,8 @@
           # Audit licenses
           github-backup-deny = craneLib.cargoDeny {
             inherit src;
+
+            cargoDenyChecks = "bans sources";
           };
 
           # Run tests with cargo-nextest

@@ -5,7 +5,7 @@ use tracing::instrument;
 
 use crate::{
     config::Config,
-    errors,
+    errors::{self, ResponseError},
     policy::{BackupPolicy, RepoFilter},
     BackupEntity, RepositorySource,
 };
@@ -146,7 +146,15 @@ impl GitHubSource {
                 "Make sure that your GitHub token is valid and has not expired.",
             ))
         } else {
-            Err(resp.into())
+            let err = ResponseError::with_body(resp).await;
+            Err(errors::user_with_internal(
+                &format!(
+                    "The GitHub API returned an error response with status code {}.",
+                    err.status_code
+                ),
+                "Please check the error message below and try again.",
+                err,
+            ))
         }
     }
 }
