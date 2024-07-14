@@ -50,6 +50,7 @@
 
           # Additional environment variables can be set directly
           PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+          OPENSSL_DIR = pkgs.openssl;
         };
 
         craneLibLLvmTools = craneLib.overrideToolchain
