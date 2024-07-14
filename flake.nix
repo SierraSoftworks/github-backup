@@ -69,6 +69,9 @@
         # artifacts from above.
         github-backup = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
+
+          # Disable default tests - nextest will run them
+          doCheck = false;
         });
       in
       {
