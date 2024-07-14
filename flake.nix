@@ -39,11 +39,11 @@
           strictDeps = true;
 
           buildInputs = [
-            # Add additional build inputs here
             pkgs.pkg-config
             pkgs.openssl
-          ] ++ lib.optionals pkgs.stdenv.isDarwin [
-            # Additional darwin specific inputs can be set here
+            pkgs.protobuf
+          ]
+          ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
