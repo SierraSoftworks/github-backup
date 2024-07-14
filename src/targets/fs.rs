@@ -119,6 +119,7 @@ impl From<&Config> for FileSystemBackupTarget {
 mod tests {
     use super::*;
 
+    #[cfg(not(feature="pure_tests"))]
     #[tokio::test]
     async fn test_backup() {
         let temp_dir = tempfile::tempdir().expect("a temporary directory");
