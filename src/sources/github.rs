@@ -3,7 +3,7 @@ use std::{sync::Arc, path::PathBuf, sync::atomic::AtomicBool};
 use reqwest::{header::LINK, Method, StatusCode, Url};
 
 use crate::{
-    config::Config, errors, policy::RepoFilter, BackupEntity, RepositorySource
+    config::Config, errors, policy::{BackupPolicy, RepoFilter}, BackupEntity, RepositorySource
 };
 
 #[derive(Clone)]
@@ -18,10 +18,17 @@ pub struct GitHubSource {
 impl RepositorySource<GitHubRepo> for GitHubSource {
     async fn get_repos(
         &self,
-        org: &str,
+        policy: &BackupPolicy,
         cancel: &AtomicBool
     ) -> Result<Vec<GitHubRepo>, errors::Error> {
-        let url = format!("/orgs/{}/repos", org);
+        let url = match (policy.user.as_ref(), policy.org.as_ref()) {
+            (Some(user), None) => format!("/users/{}/repos", user),
+            (None, Some(org)) => format!("/orgs/{}/repos", org),
+            _ => return Err(errors::user(
+                "You must specify either a user or an organization to backup repositories for.",
+                "Please check your configuration and try again."
+            ))
+        };
         self
             .get_paginated(&url, cancel)
             .await

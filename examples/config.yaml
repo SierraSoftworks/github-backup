@@ -1,5 +1,8 @@
-schedule: "0 0 * * *"
+schedule: "0 * * * *"
 backups:
+  - user: notheotherben
+    filters:
+      - !Include ["nix-env"]
   - org: SierraSoftworks
     filters:
       - !Include ["git-tool", "grey"]

@@ -1,5 +1,6 @@
 use clap::Parser;
 use errors::Error;
+use policy::BackupPolicy;
 use tokio::task::JoinSet;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -25,7 +26,7 @@ pub struct Args {
 
 #[async_trait::async_trait]
 pub trait RepositorySource<T: BackupEntity> {
-    async fn get_repos(&self, org: &str, cancel: &AtomicBool) -> Result<Vec<T>, Error>;
+    async fn get_repos(&self, policy: &BackupPolicy, cancel: &AtomicBool) -> Result<Vec<T>, Error>;
 }
 
 pub trait BackupTarget<T: BackupEntity> {
@@ -56,8 +57,8 @@ async fn run(args: Args) -> Result<(), Error> {
 
     loop {
         for policy in config.backups.iter() {
-            println!("Backing up repositories for org: {}", policy.org);
-            let repos = github.get_repos(&policy.org, &cancel).await?;
+            println!("Backing up repositories for: {}", &policy);
+            let repos = github.get_repos(policy, &cancel).await?;
 
             let mut join_set: JoinSet<Result<(_, String), (_, errors::Error)>> =
                 JoinSet::new();
