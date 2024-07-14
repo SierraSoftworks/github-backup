@@ -51,6 +51,8 @@
           # Additional environment variables can be set directly
           # MY_CUSTOM_VAR = "some value";
           OPENSSL_DIR = pkgs.openssl.dev;
+          OPENSSL_LIB_DIR = pkgs.openssl.lib;
+          OPENSSL_INCLUDE_DIR = pkgs.openssl.include;
         };
 
         craneLibLLvmTools = craneLib.overrideToolchain
