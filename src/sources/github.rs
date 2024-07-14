@@ -1,6 +1,7 @@
 use std::{sync::Arc, path::PathBuf, sync::atomic::AtomicBool};
 
 use reqwest::{header::LINK, Method, StatusCode, Url};
+use tracing::instrument;
 
 use crate::{
     config::Config, errors, policy::{BackupPolicy, RepoFilter}, BackupEntity, RepositorySource
@@ -16,6 +17,7 @@ pub struct GitHubSource {
 
 #[async_trait::async_trait]
 impl RepositorySource<GitHubRepo> for GitHubSource {
+    #[instrument(skip(self, cancel))]
     async fn get_repos(
         &self,
         policy: &BackupPolicy,

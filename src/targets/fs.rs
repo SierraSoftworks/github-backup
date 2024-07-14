@@ -1,6 +1,7 @@
 use std::{path::{Path, PathBuf}, sync::{atomic::AtomicBool, Arc}};
 
 use gix::progress::Discard;
+use tracing::instrument;
 
 use crate::{config::Config, errors, BackupEntity, BackupTarget};
 
@@ -9,7 +10,8 @@ pub struct FileSystemBackupTarget {
     target: Arc<PathBuf>,
 }
 
-impl<T: BackupEntity> BackupTarget<T> for FileSystemBackupTarget {
+impl<T: BackupEntity + std::fmt::Debug> BackupTarget<T> for FileSystemBackupTarget {
+    #[instrument(skip(self, cancel))]
     fn backup(&self, repo: &T, cancel: &AtomicBool) -> Result<String, errors::Error> {
         std::fs::create_dir_all(self.target.as_ref()).map_err(|e| errors::user_with_internal(
             &format!("Unable to create backup directory '{}'", &self.target.display()),
@@ -133,6 +135,7 @@ mod tests {
         assert_eq!(id, id2, "the repository should not have changed between backups");
     }
 
+    #[derive(Debug)]
     struct MockTarget;
 
     impl BackupEntity for MockTarget {

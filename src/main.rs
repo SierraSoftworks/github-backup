@@ -5,11 +5,15 @@ use tokio::task::JoinSet;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 
+#[macro_use]
+mod macros;
+
 mod config;
 mod errors;
 mod policy;
 mod sources;
 mod targets;
+mod telemetry;
 
 /// Backup your GitHub repositories automatically.
 #[derive(Parser, Debug)]
@@ -48,6 +52,8 @@ pub trait BackupEntity {
 }
 
 async fn run(args: Args) -> Result<(), Error> {
+    telemetry::setup();
+
     let config = config::Config::try_from(&args)?;
 
     let github = sources::GitHubSource::from(&config);
@@ -56,7 +62,11 @@ async fn run(args: Args) -> Result<(), Error> {
     let cancel = AtomicBool::new(false);
 
     loop {
+        let _span = tracing::info_span!("backup.all").entered();
+
         for policy in config.backups.iter() {
+            let _span = tracing::info_span!("backup.policy", policy = %policy).entered();
+
             println!("Backing up repositories for: {}", &policy);
             let repos = github.get_repos(policy, &cancel).await?;
 
