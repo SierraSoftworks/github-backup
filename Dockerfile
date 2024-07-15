@@ -1,4 +1,4 @@
-FROM clux/muslrust:stable as builder
+FROM rust:bookworm as builder
 
 RUN apt-get update && apt-get install -y \
     libssl-dev \
@@ -7,10 +7,11 @@ RUN apt-get update && apt-get install -y \
 
 ADD . /volume
 
+WORKDIR /volume
 RUN cargo build --release
 
-FROM alpine
+FROM debian:bookworm-slim
 
-COPY --from=builder /volume/target/*/release/github-backup /usr/local/bin/github-backup
+COPY --from=builder /volume/target/release/github-backup /usr/local/bin/github-backup
 
 CMD ["github-backup"]
