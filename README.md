@@ -47,6 +47,20 @@ backups:
       - !NonFork
 ```
 
+### OpenTelemetry Reporting
+In addition to the standard logging output, this tool also supports reporting metrics to an
+OpenTelemetry-compatible backend. This can be useful for tracking the performance of the tool
+over time and configuring monitoring in case backups start to fail.
+
+Configuration is conducted through the use of environment variables:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=https://your-otel-collector:4317
+OTEL_EXPORTER_OTLP_HEADERS=X-API-KEY=your-api-key
+OTEL_TRACES_SAMPLER=traceidratio
+OTEL_TRACES_SAMPLER_ARG=1.0
+```
+
 ## Filters
 This tool allows you to configure filters to control which GitHub repositories are backed up and
 which are not. Filters are used within the `backups` section of your configuration file and can
