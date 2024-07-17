@@ -11,15 +11,15 @@ croner = "2.0.4"
 gix = { version = "0.63.0", features = ["blocking-http-transport-reqwest-rust-tls"] }
 human-errors = "0.1.3"
 openssl-sys = { version = "0.9", features=["vendored"], optional = true }
-opentelemetry = "0.23.0"
-opentelemetry-otlp = "0.16.0"
-opentelemetry_sdk = { version = "0.23.0", features = ["rt-tokio"] }
+opentelemetry = "0.24.0"
+opentelemetry-otlp = "0.17.0"
+opentelemetry_sdk = { version = "0.24.0", features = ["rt-tokio"] }
 parse_link_header = "0.3.3"
 reqwest = { version = "0.12.5", features = ["json"] }
 serde = { version = "1.0.204", features = ["derive", "alloc"] }
 serde_yaml = "0.9.34"
 tokio = { version = "1.38.1", features = ["macros", "rt", "rt-multi-thread"] }
-tonic = { version = "0.11", features = ["tls-webpki-roots"] }
+tonic = { version = "0.12", features = ["tls-webpki-roots"] }
 tracing = "0.1.40"
 tracing-opentelemetry = "0.24.0"
 tracing-subscriber = "0.3.18"
