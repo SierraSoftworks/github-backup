@@ -12,6 +12,9 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 
+RUN apt-get update && apt-get install -y \
+    openssl
+
 COPY --from=builder /volume/target/release/github-backup /usr/local/bin/github-backup
 
 CMD ["github-backup"]
