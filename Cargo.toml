@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.81"
 chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.9", features = ["derive", "string"] }
+clap = { version = "4.5.10", features = ["derive", "string"] }
 croner = "2.0.4"
 gix = { version = "0.63.0", features = ["blocking-http-transport-reqwest-rust-tls"] }
 human-errors = "0.1.3"
