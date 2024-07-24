@@ -71,42 +71,49 @@ async fn run(args: Args) -> Result<(), Error> {
         for policy in config.backups.iter() {
             let _span = tracing::info_span!("backup.policy", policy = %policy).entered();
 
-            println!("Backing up repositories for: {}", &policy);
-            let repos = github.get_repos(policy, &cancel).await?;
+            match github.get_repos(policy, &cancel).await {
+                Ok(repos) => {
+                    println!("Backing up repositories for: {}", &policy);
+                    let mut join_set: JoinSet<Result<(_, String), (_, errors::Error)>> = JoinSet::new();
+                    for repo in repos {
+                        if policy.filters.iter().all(|p| repo.matches(p)) {
+                            if args.dry_run {
+                                println!(" - {} (dry-run)", repo.full_name());
+                                continue;
+                            }
 
-            let mut join_set: JoinSet<Result<(_, String), (_, errors::Error)>> = JoinSet::new();
-            for repo in repos {
-                if policy.filters.iter().all(|p| repo.matches(p)) {
-                    if args.dry_run {
-                        println!(" - {} (dry-run)", repo.full_name());
-                        continue;
+                            let git_backup = git_backup.clone();
+                            let cancel = AtomicBool::new(false);
+
+                            join_set.spawn(async move {
+                                match git_backup.backup(&repo, &cancel) {
+                                    Ok(id) => Ok((repo, id)),
+                                    Err(e) => Err((repo, e)),
+                                }
+                            });
+                        }
                     }
 
-                    let git_backup = git_backup.clone();
-                    let cancel = AtomicBool::new(false);
-
-                    join_set.spawn(async move {
-                        match git_backup.backup(&repo, &cancel) {
-                            Ok(id) => Ok((repo, id)),
-                            Err(e) => Err((repo, e)),
+                    while let Some(fut) = join_set.join_next().await {
+                        match fut.map_err(|e| errors::system_with_internal(
+                            "Failed to complete a background backup task due to an internal runtime error.",
+                            "Please report this issue to us on GitHub with details of what you were doing when it occurred.",
+                            e))? {
+                            Ok((repo, id)) => println!(" - {} (backup at {})", repo.full_name(), id),
+                            Err((repo, e)) => {
+                                println!(" - {} (backup failed)", repo.full_name());
+                                eprintln!("{}", e)
+                            },
                         }
-                    });
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Failed to get repositories for policy '{}'", policy);
+                    eprintln!("{}", e);
+                    continue;
                 }
             }
-
-            while let Some(fut) = join_set.join_next().await {
-                match fut.map_err(|e| errors::system_with_internal(
-                    "Failed to complete a background backup task due to an internal runtime error.",
-                    "Please report this issue to us on GitHub with details of what you were doing when it occurred.",
-                    e))? {
-                    Ok((repo, id)) => println!(" - {} (backup at {})", repo.full_name(), id),
-                    Err((repo, e)) => {
-                        println!(" - {} (backup failed)", repo.full_name());
-                        eprintln!("{}", e)
-                    },
-                }
-            }
-
+            
             println!();
         }
 

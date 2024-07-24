@@ -1,0 +1,11 @@
+backup_path: /Volumes/backup-github
+schedule: "0 * * * *"
+github: {}
+backups:
+  - user: notheotherben
+    filters:
+      - !NonFork
+  - org: SierraSoftworks
+    filters:
+      - !Public
+      - !NonFork
