@@ -108,6 +108,7 @@ where
                     .tonic()
                     .with_endpoint(endpoint)
                     .with_metadata(metadata)
+                    .with_tls_config(tonic::transport::ClientTlsConfig::new().with_webpki_roots())
                     .build_span_exporter()
                     .unwrap(),
                     opentelemetry_sdk::runtime::Tokio)

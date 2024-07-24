@@ -16,16 +16,18 @@ pub struct FileSystemBackupTarget {
 impl<T: BackupEntity + std::fmt::Debug> BackupTarget<T> for FileSystemBackupTarget {
     #[instrument(skip(self, cancel))]
     fn backup(&self, repo: &T, cancel: &AtomicBool) -> Result<String, errors::Error> {
-        std::fs::create_dir_all(self.target.as_ref()).map_err(|e| {
-            errors::user_with_internal(
-                &format!(
-                    "Unable to create backup directory '{}'",
-                    &self.target.display()
-                ),
-                "Make sure that you have permission to create the directory.",
-                e,
-            )
-        })?;
+        if !self.target.as_ref().exists() {
+            std::fs::create_dir_all(self.target.as_ref()).map_err(|e| {
+                errors::user_with_internal(
+                    &format!(
+                        "Unable to create backup directory '{}'",
+                        &self.target.display()
+                    ),
+                    "Make sure that you have permission to create the directory.",
+                    e,
+                )
+            })?;
+        }
 
         let target_path = self.target.join(repo.backup_path());
 
