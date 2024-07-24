@@ -18,7 +18,7 @@ parse_link_header = "0.3.3"
 reqwest = { version = "0.12.5", features = ["json"] }
 serde = { version = "1.0.204", features = ["derive", "alloc"] }
 serde_yaml = "0.9.34"
-tokio = { version = "1.38.1", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.39.1", features = ["macros", "rt", "rt-multi-thread"] }
 tonic = { version = "0.11", features = ["tls-webpki-roots"] }
 tracing = "0.1.40"
 tracing-opentelemetry = "0.24.0"
