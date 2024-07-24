@@ -3,7 +3,7 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
-use gix::progress::Discard;
+use gix::{credentials::helper::Action, progress::Discard, sec::identity::Account};
 use tracing::instrument;
 
 use crate::{config::Config, errors, BackupEntity, BackupTarget};
@@ -11,6 +11,8 @@ use crate::{config::Config, errors, BackupEntity, BackupTarget};
 #[derive(Clone)]
 pub struct FileSystemBackupTarget {
     target: Arc<PathBuf>,
+
+    access_token: Arc<Option<String>>,
 }
 
 impl<T: BackupEntity + std::fmt::Debug> BackupTarget<T> for FileSystemBackupTarget {
@@ -53,7 +55,13 @@ impl FileSystemBackupTarget {
     pub fn new<P: Into<PathBuf>>(target: P) -> Self {
         FileSystemBackupTarget {
             target: Arc::new(target.into()),
+            access_token: Arc::new(None)
         }
+    }
+
+    pub fn with_access_token(mut self, token: String) -> Self {
+        self.access_token = Arc::new(Some(token));
+        self
     }
 
     fn clone<T: BackupEntity>(
@@ -67,6 +75,27 @@ impl FileSystemBackupTarget {
             "Please make sure that the target directory is writable and that the repository is accessible.",
             e,
         ))?;
+
+        if let Some(token) = self.access_token.as_ref() {
+            let token = token.clone();
+            fetch = fetch.configure_connection(move |c| {
+                let token = token.clone();
+                c.set_credentials(move |a| match a {
+                    Action::Get(ctx) => {
+                        Ok(Some(gix::credentials::protocol::Outcome {
+                            identity: Account {
+                                username: token.clone(),
+                                password: "".into(),
+                            },
+                            next: ctx.into()
+                        }))
+                    },
+                    _ => Ok(None)
+                });
+
+                Ok(())
+            });
+        }
 
         let (mut checkout, _outcome) = fetch.fetch_then_checkout(Discard, cancel).map_err(|e| errors::system_with_internal(
             &format!("Unable to clone remote repository '{}'", &repo.clone_url()),
@@ -167,7 +196,12 @@ impl FileSystemBackupTarget {
 
 impl From<&Config> for FileSystemBackupTarget {
     fn from(config: &Config) -> Self {
-        FileSystemBackupTarget::new(config.backup_path.clone())
+        let target = FileSystemBackupTarget::new(config.backup_path.clone());
+        if let Some(token) = config.github.access_token.as_ref() {
+            target.with_access_token(token.clone())
+        } else {
+            target
+        }
     }
 }
 
@@ -218,8 +252,8 @@ mod tests {
             "SierraSoftworks/grey"
         }
 
-        fn clone_url(&self) -> String {
-            "https://github.com/SierraSoftworks/grey.git".to_string()
+        fn clone_url(&self) -> &str {
+            "https://github.com/SierraSoftworks/grey.git"
         }
     }
 }

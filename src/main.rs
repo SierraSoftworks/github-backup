@@ -4,6 +4,7 @@ use policy::BackupPolicy;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use tokio::task::JoinSet;
+use tracing::Instrument;
 
 #[macro_use]
 mod macros;
@@ -40,7 +41,7 @@ pub trait BackupTarget<T: BackupEntity> {
 pub trait BackupEntity {
     fn backup_path(&self) -> PathBuf;
     fn full_name(&self) -> &str;
-    fn clone_url(&self) -> String;
+    fn clone_url(&self) -> &str;
 
     fn matches(&self, filter: &policy::RepoFilter) -> bool {
         match filter {
@@ -69,9 +70,9 @@ async fn run(args: Args) -> Result<(), Error> {
         let _span = tracing::info_span!("backup.all").entered();
 
         for policy in config.backups.iter() {
-            let _span = tracing::info_span!("backup.policy", policy = %policy).entered();
+            let span = tracing::info_span!("backup.policy", policy = %policy);
 
-            match github.get_repos(policy, &cancel).await {
+            match github.get_repos(policy, &cancel).instrument(span).await {
                 Ok(repos) => {
                     println!("Backing up repositories for: {}", &policy);
                     let mut join_set: JoinSet<Result<(_, String), (_, errors::Error)>> = JoinSet::new();
@@ -85,12 +86,13 @@ async fn run(args: Args) -> Result<(), Error> {
                             let git_backup = git_backup.clone();
                             let cancel = AtomicBool::new(false);
 
+                            let span = tracing::info_span!("backup.repo", repo = %repo.full_name());
                             join_set.spawn(async move {
                                 match git_backup.backup(&repo, &cancel) {
                                     Ok(id) => Ok((repo, id)),
                                     Err(e) => Err((repo, e)),
                                 }
-                            });
+                            }.instrument(span));
                         }
                     }
 
