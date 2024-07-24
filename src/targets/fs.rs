@@ -216,8 +216,8 @@ mod tests {
             "SierraSoftworks/grey"
         }
 
-        fn clone_url(&self) -> &str {
-            "https://github.com/SierraSoftworks/grey.git"
+        fn clone_url(&self) -> String {
+            "https://github.com/SierraSoftworks/grey.git".to_string()
         }
     }
 }

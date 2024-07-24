@@ -35,7 +35,16 @@ impl RepositorySource<GitHubRepo> for GitHubSource {
                     "Please check your configuration and try again.",
                 )),
             };
-        self.get_paginated(&url, cancel).await
+        
+        let mut repos: Vec<GitHubRepo> = self.get_paginated(&url, cancel).await?;
+
+        if let Some(token) = self.token.as_ref() {
+            for repo in repos.iter_mut() {
+                repo.access_token = Some(token.clone());
+            }
+        }
+
+        Ok(repos)
     }
 }
 
@@ -175,6 +184,9 @@ pub struct GitHubRepo {
     archived: bool,
     fork: bool,
     private: bool,
+
+    #[serde(skip)]
+    access_token: Option<String>,
 }
 
 impl BackupEntity for GitHubRepo {
@@ -186,8 +198,11 @@ impl BackupEntity for GitHubRepo {
         &self.full_name
     }
 
-    fn clone_url(&self) -> &str {
-        &self.clone_url
+    fn clone_url(&self) -> String {
+        match self.access_token {
+            Some(ref token) => self.clone_url.replace("https://", &format!("https://{}:@", token)),
+            None => self.clone_url.to_string(),
+        }
     }
 
     fn matches(&self, filter: &crate::policy::RepoFilter) -> bool {

@@ -40,7 +40,7 @@ pub trait BackupTarget<T: BackupEntity> {
 pub trait BackupEntity {
     fn backup_path(&self) -> PathBuf;
     fn full_name(&self) -> &str;
-    fn clone_url(&self) -> &str;
+    fn clone_url(&self) -> String;
 
     fn matches(&self, filter: &policy::RepoFilter) -> bool {
         match filter {
