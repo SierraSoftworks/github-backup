@@ -1,6 +1,7 @@
 use opentelemetry::global;
+use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::Sampler};
+use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::{Sampler, TracerProvider}};
 use tracing::Subscriber;
 use tracing_subscriber::{prelude::*, registry::LookupSpan, Layer};
 
@@ -92,26 +93,27 @@ where
 
     if let Some(endpoint) = tracing_endpoint {
         let metadata = load_otlp_headers();
-        let tracer = opentelemetry_otlp::new_pipeline()
-            .tracing()
-            .with_exporter(
-                opentelemetry_otlp::new_exporter()
-                    .tonic()
-                    .with_endpoint(endpoint)
-                    .with_metadata(metadata),
-            )
-            .with_trace_config(
-                opentelemetry_sdk::trace::config()
+        let provider = TracerProvider::builder()
+            .with_config(
+                opentelemetry_sdk::trace::Config::default()
                     .with_resource(opentelemetry_sdk::Resource::new(vec![
                         opentelemetry::KeyValue::new("service.name", "github-backup"),
                         opentelemetry::KeyValue::new("service.version", version!("v")),
                         opentelemetry::KeyValue::new("host.os", std::env::consts::OS),
                         opentelemetry::KeyValue::new("host.architecture", std::env::consts::ARCH),
                     ]))
-                    .with_sampler(load_trace_sampler()),
+                    .with_sampler(load_trace_sampler())
             )
-            .install_batch(opentelemetry_sdk::runtime::Tokio)
-            .unwrap();
+            .with_batch_exporter(opentelemetry_otlp::new_exporter()
+                    .tonic()
+                    .with_endpoint(endpoint)
+                    .with_metadata(metadata)
+                    .build_span_exporter()
+                    .unwrap(),
+                    opentelemetry_sdk::runtime::Tokio)
+            .build();
+
+        let tracer = provider.tracer("github-backup");
 
         tracing_opentelemetry::layer().with_tracer(tracer).boxed()
     } else {
