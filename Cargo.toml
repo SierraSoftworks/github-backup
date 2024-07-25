@@ -31,4 +31,5 @@ default = []
 pure_tests = []
 
 [profile.release]
-debug = "limited"
+debug = false
+strip = "debuginfo"
