@@ -4,7 +4,7 @@ use std::{
 };
 
 use gix::{credentials::helper::Action, progress::Discard, sec::identity::Account};
-use tracing::instrument;
+use tracing::{instrument, warn};
 
 use crate::{config::Config, errors, BackupEntity, BackupTarget};
 
@@ -44,7 +44,13 @@ impl<T: BackupEntity + std::fmt::Debug> BackupTarget<T> for FileSystemBackupTarg
         }
 
         if target_path.exists() {
-            self.fetch(repo, &target_path, cancel)
+            match self.fetch(repo, &target_path, cancel) {
+                Ok(id) => Ok(id),
+                Err(e) => {
+                    warn!(error=%e, "Failed to fetch repository '{}', falling back to cloning it.", repo.full_name());
+                    self.clone(repo, &target_path, cancel)
+                }
+            }
         } else {
             self.clone(repo, &target_path, cancel)
         }
@@ -97,18 +103,18 @@ impl FileSystemBackupTarget {
             });
         }
 
-        let (mut checkout, _outcome) = fetch.fetch_then_checkout(Discard, cancel).map_err(|e| errors::system_with_internal(
+        let (repository, _outcome) = fetch.fetch_only(Discard, cancel).map_err(|e| errors::system_with_internal(
             &format!("Unable to clone remote repository '{}'", &repo.clone_url()),
             "Make sure that your internet connectivity is working correctly, and that your local git configuration is able to clone this repo.", 
             e))?;
 
-        let (repository, _outcome) = checkout.main_worktree(Discard, cancel).map_err(|e| {
-            checkout.persist();
+        self.update_config(&repository, |c| {
+            c.set_raw_value(&gix::config::tree::Core::BARE, "true").map_err(|e| errors::system_with_internal(
+                &format!("Unable to set the 'core.bare' configuration option for repository '{}'", repo.full_name()),
+                "Make sure that the git repository has been correctly initialized and run `git config core.bare true` to configure it correctly.",
+                e))?;
 
-            errors::system_with_internal(
-                &format!("Unable to checkout the repository '{}'", &repo.clone_url()),
-                "Make sure that the repository is correctly cloned and that the target directory is writable.",
-                e)
+            Ok(())
         })?;
 
         let head_id = repository.head_id().map_err(|e| errors::user_with_internal(
@@ -191,6 +197,27 @@ impl FileSystemBackupTarget {
             e))?;
 
         Ok(format!("{}", head_id.to_hex()))
+    }
+
+    fn update_config<U>(&self, repo: &gix::Repository, mut update: U) -> Result<(), errors::Error>
+    where U: FnMut(&mut gix::config::File<'_>) -> Result<(), errors::Error>
+    {
+        let mut config = gix::config::File::from_path_no_includes(repo.path().join("config"), gix::config::Source::Local).map_err(|e| errors::system_with_internal(
+            &format!("Unable to load git configuration for repository '{}'", repo.path().display()),
+            "Make sure that the git repository has been correctly initialized.",
+            e))?;
+        
+        update(&mut config)?;
+
+        let mut file = std::fs::File::create(repo.path().join("config")).map_err(|e| errors::system_with_internal(
+            &format!("Unable to write git configuration for repository '{}'", repo.path().display()),
+            "Make sure that the git repository has been correctly initialized.",
+            e))?;
+        
+        config.write_to(&mut file).map_err(|e| errors::system_with_internal(
+            &format!("Unable to write git configuration for repository '{}'", repo.path().display()),
+            "Make sure that the git repository has been correctly initialized.",
+            e))
     }
 }
 
