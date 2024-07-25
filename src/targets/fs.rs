@@ -4,7 +4,7 @@ use std::{
 };
 
 use gix::{credentials::helper::Action, progress::Discard, sec::identity::Account};
-use tracing::{instrument, warn};
+use tracing::instrument;
 
 use crate::{config::Config, errors, BackupEntity, BackupTarget};
 
@@ -16,7 +16,6 @@ pub struct FileSystemBackupTarget {
 }
 
 impl<T: BackupEntity + std::fmt::Debug> BackupTarget<T> for FileSystemBackupTarget {
-    #[instrument(skip(self, cancel))]
     fn backup(&self, repo: &T, cancel: &AtomicBool) -> Result<String, errors::Error> {
         if !self.target.as_ref().exists() {
             std::fs::create_dir_all(self.target.as_ref()).map_err(|e| {
@@ -45,13 +44,6 @@ impl<T: BackupEntity + std::fmt::Debug> BackupTarget<T> for FileSystemBackupTarg
 
         if target_path.exists() {
             self.fetch(repo, &target_path, cancel)
-            //  {
-            //     Ok(id) => Ok(id),
-            //     Err(e) => {
-            //         warn!(error=%e, "Failed to fetch repository '{}', falling back to cloning it.", repo.full_name());
-            //         self.clone(repo, &target_path, cancel)
-            //     }
-            // }
         } else {
             self.clone(repo, &target_path, cancel)
         }
@@ -71,6 +63,7 @@ impl FileSystemBackupTarget {
         self
     }
 
+    #[instrument(skip(self, repo, target, cancel), err)]
     fn clone<T: BackupEntity>(
         &self,
         repo: &T,
@@ -126,6 +119,7 @@ impl FileSystemBackupTarget {
         Ok(format!("{}", head_id.to_hex()))
     }
 
+    #[instrument(skip(self, repo, target, cancel), err)]
     fn fetch<T: BackupEntity>(
         &self,
         repo: &T,

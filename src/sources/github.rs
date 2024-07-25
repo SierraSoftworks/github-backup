@@ -20,7 +20,7 @@ pub struct GitHubSource {
 
 #[async_trait::async_trait]
 impl RepositorySource<GitHubRepo> for GitHubSource {
-    #[instrument(skip(self, cancel))]
+    #[instrument(skip(self, cancel, policy), fields(policy = %policy), err)]
     async fn get_repos(
         &self,
         policy: &BackupPolicy,
@@ -167,7 +167,7 @@ impl From<&Config> for GitHubSource {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct GitHubRepo {
     name: String,
     full_name: String,
@@ -177,6 +177,12 @@ pub struct GitHubRepo {
     fork: bool,
     private: bool,
     size: u64,
+}
+
+impl std::fmt::Debug for GitHubRepo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "gh:{}", self.full_name)
+    }
 }
 
 impl BackupEntity for GitHubRepo {

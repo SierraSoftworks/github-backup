@@ -6,7 +6,17 @@ use reqwest::StatusCode;
 
 impl convert::From<reqwest::Error> for Error {
     fn from(err: reqwest::Error) -> Self {
-        if err.is_redirect() {
+        if err.is_connect() {
+            user_with_internal(
+                "We could not connect to the remote server to make a web request.",
+                "Make sure that your internet connection is working correctly and the service is not blocked by your firewall.",
+                err)
+        } else if err.is_decode() {
+            system_with_internal(
+                "We could not decode the response from the remote server.",
+                "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
+                err)
+        } else if err.is_redirect() {
             user_with_internal(
                 "We could not complete a web request to due to a redirect loop.",
                 "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.", 
@@ -19,7 +29,7 @@ impl convert::From<reqwest::Error> for Error {
         } else {
             system_with_internal(
                 "An internal error occurred which we could not recover from.",
-                "Please read the internal error below and decide if there is something you can do to fix the problem, or report it to us on GitHub.", 
+                "Please read the error above and decide if there is something you can do to fix the problem, or report it to us on GitHub.", 
                 err)
         }
     }

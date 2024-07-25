@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct BackupPolicy {
     pub user: Option<String>,
     pub org: Option<String>,
