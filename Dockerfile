@@ -17,4 +17,4 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder /volume/target/release/github-backup /usr/local/bin/github-backup
 
-CMD ["github-backup"]
+ENTRYPOINT ["/usr/local/bin/github-backup"]

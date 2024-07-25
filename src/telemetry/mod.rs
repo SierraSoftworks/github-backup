@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use opentelemetry::global;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
@@ -22,12 +24,16 @@ pub fn setup() {
         .init();
 }
 
-fn load_otlp_headers() -> tonic::metadata::MetadataMap {
-    let mut tracing_metadata = tonic::metadata::MetadataMap::new();
+pub fn shutdown() {
+    global::shutdown_tracer_provider();
+}
+
+fn load_otlp_headers() -> HashMap<String, String> {
+    let mut tracing_metadata = HashMap::new();
 
     #[cfg(debug_assertions)]
     tracing_metadata.insert(
-        "x-honeycomb-team",
+        "x-honeycomb-team".into(),
         "X6naTEMkzy10PMiuzJKifF".parse().unwrap(),
     );
 
@@ -38,7 +44,7 @@ fn load_otlp_headers() -> tonic::metadata::MetadataMap {
                     let key: &str = Box::leak(key.to_string().into_boxed_str());
                     let value = value.to_owned();
                     if let Ok(value) = value.parse() {
-                        tracing_metadata.insert(key, value);
+                        tracing_metadata.insert(key.into(), value);
                     } else {
                         eprintln!("Could not parse value for header {}.", key);
                     }
@@ -89,7 +95,9 @@ where
     let tracing_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
 
     #[cfg(debug_assertions)]
-    let tracing_endpoint = Some("https://api.honeycomb.io:443".to_string());
+    let tracing_endpoint = Some("https://api.honeycomb.io/v1/traces".to_string());
+
+    let client = reqwest::Client::new();
 
     if let Some(endpoint) = tracing_endpoint {
         let metadata = load_otlp_headers();
@@ -105,13 +113,18 @@ where
                     .with_sampler(load_trace_sampler())
             )
             .with_batch_exporter(opentelemetry_otlp::new_exporter()
-                    .tonic()
-                    .with_endpoint(endpoint)
-                    .with_metadata(metadata)
-                    .with_tls_config(tonic::transport::ClientTlsConfig::new().with_webpki_roots())
-                    .build_span_exporter()
-                    .unwrap(),
-                    opentelemetry_sdk::runtime::Tokio)
+                .http()
+                .with_protocol(match std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").ok().as_deref() {
+                    Some("http-binary") => opentelemetry_otlp::Protocol::HttpBinary,
+                    Some("http-json") => opentelemetry_otlp::Protocol::HttpJson,
+                    _ => opentelemetry_otlp::Protocol::HttpJson,
+                })
+                .with_endpoint(endpoint)
+                .with_headers(metadata)
+                .with_http_client(client)
+                .build_span_exporter()
+                .unwrap(),
+                opentelemetry_sdk::runtime::Tokio)
             .build();
 
         let tracer = provider.tracer("github-backup");
