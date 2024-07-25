@@ -38,11 +38,7 @@
           inherit src;
           strictDeps = true;
 
-          buildInputs = [
-            pkgs.pkg-config
-            pkgs.openssl
-            pkgs.protobuf
-          ]
+          buildInputs = []
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
@@ -50,8 +46,6 @@
 
           # Additional environment variables can be set directly
           # MY_CUSTOM_VAR = "some value";
-          OPENSSL_DIR = pkgs.openssl.dev;
-          OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
         };
 
         craneLibLLvmTools = craneLib.overrideToolchain

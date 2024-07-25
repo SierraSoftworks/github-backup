@@ -11,15 +11,10 @@ pub fn setup() {
     global::set_text_map_propagator(TraceContextPropagator::new());
 
     tracing_subscriber::registry()
-        .with(tracing_subscriber::filter::LevelFilter::DEBUG)
-        .with(tracing_subscriber::filter::dynamic_filter_fn(
-            |_metadata, ctx| {
-                !ctx.lookup_current()
-                    // Exclude the rustls session "Connection" events which don't have a parent span
-                    .map(|s| s.parent().is_none() && s.name() == "Connection")
-                    .unwrap_or_default()
-            },
-        ))
+        .with(tracing_subscriber::filter::LevelFilter::INFO)
+        .with(tracing_subscriber::filter::filter_fn(|meta| {
+            meta.target() != "h2::proto::connection"
+        }))
         .with(load_output_layer())
         .init();
 }
