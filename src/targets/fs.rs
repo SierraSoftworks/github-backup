@@ -54,7 +54,7 @@ impl FileSystemBackupTarget {
     pub fn new<P: Into<PathBuf>>(target: P) -> Self {
         FileSystemBackupTarget {
             target: Arc::new(target.into()),
-            access_token: Arc::new(None)
+            access_token: Arc::new(None),
         }
     }
 
@@ -81,16 +81,14 @@ impl FileSystemBackupTarget {
             fetch = fetch.configure_connection(move |c| {
                 let token = token.clone();
                 c.set_credentials(move |a| match a {
-                    Action::Get(ctx) => {
-                        Ok(Some(gix::credentials::protocol::Outcome {
-                            identity: Account {
-                                username: token.clone(),
-                                password: "".into(),
-                            },
-                            next: ctx.into()
-                        }))
-                    },
-                    _ => Ok(None)
+                    Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {
+                        identity: Account {
+                            username: token.clone(),
+                            password: "".into(),
+                        },
+                        next: ctx.into(),
+                    })),
+                    _ => Ok(None),
                 });
 
                 Ok(())
@@ -149,37 +147,34 @@ impl FileSystemBackupTarget {
                 e,
             )
         })?;
-        
-        let mut connection = remote
-            .connect(gix::remote::Direction::Fetch)
-            .map_err(|e| {
-                errors::user_with_internal(
-                    &format!(
-                        "Unable to establish connection to remote git repository '{}'",
-                        repo.clone_url()
-                    ),
-                    "Make sure that the repository is available and correctly configured.",
-                    e,
-                )
-            })?;
+
+        let mut connection = remote.connect(gix::remote::Direction::Fetch).map_err(|e| {
+            errors::user_with_internal(
+                &format!(
+                    "Unable to establish connection to remote git repository '{}'",
+                    repo.clone_url()
+                ),
+                "Make sure that the repository is available and correctly configured.",
+                e,
+            )
+        })?;
 
         if let Some(token) = self.access_token.as_ref() {
             let token = token.clone();
             connection.set_credentials(move |a| match a {
-                Action::Get(ctx) => {
-                    Ok(Some(gix::credentials::protocol::Outcome {
-                        identity: Account {
-                            username: token.clone(),
-                            password: "".into(),
-                        },
-                        next: ctx.into()
-                    }))
-                },
-                _ => Ok(None)
+                Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {
+                    identity: Account {
+                        username: token.clone(),
+                        password: "".into(),
+                    },
+                    next: ctx.into(),
+                })),
+                _ => Ok(None),
             });
         }
-            
-        connection.prepare_fetch(Discard, Default::default())
+
+        connection
+            .prepare_fetch(Discard, Default::default())
             .map_err(|e| {
                 errors::user_with_internal(
                     &format!(
@@ -212,24 +207,47 @@ impl FileSystemBackupTarget {
     }
 
     fn update_config<U>(&self, repo: &gix::Repository, mut update: U) -> Result<(), errors::Error>
-    where U: FnMut(&mut gix::config::File<'_>) -> Result<(), errors::Error>
+    where
+        U: FnMut(&mut gix::config::File<'_>) -> Result<(), errors::Error>,
     {
-        let mut config = gix::config::File::from_path_no_includes(repo.path().join("config"), gix::config::Source::Local).map_err(|e| errors::system_with_internal(
-            &format!("Unable to load git configuration for repository '{}'", repo.path().display()),
-            "Make sure that the git repository has been correctly initialized.",
-            e))?;
-        
+        let mut config = gix::config::File::from_path_no_includes(
+            repo.path().join("config"),
+            gix::config::Source::Local,
+        )
+        .map_err(|e| {
+            errors::system_with_internal(
+                &format!(
+                    "Unable to load git configuration for repository '{}'",
+                    repo.path().display()
+                ),
+                "Make sure that the git repository has been correctly initialized.",
+                e,
+            )
+        })?;
+
         update(&mut config)?;
 
-        let mut file = std::fs::File::create(repo.path().join("config")).map_err(|e| errors::system_with_internal(
-            &format!("Unable to write git configuration for repository '{}'", repo.path().display()),
-            "Make sure that the git repository has been correctly initialized.",
-            e))?;
-        
-        config.write_to(&mut file).map_err(|e| errors::system_with_internal(
-            &format!("Unable to write git configuration for repository '{}'", repo.path().display()),
-            "Make sure that the git repository has been correctly initialized.",
-            e))
+        let mut file = std::fs::File::create(repo.path().join("config")).map_err(|e| {
+            errors::system_with_internal(
+                &format!(
+                    "Unable to write git configuration for repository '{}'",
+                    repo.path().display()
+                ),
+                "Make sure that the git repository has been correctly initialized.",
+                e,
+            )
+        })?;
+
+        config.write_to(&mut file).map_err(|e| {
+            errors::system_with_internal(
+                &format!(
+                    "Unable to write git configuration for repository '{}'",
+                    repo.path().display()
+                ),
+                "Make sure that the git repository has been correctly initialized.",
+                e,
+            )
+        })
     }
 }
 

@@ -35,7 +35,7 @@ impl RepositorySource<GitHubRepo> for GitHubSource {
                     "Please check your configuration and try again.",
                 )),
             };
-        
+
         self.get_paginated(&url, cancel).await
     }
 }

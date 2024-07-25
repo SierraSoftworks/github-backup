@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use opentelemetry::global;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::{Sampler, TracerProvider}};
+use opentelemetry_sdk::{
+    propagation::TraceContextPropagator,
+    trace::{Sampler, TracerProvider},
+};
 use tracing::Subscriber;
 use tracing_subscriber::{prelude::*, registry::LookupSpan, Layer};
 
@@ -105,21 +108,25 @@ where
                         opentelemetry::KeyValue::new("host.os", std::env::consts::OS),
                         opentelemetry::KeyValue::new("host.architecture", std::env::consts::ARCH),
                     ]))
-                    .with_sampler(load_trace_sampler())
+                    .with_sampler(load_trace_sampler()),
             )
-            .with_batch_exporter(opentelemetry_otlp::new_exporter()
-                .http()
-                .with_protocol(match std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").ok().as_deref() {
-                    Some("http-binary") => opentelemetry_otlp::Protocol::HttpBinary,
-                    Some("http-json") => opentelemetry_otlp::Protocol::HttpJson,
-                    _ => opentelemetry_otlp::Protocol::HttpJson,
-                })
-                .with_endpoint(endpoint)
-                .with_headers(metadata)
-                .with_http_client(client)
-                .build_span_exporter()
-                .unwrap(),
-                opentelemetry_sdk::runtime::Tokio)
+            .with_batch_exporter(
+                opentelemetry_otlp::new_exporter()
+                    .http()
+                    .with_protocol(
+                        match std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").ok().as_deref() {
+                            Some("http-binary") => opentelemetry_otlp::Protocol::HttpBinary,
+                            Some("http-json") => opentelemetry_otlp::Protocol::HttpJson,
+                            _ => opentelemetry_otlp::Protocol::HttpJson,
+                        },
+                    )
+                    .with_endpoint(endpoint)
+                    .with_headers(metadata)
+                    .with_http_client(client)
+                    .build_span_exporter()
+                    .unwrap(),
+                opentelemetry_sdk::runtime::Tokio,
+            )
             .build();
 
         let tracer = provider.tracer("github-backup");
