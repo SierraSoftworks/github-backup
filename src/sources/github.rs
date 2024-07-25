@@ -21,6 +21,7 @@ pub struct GitHubSource {
 #[async_trait::async_trait]
 impl RepositorySource<GitHubRepo> for GitHubSource {
     #[instrument(skip(self, cancel, policy), fields(policy = %policy), err)]
+    #[allow(clippy::blocks_in_conditions)]
     async fn get_repos(
         &self,
         policy: &BackupPolicy,
