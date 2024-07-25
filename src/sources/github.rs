@@ -176,6 +176,7 @@ pub struct GitHubRepo {
     archived: bool,
     fork: bool,
     private: bool,
+    size: u64,
 }
 
 impl BackupEntity for GitHubRepo {
@@ -197,7 +198,7 @@ impl BackupEntity for GitHubRepo {
             RepoFilter::Exclude(names) => !names.iter().any(|n| self.name.eq_ignore_ascii_case(n)),
             RepoFilter::Public => !self.private,
             RepoFilter::Private => self.private,
-            RepoFilter::NonEmpty => true,
+            RepoFilter::NonEmpty => self.size > 0,
             RepoFilter::Fork => self.fork,
             RepoFilter::NonFork => !self.fork,
             RepoFilter::Archived => self.archived,
