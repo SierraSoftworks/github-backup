@@ -44,13 +44,14 @@ impl<T: BackupEntity + std::fmt::Debug> BackupTarget<T> for FileSystemBackupTarg
         }
 
         if target_path.exists() {
-            match self.fetch(repo, &target_path, cancel) {
-                Ok(id) => Ok(id),
-                Err(e) => {
-                    warn!(error=%e, "Failed to fetch repository '{}', falling back to cloning it.", repo.full_name());
-                    self.clone(repo, &target_path, cancel)
-                }
-            }
+            self.fetch(repo, &target_path, cancel)
+            //  {
+            //     Ok(id) => Ok(id),
+            //     Err(e) => {
+            //         warn!(error=%e, "Failed to fetch repository '{}', falling back to cloning it.", repo.full_name());
+            //         self.clone(repo, &target_path, cancel)
+            //     }
+            // }
         } else {
             self.clone(repo, &target_path, cancel)
         }
@@ -154,8 +155,8 @@ impl FileSystemBackupTarget {
                 e,
             )
         })?;
-
-        let _outcome = remote
+        
+        let mut connection = remote
             .connect(gix::remote::Direction::Fetch)
             .map_err(|e| {
                 errors::user_with_internal(
@@ -166,8 +167,25 @@ impl FileSystemBackupTarget {
                     "Make sure that the repository is available and correctly configured.",
                     e,
                 )
-            })?
-            .prepare_fetch(Discard, Default::default())
+            })?;
+
+        if let Some(token) = self.access_token.as_ref() {
+            let token = token.clone();
+            connection.set_credentials(move |a| match a {
+                Action::Get(ctx) => {
+                    Ok(Some(gix::credentials::protocol::Outcome {
+                        identity: Account {
+                            username: token.clone(),
+                            password: "".into(),
+                        },
+                        next: ctx.into()
+                    }))
+                },
+                _ => Ok(None)
+            });
+        }
+            
+        connection.prepare_fetch(Discard, Default::default())
             .map_err(|e| {
                 errors::user_with_internal(
                     &format!(
