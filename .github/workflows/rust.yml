@@ -48,7 +48,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests
-        run: cargo test --locked --all-features --no-fail-fast
+        run: cargo test --all-features --no-fail-fast
         env:
             RUSTFLAGS: -Cinstrument-coverage
 
@@ -118,7 +118,7 @@ jobs:
           name: cargofile
 
       - name: cargo build
-        run: cargo build --locked --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Upload GitHub Release Artifacts
         uses: SierraSoftworks/gh-releases@v1.0.7
