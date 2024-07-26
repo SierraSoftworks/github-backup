@@ -3,7 +3,9 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
-use gix::{credentials::helper::Action, progress::Discard, sec::identity::Account};
+use gix::{
+    credentials::helper::Action, progress::Discard, remote::fetch::Tags, sec::identity::Account,
+};
 use tracing::instrument;
 
 use crate::{config::Config, errors, BackupEntity, BackupTarget};
@@ -136,7 +138,7 @@ impl FileSystemBackupTarget {
             )
         })?;
 
-        let remote = repository.find_fetch_remote(None).map_err(|e| {
+        let remote = repository.find_fetch_remote(Some(repo.clone_url().into())).map_err(|e| {
             errors::user_with_internal(
                 &format!(
                     "Failed to find the remote '{}' in the repository '{}'",
@@ -146,7 +148,20 @@ impl FileSystemBackupTarget {
                 "Make sure that the repository is correctly configured and that the remote exists.",
                 e,
             )
-        })?;
+        })?
+            .with_fetch_tags(Tags::All)
+            .with_refspecs(["+refs/heads/*:refs/remotes/origin/*"], gix::remote::Direction::Fetch)
+            .map_err(|e| {
+                errors::user_with_internal(
+                    &format!(
+                        "Failed to configure the remote '{}' in the repository '{}' to fetch all branches.",
+                        repo.clone_url(),
+                        &target.display()
+                    ),
+                    "Make sure that the repository is correctly configured and that the remote exists.",
+                    e,
+                )
+            })?;
 
         let mut connection = remote.connect(gix::remote::Direction::Fetch).map_err(|e| {
             errors::user_with_internal(
