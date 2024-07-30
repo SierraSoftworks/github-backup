@@ -1,44 +1,38 @@
 use serde::Deserialize;
-use std::fmt::{Display, Formatter};
+use std::collections::HashMap;
+use std::fmt::{Debug, Display, Formatter};
+use std::path::PathBuf;
+
+use crate::entities::Credentials;
 
 #[derive(Deserialize)]
 pub struct BackupPolicy {
-    pub user: Option<String>,
-    pub org: Option<String>,
+    pub kind: String,
+    pub from: String,
+    #[serde(default = "default_backup_path")]
+    pub to: PathBuf,
     #[serde(default)]
-    pub filters: Vec<RepoFilter>,
+    pub credentials: Credentials,
+    #[serde(default)]
+    pub filters: Vec<BackupFilter>,
+    #[serde(default)]
+    pub properties: HashMap<String, String>,
 }
 
 impl Display for BackupPolicy {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match (self.user.as_ref(), self.org.as_ref()) {
-            (Some(user), None) => write!(
-                f,
-                "@{} ({})",
-                user,
-                self.filters
-                    .iter()
-                    .map(|f| f.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            (None, Some(org)) => write!(
-                f,
-                "@{} ({})",
-                org,
-                self.filters
-                    .iter()
-                    .map(|f| f.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            _ => write!(f, "<INVALID POLICY>"),
-        }
+        write!(f, "{}:{}", self.kind, self.from)
+    }
+}
+
+impl Debug for BackupPolicy {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.kind, self.from)
     }
 }
 
 #[derive(Debug, Deserialize)]
-pub enum RepoFilter {
+pub enum BackupFilter {
     Include(Vec<String>),
     Exclude(Vec<String>),
     Public,
@@ -50,18 +44,22 @@ pub enum RepoFilter {
     NonArchived,
 }
 
-impl Display for RepoFilter {
+impl Display for BackupFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            RepoFilter::Include(names) => write!(f, "Include: [{}]", names.join(", ")),
-            RepoFilter::Exclude(names) => write!(f, "Exclude: [{}]", names.join(", ")),
-            RepoFilter::Public => write!(f, "Public"),
-            RepoFilter::Private => write!(f, "Private"),
-            RepoFilter::NonEmpty => write!(f, "NonEmpty"),
-            RepoFilter::Fork => write!(f, "Fork"),
-            RepoFilter::NonFork => write!(f, "NonFork"),
-            RepoFilter::Archived => write!(f, "Archived"),
-            RepoFilter::NonArchived => write!(f, "NonArchived"),
+            BackupFilter::Include(names) => write!(f, "Include: [{}]", names.join(", ")),
+            BackupFilter::Exclude(names) => write!(f, "Exclude: [{}]", names.join(", ")),
+            BackupFilter::Public => write!(f, "Public"),
+            BackupFilter::Private => write!(f, "Private"),
+            BackupFilter::NonEmpty => write!(f, "NonEmpty"),
+            BackupFilter::Fork => write!(f, "Fork"),
+            BackupFilter::NonFork => write!(f, "NonFork"),
+            BackupFilter::Archived => write!(f, "Archived"),
+            BackupFilter::NonArchived => write!(f, "NonArchived"),
         }
     }
+}
+
+fn default_backup_path() -> PathBuf {
+    PathBuf::from("./backups")
 }

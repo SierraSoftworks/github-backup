@@ -1,110 +1,86 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::{path::Path, sync::atomic::AtomicBool};
 
 use gix::{
-    credentials::helper::Action, progress::Discard, remote::fetch::Tags, sec::identity::Account,
+    credentials::helper::Action,
+    progress::Discard,
+    remote::{fetch::Tags, Connection},
+    sec::identity::Account,
 };
 use tracing::instrument;
 
-use crate::{config::Config, errors, BackupEntity, BackupTarget};
+use crate::{
+    entities::{Credentials, GitRepo},
+    errors, BackupEntity,
+};
+
+use super::{BackupEngine, BackupState};
 
 #[derive(Clone)]
-pub struct FileSystemBackupTarget {
-    target: Arc<PathBuf>,
+pub struct GitEngine;
 
-    access_token: Arc<Option<String>>,
-}
-
-impl<T: BackupEntity + std::fmt::Debug> BackupTarget<T> for FileSystemBackupTarget {
-    fn backup(&self, repo: &T, cancel: &AtomicBool) -> Result<String, errors::Error> {
-        if !self.target.as_ref().exists() {
-            std::fs::create_dir_all(self.target.as_ref()).map_err(|e| {
-                errors::user_with_internal(
-                    &format!(
-                        "Unable to create backup directory '{}'",
-                        &self.target.display()
-                    ),
-                    "Make sure that you have permission to create the directory.",
-                    e,
-                )
-            })?;
-        }
-
-        let target_path = self.target.join(repo.backup_path());
-
-        if let Some(parent) = target_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                errors::user_with_internal(
-                    &format!("Unable to create backup directory '{}'", parent.display()),
-                    "Make sure that you have permission to create the directory.",
-                    e,
-                )
-            })?;
-        }
+#[async_trait::async_trait]
+impl BackupEngine<GitRepo> for GitEngine {
+    #[tracing::instrument(skip(self), res, err)]
+    async fn backup(
+        &self,
+        entity: &GitRepo,
+        target: &Path,
+        cancel: &AtomicBool,
+    ) -> Result<BackupState, crate::Error> {
+        let target_path = target.join(entity.target_path());
+        self.ensure_directory(&target_path)?;
 
         if target_path.exists() {
-            self.fetch(repo, &target_path, cancel)
+            self.fetch(entity, &target_path, cancel)
         } else {
-            self.clone(repo, &target_path, cancel)
+            self.clone(entity, &target_path, cancel)
         }
     }
 }
 
-impl FileSystemBackupTarget {
-    pub fn new<P: Into<PathBuf>>(target: P) -> Self {
-        FileSystemBackupTarget {
-            target: Arc::new(target.into()),
-            access_token: Arc::new(None),
-        }
-    }
-
-    pub fn with_access_token(mut self, token: String) -> Self {
-        self.access_token = Arc::new(Some(token));
-        self
+impl GitEngine {
+    fn ensure_directory(&self, path: &Path) -> Result<(), errors::Error> {
+        std::fs::create_dir_all(path).map_err(|e| {
+            errors::user_with_internal(
+                &format!("Unable to create backup directory '{}'", path.display()),
+                "Make sure that you have permission to create the directory.",
+                e,
+            )
+        })
     }
 
     #[instrument(skip(self, repo, target, cancel), err)]
-    fn clone<T: BackupEntity>(
+    fn clone(
         &self,
-        repo: &T,
+        repo: &GitRepo,
         target: &Path,
         cancel: &AtomicBool,
-    ) -> Result<String, errors::Error> {
-        let mut fetch = gix::prepare_clone(repo.clone_url(), target).map_err(|e| errors::system_with_internal(
-            &format!("Failed to clone the repository {}.", &repo.clone_url()),
+    ) -> Result<BackupState, errors::Error> {
+        let mut fetch = gix::prepare_clone(repo.clone_url.as_str(), target).map_err(|e| errors::system_with_internal(
+            &format!("Failed to clone the repository {}.", &repo.clone_url),
             "Please make sure that the target directory is writable and that the repository is accessible.",
             e,
         ))?;
 
-        if let Some(token) = self.access_token.as_ref() {
-            let token = token.clone();
-            fetch = fetch.configure_connection(move |c| {
-                let token = token.clone();
-                c.set_credentials(move |a| match a {
-                    Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {
-                        identity: Account {
-                            username: token.clone(),
-                            password: "".into(),
-                        },
-                        next: ctx.into(),
-                    })),
-                    _ => Ok(None),
+        match &repo.credentials {
+            Credentials::None => {}
+            creds => {
+                let creds = creds.clone();
+                fetch = fetch.configure_connection(move |mut c| {
+                    Self::authenticate_connection(&mut c, &creds);
+                    Ok(())
                 });
-
-                Ok(())
-            });
+            }
         }
 
         let (repository, _outcome) = fetch.fetch_only(Discard, cancel).map_err(|e| errors::system_with_internal(
-            &format!("Unable to clone remote repository '{}'", &repo.clone_url()),
-            "Make sure that your internet connectivity is working correctly, and that your local git configuration is able to clone this repo.", 
+            &format!("Unable to clone remote repository '{}'", repo.clone_url),
+            "Make sure that your internet connectivity is working correctly, and that your local git configuration is able to clone this repo.",
             e))?;
 
         self.update_config(&repository, |c| {
             c.set_raw_value(&gix::config::tree::Core::BARE, "true").map_err(|e| errors::system_with_internal(
-                &format!("Unable to set the 'core.bare' configuration option for repository '{}'", repo.full_name()),
+                &format!("Unable to set the 'core.bare' configuration option for repository '{}'", repo.name()),
                 "Make sure that the git repository has been correctly initialized and run `git config core.bare true` to configure it correctly.",
                 e))?;
 
@@ -112,25 +88,25 @@ impl FileSystemBackupTarget {
         })?;
 
         let head_id = repository.head_id().map_err(|e| errors::user_with_internal(
-            &format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", &repo.clone_url()),
+            &format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", &repo.clone_url),
             "Make sure that the remote repository is valid.",
             e))?;
 
-        Ok(format!("{}", head_id.to_hex()))
+        Ok(BackupState::New(Some(format!("{}", head_id.to_hex()))))
     }
 
     #[instrument(skip(self, repo, target, cancel), err)]
-    fn fetch<T: BackupEntity>(
+    fn fetch(
         &self,
-        repo: &T,
+        repo: &GitRepo,
         target: &Path,
         cancel: &AtomicBool,
-    ) -> Result<String, errors::Error> {
+    ) -> Result<BackupState, errors::Error> {
         let repository = gix::open(target).map_err(|e| {
             errors::user_with_internal(
                 &format!(
                     "Failed to open the repository '{}' at '{}'",
-                    repo.clone_url(),
+                    &repo.clone_url,
                     &target.display()
                 ),
                 "Make sure that the target directory is a valid git repository.",
@@ -138,11 +114,13 @@ impl FileSystemBackupTarget {
             )
         })?;
 
-        let remote = repository.find_fetch_remote(Some(repo.clone_url().into())).map_err(|e| {
+        let original_head = repository.head_id().ok();
+
+        let remote = repository.find_fetch_remote(Some(repo.clone_url.as_str().into())).map_err(|e| {
             errors::user_with_internal(
                 &format!(
                     "Failed to find the remote '{}' in the repository '{}'",
-                    repo.clone_url(),
+                    repo.clone_url,
                     &target.display()
                 ),
                 "Make sure that the repository is correctly configured and that the remote exists.",
@@ -155,7 +133,7 @@ impl FileSystemBackupTarget {
                 errors::user_with_internal(
                     &format!(
                         "Failed to configure the remote '{}' in the repository '{}' to fetch all branches.",
-                        repo.clone_url(),
+                        &repo.clone_url,
                         &target.display()
                     ),
                     "Make sure that the repository is correctly configured and that the remote exists.",
@@ -167,26 +145,14 @@ impl FileSystemBackupTarget {
             errors::user_with_internal(
                 &format!(
                     "Unable to establish connection to remote git repository '{}'",
-                    repo.clone_url()
+                    &repo.clone_url
                 ),
                 "Make sure that the repository is available and correctly configured.",
                 e,
             )
         })?;
 
-        if let Some(token) = self.access_token.as_ref() {
-            let token = token.clone();
-            connection.set_credentials(move |a| match a {
-                Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {
-                    identity: Account {
-                        username: token.clone(),
-                        password: "".into(),
-                    },
-                    next: ctx.into(),
-                })),
-                _ => Ok(None),
-            });
-        }
+        Self::authenticate_connection(&mut connection, &repo.credentials);
 
         connection
             .prepare_fetch(Discard, Default::default())
@@ -194,7 +160,7 @@ impl FileSystemBackupTarget {
                 errors::user_with_internal(
                     &format!(
                         "Unable to prepare fetch from remote git repository '{}'",
-                        repo.clone_url()
+                        &repo.clone_url
                     ),
                     "Make sure that the repository is available and correctly configured.",
                     e,
@@ -206,7 +172,7 @@ impl FileSystemBackupTarget {
                 errors::user_with_internal(
                     &format!(
                         "Unable to fetch from remote git repository '{}'",
-                        &repo.clone_url()
+                        &&repo.clone_url
                     ),
                     "Make sure that the repository is available and correctly configured.",
                     e,
@@ -214,11 +180,52 @@ impl FileSystemBackupTarget {
             })?;
 
         let head_id = repository.head_id().map_err(|e| errors::user_with_internal(
-            &format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", &repo.clone_url()),
+            &format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", &repo.clone_url),
             "Make sure that the remote repository is valid.",
             e))?;
 
-        Ok(format!("{}", head_id.to_hex()))
+        if let Some(original_head) = original_head {
+            if original_head == head_id {
+                return Ok(BackupState::Unchanged(Some(format!(
+                    "{}",
+                    head_id.to_hex()
+                ))));
+            }
+        }
+
+        Ok(BackupState::Updated(Some(format!("{}", head_id.to_hex()))))
+    }
+
+    fn authenticate_connection<'a, 'repo, T>(
+        connection: &mut Connection<'a, 'repo, T>,
+        creds: &Credentials,
+    ) {
+        match creds {
+            Credentials::None => {}
+            creds => {
+                let creds = creds.clone();
+                connection.set_credentials(move |a| match a {
+                    Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {
+                        identity: match &creds {
+                            Credentials::None => Account {
+                                username: "".into(),
+                                password: "".into(),
+                            },
+                            Credentials::Token(token) => Account {
+                                username: token.clone(),
+                                password: "".into(),
+                            },
+                            Credentials::UsernamePassword { username, password } => Account {
+                                username: username.clone(),
+                                password: password.clone(),
+                            },
+                        },
+                        next: ctx.into(),
+                    })),
+                    _ => Ok(None),
+                });
+            }
+        }
     }
 
     fn update_config<U>(&self, repo: &gix::Repository, mut update: U) -> Result<(), errors::Error>
@@ -266,17 +273,6 @@ impl FileSystemBackupTarget {
     }
 }
 
-impl From<&Config> for FileSystemBackupTarget {
-    fn from(config: &Config) -> Self {
-        let target = FileSystemBackupTarget::new(config.backup_path.clone());
-        if let Some(token) = config.github.access_token.as_ref() {
-            target.with_access_token(token.clone())
-        } else {
-            target
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -286,46 +282,34 @@ mod tests {
     async fn test_backup() {
         let temp_dir = tempfile::tempdir().expect("a temporary directory");
 
-        let agent = FileSystemBackupTarget::new(temp_dir.path().to_path_buf());
+        let agent = GitEngine;
         let cancel = AtomicBool::new(false);
 
-        let repo = MockTarget;
+        let repo = GitRepo::new(
+            "SierraSoftworks/grey",
+            "https://github.com/sierrasoftworks/grey.git",
+        );
 
         let id = agent
-            .backup(&repo, &cancel)
+            .backup(&repo, temp_dir.path(), &cancel)
+            .await
             .expect("initial backup to succeed (clone)");
         assert!(
             temp_dir
                 .path()
-                .join(repo.backup_path())
+                .join(repo.target_path())
                 .join(".git")
                 .exists(),
             "the repository should have been created"
         );
 
         let id2 = agent
-            .backup(&repo, &cancel)
+            .backup(&repo, temp_dir.path(), &cancel)
+            .await
             .expect("subsequent backup to succeed (fetch)");
         assert_eq!(
             id, id2,
             "the repository should not have changed between backups"
         );
-    }
-
-    #[derive(Debug)]
-    struct MockTarget;
-
-    impl BackupEntity for MockTarget {
-        fn backup_path(&self) -> PathBuf {
-            PathBuf::from("SierraSoftworks/grey")
-        }
-
-        fn full_name(&self) -> &str {
-            "SierraSoftworks/grey"
-        }
-
-        fn clone_url(&self) -> &str {
-            "https://github.com/SierraSoftworks/grey.git"
-        }
     }
 }

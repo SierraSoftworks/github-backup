@@ -1,10 +1,12 @@
 schedule: "0 * * * *"
-github: {}
+
 backups:
-  - user: notheotherben
+  - kind: github/repo
+    from: users/notheotherben
     filters:
       - !Include ["nix-env"]
-  - org: SierraSoftworks
+  - kind: github/repo
+    from: orgs/SierraSoftworks
     filters:
       - !Include ["git-tool", "grey"]
       - !Public

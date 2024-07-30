@@ -31,17 +31,18 @@ docker run \
 ### Configuration
 
 ```yaml
-backup_path: "/backups" # Where to store the backups
-
 # Run a backup every hour (will use `git fetch` for existing copies)
 # You can also omit this if you want to run a one-shot backup
 schedule: "0 * * * *"
-github:
-  token: "<your-github-token>" # Optional if you are only backing up public repositories
 
 backups:
-  - user: "my-user"
-  - org: "my-org"
+  - kind: github/repo
+    from: users/my-user
+    to: /backups/personal
+    credentials: !Token "<my-user-token>"
+  - kind: github/repo
+    from: "orgs/my-org"
+    to: /backups/work
     filters:
       - !Include ["my-repo-1", "my-repo-2"]
       - !NonFork
