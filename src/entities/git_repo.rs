@@ -3,10 +3,12 @@ use std::fmt::{Debug, Display};
 
 use super::{BackupEntity, Credentials};
 
+// NOTE: Tags should always be lowercase
 pub const TAG_EMPTY: &str = "empty";
 pub const TAG_ARCHIVED: &str = "archived";
 pub const TAG_FORK: &str = "fork";
 pub const TAG_PRIVATE: &str = "private";
+pub const TAG_PUBLIC: &str = "public";
 
 #[derive(Clone)]
 pub struct GitRepo {
@@ -44,22 +46,8 @@ impl BackupEntity for GitRepo {
         &self.name
     }
 
-    fn matches(&self, filter: crate::BackupFilter) -> bool {
-        match filter {
-            crate::BackupFilter::Include(names) => {
-                names.iter().any(|n| self.name.eq_ignore_ascii_case(n))
-            }
-            crate::BackupFilter::Exclude(names) => {
-                !names.iter().any(|n| self.name.eq_ignore_ascii_case(n))
-            }
-            crate::BackupFilter::Archived => self.tags.contains(TAG_ARCHIVED),
-            crate::BackupFilter::NonArchived => !self.tags.contains(TAG_ARCHIVED),
-            crate::BackupFilter::Fork => self.tags.contains(TAG_FORK),
-            crate::BackupFilter::NonFork => !self.tags.contains(TAG_FORK),
-            crate::BackupFilter::Private => self.tags.contains(TAG_PRIVATE),
-            crate::BackupFilter::Public => !self.tags.contains(TAG_PRIVATE),
-            crate::BackupFilter::NonEmpty => !self.tags.contains(TAG_EMPTY),
-        }
+    fn has_tag(&self, tag: &str) -> bool {
+        self.tags.contains(&tag)
     }
 }
 
@@ -72,5 +60,25 @@ impl Display for GitRepo {
 impl Debug for GitRepo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ({})", self.name, self.credentials)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_entity_implementation() {
+        let repo = GitRepo::new("org/repo", "https://github.com/org/repo.git")
+            .with_credentials(Credentials::Token("token".to_string()))
+            .with_optional_tag(Some(TAG_ARCHIVED))
+            .with_optional_tag(Some(TAG_PUBLIC));
+
+        assert_eq!(repo.name(), "org/repo");
+        assert!(repo.has_tag(TAG_ARCHIVED));
+        assert!(repo.has_tag(TAG_PUBLIC));
+        assert!(!repo.has_tag(TAG_FORK));
+
+        assert!(repo.matches(&crate::BackupFilter::Is(TAG_PUBLIC.to_string())));
     }
 }

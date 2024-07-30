@@ -4,6 +4,7 @@ pub use git::GitEngine;
 
 use crate::BackupEntity;
 use std::fmt::Display;
+use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -15,11 +16,11 @@ pub enum BackupState {
 }
 
 #[async_trait::async_trait]
-pub trait BackupEngine<E: BackupEntity>: Clone + Send + Sync {
-    async fn backup(
+pub trait BackupEngine<E: BackupEntity>: Clone + Send + Sync + Display {
+    async fn backup<P: AsRef<Path> + Send>(
         &self,
         entity: &E,
-        target: &std::path::Path,
+        target: P,
         cancel: &AtomicBool,
     ) -> Result<BackupState, crate::Error>;
 }

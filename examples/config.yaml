@@ -9,5 +9,5 @@ backups:
     from: orgs/SierraSoftworks
     filters:
       - !Include ["git-tool", "grey"]
-      - !Public
-      - !NonFork
+      - !Is public
+      - !IsNot fork

@@ -11,7 +11,10 @@ pub trait BackupEntity: std::fmt::Display + Clone + Send {
     fn target_path(&self) -> std::path::PathBuf {
         self.name().into()
     }
-    fn matches(&self, filter: BackupFilter) -> bool {
+    fn has_tag(&self, _tag: &str) -> bool {
+        false
+    }
+    fn matches(&self, filter: &BackupFilter) -> bool {
         match filter {
             BackupFilter::Include(names) => {
                 names.iter().any(|n| self.name().eq_ignore_ascii_case(n))
@@ -19,7 +22,8 @@ pub trait BackupEntity: std::fmt::Display + Clone + Send {
             BackupFilter::Exclude(names) => {
                 !names.iter().any(|n| self.name().eq_ignore_ascii_case(n))
             }
-            _ => true,
+            BackupFilter::Is(tag) => self.has_tag(tag.as_str()),
+            BackupFilter::IsNot(tag) => !self.has_tag(tag.as_str()),
         }
     }
 }

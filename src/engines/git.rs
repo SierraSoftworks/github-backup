@@ -1,4 +1,4 @@
-use std::{path::Path, sync::atomic::AtomicBool};
+use std::{fmt::Display, path::Path, sync::atomic::AtomicBool};
 
 use gix::{
     credentials::helper::Action,
@@ -20,17 +20,17 @@ pub struct GitEngine;
 
 #[async_trait::async_trait]
 impl BackupEngine<GitRepo> for GitEngine {
-    #[tracing::instrument(skip(self), res, err)]
-    async fn backup(
+    #[tracing::instrument(skip(self, target), res, err)]
+    async fn backup<P: AsRef<Path> + Send>(
         &self,
         entity: &GitRepo,
-        target: &Path,
+        target: P,
         cancel: &AtomicBool,
     ) -> Result<BackupState, crate::Error> {
-        let target_path = target.join(entity.target_path());
+        let target_path = target.as_ref().join(entity.target_path());
         self.ensure_directory(&target_path)?;
 
-        if target_path.exists() {
+        if target_path.join(".git").exists() {
             self.fetch(entity, &target_path, cancel)
         } else {
             self.clone(entity, &target_path, cancel)
@@ -273,6 +273,12 @@ impl GitEngine {
     }
 }
 
+impl Display for GitEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "git")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -290,7 +296,7 @@ mod tests {
             "https://github.com/sierrasoftworks/grey.git",
         );
 
-        let id = agent
+        let state1 = agent
             .backup(&repo, temp_dir.path(), &cancel)
             .await
             .expect("initial backup to succeed (clone)");
@@ -303,12 +309,18 @@ mod tests {
             "the repository should have been created"
         );
 
-        let id2 = agent
+        assert!(
+            matches!(state1, BackupState::New(..)),
+            "the repository should have been cloned initially"
+        );
+
+        let state2 = agent
             .backup(&repo, temp_dir.path(), &cancel)
             .await
             .expect("subsequent backup to succeed (fetch)");
-        assert_eq!(
-            id, id2,
+
+        assert!(
+            matches!(state2, BackupState::Unchanged(..)),
             "the repository should not have changed between backups"
         );
     }

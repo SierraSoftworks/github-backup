@@ -73,20 +73,18 @@ Only include the specified repositories in the backup. This filter matches names
 ### `!Exclude [repo1, repo2, ...]`
 Exclude the specified repositories from the backup. This filter matches names case-insensitively.
 
-### `!Fork`
-Only include repositories which are forks of other repositories.
+### `!Is "tag"`
+Only include repositories which are tagged with the corresponding tag.
 
-### `!NonFork`
-Only include repositories which are not forks of other repositories.
+### `!IsNot "tag"`
+Only include repositories which are not tagged with the corresponding tag.
 
-### `!Private`
-Only include private repositories.
+## Tags
+We support multiple tags which indicate the state of repositories, these include:
 
-### `!Public`
-Only include public repositories.
-
-### `!Archived`
-Only include archived repositories.
-
-### `!NonArchived`
-Only include repositories which are not archived.
+- `public` which indicates that a repository is publicly accessible.
+- `private` which indicates that a repository is only accessible to authenticated users
+  (this is the opposite of `public`).
+- `fork` which indicates that a repository has been forked from an upstream repo.
+- `archived` which indicates that a repository has been archived and is no longer editable.
+- `empty` which indicates that a repository does not have any commits or other data.

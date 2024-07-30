@@ -35,27 +35,17 @@ impl Debug for BackupPolicy {
 pub enum BackupFilter {
     Include(Vec<String>),
     Exclude(Vec<String>),
-    Public,
-    Private,
-    NonEmpty,
-    Fork,
-    NonFork,
-    Archived,
-    NonArchived,
+    Is(String),
+    IsNot(String),
 }
 
 impl Display for BackupFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            BackupFilter::Include(names) => write!(f, "Include: [{}]", names.join(", ")),
-            BackupFilter::Exclude(names) => write!(f, "Exclude: [{}]", names.join(", ")),
-            BackupFilter::Public => write!(f, "Public"),
-            BackupFilter::Private => write!(f, "Private"),
-            BackupFilter::NonEmpty => write!(f, "NonEmpty"),
-            BackupFilter::Fork => write!(f, "Fork"),
-            BackupFilter::NonFork => write!(f, "NonFork"),
-            BackupFilter::Archived => write!(f, "Archived"),
-            BackupFilter::NonArchived => write!(f, "NonArchived"),
+            BackupFilter::Include(names) => write!(f, "name in [{}]", names.join(", ")),
+            BackupFilter::Exclude(names) => write!(f, "name !in [{}]", names.join(", ")),
+            BackupFilter::Is(name) => write!(f, "#{}", name),
+            BackupFilter::IsNot(name) => write!(f, "!#{}", name),
         }
     }
 }

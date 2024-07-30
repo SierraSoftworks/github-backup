@@ -222,7 +222,7 @@ impl Into<GitRepo> for GitHubRepo {
             .with_optional_tag(if self.private {
                 Some(crate::entities::git_repo::TAG_PRIVATE)
             } else {
-                None
+                Some(crate::entities::git_repo::TAG_PUBLIC)
             })
     }
 }
