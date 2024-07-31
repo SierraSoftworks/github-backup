@@ -33,13 +33,18 @@ pub struct Args {
     /// Run in dry-run mode.
     #[arg(short, long)]
     pub dry_run: bool,
+
+    /// The maximum number of concurrent backup tasks which are permitted to run at a given time.
+    #[arg(short, long, default_value = "10")]
+    pub concurrency: usize,
 }
 
 async fn run(args: Args) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
     let github = pairing::Pairing::new(sources::GitHubRepoSource::new(), engines::GitEngine)
-        .with_dry_run(args.dry_run);
+        .with_dry_run(args.dry_run)
+        .with_concurrency_limit(args.concurrency);
 
     while !CANCEL.load(std::sync::atomic::Ordering::Relaxed) {
         let next_run = config
