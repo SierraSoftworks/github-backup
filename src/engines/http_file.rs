@@ -1,5 +1,4 @@
 use std::{
-    io::Write,
     path::Path,
     sync::{atomic::AtomicBool, Arc},
 };
