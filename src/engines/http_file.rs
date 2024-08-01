@@ -1,8 +1,10 @@
 use std::{
+    io::Write,
     path::Path,
     sync::{atomic::AtomicBool, Arc},
 };
 
+use sha2::Digest;
 use tokio::io::AsyncWriteExt;
 use tracing::instrument;
 
@@ -41,6 +43,21 @@ impl HttpFileEngine {
             .ok()
             .map(|modified| chrono::DateTime::from(modified))
     }
+
+    async fn get_existing_sha256(&self, path: &Path) -> Option<String> {
+        let sha_path = path.with_extension(
+            format!(
+                "{}.sha256",
+                path.extension().unwrap_or_default().to_string_lossy()
+            )
+            .trim_start_matches('.'),
+        );
+
+        tokio::fs::read_to_string(sha_path)
+            .await
+            .map(|s| s.trim().to_owned())
+            .ok()
+    }
 }
 
 #[async_trait::async_trait]
@@ -61,8 +78,8 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             if let Some(target_last_modified) = self.get_last_modified(&target_path) {
                 if target_last_modified >= origin_last_modified {
                     return Ok(BackupState::Unchanged(Some(format!(
-                        "{}",
-                        target_last_modified
+                        "since {}",
+                        target_last_modified.format("%Y-%m-%dT%H:%M:%S")
                     ))));
                 }
             }
@@ -109,7 +126,16 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             return Ok(BackupState::Skipped);
         }
 
-        let temp_path = target_path.with_extension("backup.inprogress");
+        let temp_path = target_path.with_extension(
+            format!(
+                "{}.tmp",
+                target_path
+                    .extension()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+            )
+            .trim_start_matches('.'),
+        );
 
         let mut file = tokio::fs::File::create(temp_path.as_path())
             .await
@@ -124,7 +150,8 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             )
             })?;
 
-        let mut size = 0;
+        let mut shasum = sha2::Sha256::new();
+
         while let Some(chunk) = resp.chunk().await? {
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 drop(file);
@@ -142,7 +169,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
 
             match file.write_all(&chunk).await {
                 Ok(()) => {
-                    size += chunk.len();
+                    _ = shasum.update(chunk.as_ref());
                 }
                 Err(e) => {
                     drop(file);
@@ -166,6 +193,19 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
 
         drop(file);
 
+        let shasum = shasum.finalize();
+        if let Some(existing_sha256) = self.get_existing_sha256(&target_path).await {
+            if existing_sha256 == format!("{:x}", shasum) {
+                tokio::fs::remove_file(&temp_path).await.map_err(|e| errors::user_with_internal(
+              &format!("Unable to remove temporary backup file '{}' after verifying that it is a duplicate of the existing file.", temp_path.display()),
+              "Make sure that you have write (and delete) permission on the backup directory and try again.",
+              e))?;
+                return Ok(BackupState::Unchanged(Some(format!(
+                    "at sha256@{shasum:x}"
+                ))));
+            }
+        }
+
         let state = if target_path.exists() {
             tokio::fs::remove_file(&target_path).await.map_err(|e| errors::user_with_internal(
               &format!("Unable to remove original backup file '{}' prior to replacement with new file.", target_path.display()),
@@ -174,15 +214,15 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             BackupState::Updated(
                 entity
                     .last_modified
-                    .map(|m| format!("{}", m))
-                    .or(Some(format!("{size} bytes"))),
+                    .map(|m| format!("at {}", m.format("%Y-%m-%dT%H:%M:%S")))
+                    .or(Some(format!("at sha256:{shasum:x}"))),
             )
         } else {
             BackupState::New(
                 entity
                     .last_modified
-                    .map(|m| format!("{}", m))
-                    .or(Some(format!("{size} bytes"))),
+                    .map(|m| format!("at {}", m.format("%Y-%m-%dT%H:%M:%S")))
+                    .or(Some(format!("at sha256:{shasum:x}"))),
             )
         };
 
@@ -190,6 +230,28 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
           &format!("Unable to move temporary backup file '{}' to final location '{}'.", temp_path.display(), target_path.display()),
           "Make sure that you have permission to write to this file/directory and try again.",
           e))?;
+
+        tokio::fs::write(
+            target_path.with_extension(format!(
+                "{}.sha256",
+                target_path
+                    .extension()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+            )),
+            format!("{:x}", shasum),
+        )
+        .await
+        .map_err(|e| {
+            errors::user_with_internal(
+                &format!(
+                    "Unable to write SHA-256 checksum file for backup file '{}'.",
+                    target_path.display()
+                ),
+                "Make sure that you have permission to write to this file/directory and try again.",
+                e,
+            )
+        })?;
 
         Ok(state)
     }
@@ -210,9 +272,11 @@ mod tests {
         let entity = HttpFile {
             url: "https://httpbin.org/bytes/1024".to_string(),
             name: "test.bin".to_string(),
+            filename: "test.bin".to_string(),
             credentials: Credentials::None,
             tags: Default::default(),
             last_modified: None,
+            content_type: None,
         };
 
         let state = engine
@@ -220,7 +284,7 @@ mod tests {
             .await
             .expect("backup to succeed");
 
-        assert_eq!(state, BackupState::New(Some("1024 bytes".to_string())));
+        assert!(matches!(state, BackupState::New(Some(msg)) if msg.starts_with("at sha256:")));
 
         assert!(
             temp_dir.path().join(entity.target_path()).exists(),
@@ -232,7 +296,7 @@ mod tests {
             .await
             .expect("backup to succeed");
 
-        assert_eq!(state, BackupState::Updated(Some("1024 bytes".to_string())));
+        assert!(matches!(state, BackupState::Updated(Some(msg)) if msg.starts_with("at sha256:")));
     }
 
     #[cfg(not(feature = "pure_tests"))]
@@ -246,9 +310,11 @@ mod tests {
         let entity = HttpFile {
             url: "https://httpbin.org/bytes/1024".to_string(),
             name: "test.bin".to_string(),
+            filename: "test.bin".to_string(),
             credentials: Credentials::None,
             tags: Default::default(),
             last_modified: Some(chrono::Utc::now()),
+            content_type: None,
         };
 
         let state = engine
@@ -258,7 +324,10 @@ mod tests {
 
         assert_eq!(
             state,
-            BackupState::New(Some(format!("{}", entity.last_modified.unwrap())))
+            BackupState::New(Some(format!(
+                "at {}",
+                entity.last_modified.unwrap().format("%Y-%m-%dT%H:%M:%S")
+            )))
         );
 
         assert!(
@@ -282,7 +351,10 @@ mod tests {
 
         assert_eq!(
             state,
-            BackupState::Unchanged(Some(format!("{}", backup_modified)))
+            BackupState::Unchanged(Some(format!(
+                "since {}",
+                backup_modified.format("%Y-%m-%dT%H:%M:%S")
+            )))
         );
     }
 }

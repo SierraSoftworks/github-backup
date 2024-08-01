@@ -31,9 +31,9 @@ impl Display for BackupState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BackupState::Skipped => write!(f, "skipped"),
-            BackupState::New(Some(s)) => write!(f, "new at {}", s),
-            BackupState::Updated(Some(s)) => write!(f, "updated at {}", s),
-            BackupState::Unchanged(Some(s)) => write!(f, "unchanged at {}", s),
+            BackupState::New(Some(s)) => write!(f, "new {}", s),
+            BackupState::Updated(Some(s)) => write!(f, "updated {}", s),
+            BackupState::Unchanged(Some(s)) => write!(f, "unchanged {}", s),
             BackupState::New(None) => write!(f, "new"),
             BackupState::Updated(None) => write!(f, "updated"),
             BackupState::Unchanged(None) => write!(f, "unchanged"),

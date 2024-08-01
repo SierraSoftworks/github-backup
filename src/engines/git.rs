@@ -92,7 +92,7 @@ impl GitEngine {
             "Make sure that the remote repository is valid.",
             e))?;
 
-        Ok(BackupState::New(Some(format!("{}", head_id.to_hex()))))
+        Ok(BackupState::New(Some(format!("at {}", head_id.to_hex()))))
     }
 
     #[instrument(skip(self, repo, target, cancel), err)]
@@ -187,7 +187,7 @@ impl GitEngine {
         if let Some(original_head) = original_head {
             if original_head == head_id {
                 return Ok(BackupState::Unchanged(Some(format!(
-                    "{}",
+                    "at {}",
                     head_id.to_hex()
                 ))));
             }
