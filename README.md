@@ -46,6 +46,12 @@ backups:
     filters:
       - !Include ["my-repo-1", "my-repo-2"]
       - !NonFork
+  - kind: github/release
+    from: "orgs/my-org"
+    to: /backups/releases
+    filters:
+      - !IsNot "prerelease"
+      - !IsNot "source-code"
 ```
 
 ### OpenTelemetry Reporting

@@ -1,12 +1,14 @@
 mod credentials;
 pub mod git_repo;
+mod http_file;
 
 use crate::BackupFilter;
 
 pub use credentials::Credentials;
 pub use git_repo::GitRepo;
+pub use http_file::HttpFile;
 
-pub trait BackupEntity: std::fmt::Display + Clone + Send {
+pub trait BackupEntity: std::fmt::Display {
     fn name(&self) -> &str;
     fn target_path(&self) -> std::path::PathBuf {
         self.name().into()

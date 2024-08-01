@@ -11,6 +11,7 @@ mod config;
 mod engines;
 mod entities;
 mod errors;
+pub(crate) mod helpers;
 mod pairing;
 mod policy;
 mod sources;
@@ -35,16 +36,23 @@ pub struct Args {
     pub dry_run: bool,
 
     /// The maximum number of concurrent backup tasks which are permitted to run at a given time.
-    #[arg(short, long, default_value = "10")]
+    #[arg(long, default_value = "10")]
     pub concurrency: usize,
 }
 
 async fn run(args: Args) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
-    let github = pairing::Pairing::new(sources::GitHubRepoSource::new(), engines::GitEngine)
+    let github_repo = pairing::Pairing::new(sources::GitHubRepoSource::new(), engines::GitEngine)
         .with_dry_run(args.dry_run)
         .with_concurrency_limit(args.concurrency);
+
+    let github_release = pairing::Pairing::new(
+        sources::GitHubReleasesSource::default(),
+        engines::HttpFileEngine::new(),
+    )
+    .with_dry_run(args.dry_run)
+    .with_concurrency_limit(args.concurrency);
 
     while !CANCEL.load(std::sync::atomic::Ordering::Relaxed) {
         let next_run = config
@@ -62,7 +70,23 @@ async fn run(args: Args) -> Result<(), Error> {
                     "github/repo" => {
                         println!("Backing up repositories for {}", &policy);
 
-                        let stream = github.run(policy, &CANCEL);
+                        let stream = github_repo.run(policy, &CANCEL);
+                        tokio::pin!(stream);
+                        while let Some(result) = stream.next().await {
+                            match result {
+                                Ok((entity, state)) => {
+                                    println!(" - {} ({})", entity, state);
+                                }
+                                Err(e) => {
+                                    eprintln!("Error: {}", e);
+                                }
+                            }
+                        }
+                    }
+                    "github/release" => {
+                        println!("Backing up release artifacts for {}", &policy);
+
+                        let stream = github_release.run(policy, &CANCEL);
                         tokio::pin!(stream);
                         while let Some(result) = stream.next().await {
                             match result {

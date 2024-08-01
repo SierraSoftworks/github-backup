@@ -24,6 +24,7 @@ impl GitRepo {
             name: name.into(),
             clone_url: clone_url.into(),
             credentials: Credentials::None,
+            // TODO: Switch to a case-insensitive hasher here
             tags: HashSet::new(),
         }
     }
@@ -53,13 +54,13 @@ impl BackupEntity for GitRepo {
 
 impl Display for GitRepo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({})", self.name, self.credentials)
+        write!(f, "{} ({})", self.name, self.clone_url)
     }
 }
 
 impl Debug for GitRepo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({})", self.name, self.credentials)
+        write!(f, "{} ({})", self.name, self.clone_url)
     }
 }
 

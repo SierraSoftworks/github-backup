@@ -1,6 +1,8 @@
 mod git;
+mod http_file;
 
 pub use git::GitEngine;
+pub use http_file::HttpFileEngine;
 
 use crate::BackupEntity;
 use std::fmt::Display;
@@ -16,7 +18,7 @@ pub enum BackupState {
 }
 
 #[async_trait::async_trait]
-pub trait BackupEngine<E: BackupEntity>: Clone + Send + Sync + Display {
+pub trait BackupEngine<E: BackupEntity> {
     async fn backup<P: AsRef<Path> + Send>(
         &self,
         entity: &E,

@@ -4,10 +4,16 @@ backups:
   - kind: github/repo
     from: users/notheotherben
     filters:
-      - !Include ["nix-env"]
+      - !Include ["notheotherben/nix-env"]
   - kind: github/repo
     from: orgs/SierraSoftworks
     filters:
-      - !Include ["git-tool", "grey"]
+      - !Include ["SierraSoftworks/git-tool", "SierraSoftworks/grey"]
+      - !Is public
+      - !IsNot fork
+  - kind: github/release
+    from: orgs/SierraSoftworks
+    filters:
+      - !Include ["SierraSoftworks/grey"]
       - !Is public
       - !IsNot fork

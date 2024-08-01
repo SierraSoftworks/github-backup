@@ -2,7 +2,7 @@ use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
 use tokio::task::JoinSet;
 use tokio_stream::Stream;
-use tracing::Instrument;
+use tracing::Instrument as _;
 
 use crate::{
     engines::{BackupEngine, BackupState},
@@ -20,7 +20,7 @@ pub struct Pairing<E: BackupEntity, S: BackupSource<E>, T: BackupEngine<E>> {
 impl<
         E: BackupEntity + Send + Sync + 'static,
         S: BackupSource<E> + Send + Sync + 'static,
-        T: BackupEngine<E> + 'static,
+        T: BackupEngine<E> + Send + Sync + Clone + 'static,
     > Pairing<E, S, T>
 {
     pub fn new(source: S, target: T) -> Self {
@@ -53,14 +53,22 @@ impl<
         policy: &'a BackupPolicy,
         cancel: &'static AtomicBool,
     ) -> impl Stream<Item = Result<(E, BackupState), crate::Error>> + 'a {
-        async_stream::try_stream! {
+        async_stream::stream! {
           let span = tracing::info_span!("backup.policy", kind = self.source.kind(), policy = %policy).entered();
+
+          match self.source.validate(policy) {
+            Ok(_) => {},
+            Err(e) => {
+              yield Err(e);
+              return;
+            }
+          }
 
           let mut join_set: JoinSet<Result<(E, BackupState), crate::Error>> = JoinSet::new();
 
           for await entity in self.source.load(policy, cancel) {
               while join_set.len() >= self.concurrency_limit {
-                yield join_set.join_next().await.unwrap().unwrap()?;
+                yield join_set.join_next().await.unwrap().unwrap();
               }
 
               if cancel.load(std::sync::atomic::Ordering::Relaxed) {
@@ -69,7 +77,7 @@ impl<
 
               let entity = entity?;
               if self.dry_run || policy.filters.iter().any(|f| !entity.matches(f)) {
-                  yield (entity, BackupState::Skipped);
+                  yield Ok((entity, BackupState::Skipped));
                   continue;
               }
 
@@ -84,7 +92,7 @@ impl<
           }
 
           while let Some(fut) = join_set.join_next().await {
-            yield fut.unwrap()?;
+            yield fut.unwrap();
           }
         }
     }

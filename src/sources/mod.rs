@@ -1,5 +1,7 @@
+mod github_releases;
 mod github_repo;
 
+pub use github_releases::GitHubReleasesSource;
 pub use github_repo::GitHubRepoSource;
 use tokio_stream::Stream;
 

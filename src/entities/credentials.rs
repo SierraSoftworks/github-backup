@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 use serde::Deserialize;
 
@@ -20,6 +20,16 @@ impl Display for Credentials {
             Credentials::None => write!(f, "No credentials"),
             Credentials::Token(..) => write!(f, "Token"),
             Credentials::UsernamePassword { .. } => write!(f, "Username+Password"),
+        }
+    }
+}
+
+impl Debug for Credentials {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Credentials::None => write!(f, "None"),
+            Credentials::Token(..) => write!(f, "Token"),
+            Credentials::UsernamePassword { .. } => write!(f, "UsernamePassword"),
         }
     }
 }
