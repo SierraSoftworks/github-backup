@@ -19,7 +19,7 @@ mod sources;
 mod telemetry;
 
 pub use entities::BackupEntity;
-pub use filter::{Filter, Filterable, FilterValue};
+pub use filter::{Filter, FilterValue, Filterable};
 pub use policy::{BackupFilter, BackupPolicy};
 pub use sources::BackupSource;
 

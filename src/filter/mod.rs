@@ -8,8 +8,6 @@ use expr::{Expr, ExprVisitor};
 use token::Token;
 pub use value::*;
 
-
-
 pub struct Filter {
     ast: Expr,
 }
@@ -38,35 +36,38 @@ impl Default for Filter {
 impl<'de> serde::Deserialize<'de> for Filter {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
-            struct FilterVisitor;
+        D: serde::Deserializer<'de>,
+    {
+        struct FilterVisitor;
 
-            impl<'de> serde::de::Visitor<'de> for FilterVisitor {
-                type Value = Filter;
+        impl<'de> serde::de::Visitor<'de> for FilterVisitor {
+            type Value = Filter;
 
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("a valid filter expression")
-                }
-
-                fn visit_none<E>(self) -> Result<Self::Value, E>
-                where
-                    E: serde::de::Error,
-                {
-                    Filter::new("true").map_err(serde::de::Error::custom)
-                }
-
-                fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-                    where
-                        D: serde::Deserializer<'de>, {
-                    deserializer.deserialize_str(self)
-                }
-
-                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                    where
-                        E: serde::de::Error, {
-                    Filter::new(v).map_err(serde::de::Error::custom)
-                }
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a valid filter expression")
             }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Filter::new("true").map_err(serde::de::Error::custom)
+            }
+
+            fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                deserializer.deserialize_str(self)
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Filter::new(v).map_err(serde::de::Error::custom)
+            }
+        }
 
         deserializer.deserialize_option(FilterVisitor)
     }
@@ -85,12 +86,7 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
         self.target.get(name).clone()
     }
 
-    fn visit_binary(
-        &mut self,
-        left: &Expr,
-        operator: &Token,
-        right: &Expr,
-    ) -> FilterValue {
+    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> FilterValue {
         let left = self.visit_expr(left);
         match operator {
             Token::Equals => (left == self.visit_expr(right)).into(),
@@ -111,12 +107,7 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
         }
     }
 
-    fn visit_logical(
-        &mut self,
-        left: &Expr,
-        operator: &Token,
-        right: &Expr,
-    ) -> FilterValue {
+    fn visit_logical(&mut self, left: &Expr, operator: &Token, right: &Expr) -> FilterValue {
         let left = self.visit_expr(left);
 
         match operator {

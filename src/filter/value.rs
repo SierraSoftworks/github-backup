@@ -1,4 +1,4 @@
-use std::fmt::{Display, Debug};
+use std::fmt::{Debug, Display};
 
 /// A trait for types which can be filtered by the filter system.
 ///
@@ -72,7 +72,7 @@ impl Display for FilterValue {
 
 impl Debug for FilterValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       write!(f, "{}", self)
+        write!(f, "{}", self)
     }
 }
 
