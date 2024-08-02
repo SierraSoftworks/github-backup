@@ -20,6 +20,7 @@ pub struct GitEngine;
 
 #[async_trait::async_trait]
 impl BackupEngine<GitRepo> for GitEngine {
+    #[allow(clippy::blocks_in_conditions)]
     #[tracing::instrument(skip(self, target), res, err)]
     async fn backup<P: AsRef<Path> + Send>(
         &self,
@@ -66,8 +67,8 @@ impl GitEngine {
             Credentials::None => {}
             creds => {
                 let creds = creds.clone();
-                fetch = fetch.configure_connection(move |mut c| {
-                    Self::authenticate_connection(&mut c, &creds);
+                fetch = fetch.configure_connection(move |c| {
+                    Self::authenticate_connection(c, &creds);
                     Ok(())
                 });
             }
@@ -196,10 +197,7 @@ impl GitEngine {
         Ok(BackupState::Updated(Some(format!("{}", head_id.to_hex()))))
     }
 
-    fn authenticate_connection<'a, 'repo, T>(
-        connection: &mut Connection<'a, 'repo, T>,
-        creds: &Credentials,
-    ) {
+    fn authenticate_connection<T>(connection: &mut Connection<'_, '_, T>, creds: &Credentials) {
         match creds {
             Credentials::None => {}
             creds => {

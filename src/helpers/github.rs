@@ -569,12 +569,17 @@ impl MetadataSource for GitHubReleaseAsset {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use serde::de::DeserializeOwned;
 
     use super::*;
 
     fn load_test_file<T: DeserializeOwned>(name: &str) -> Result<T, Box<dyn std::error::Error>> {
-        let path = format!("tests/data/{}", name);
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("data")
+            .join(name);
         let json = std::fs::read_to_string(path)?;
         let value = serde_json::from_str(&json)?;
         Ok(value)
