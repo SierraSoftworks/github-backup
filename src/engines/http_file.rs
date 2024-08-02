@@ -40,7 +40,7 @@ impl HttpFileEngine {
         path.metadata()
             .and_then(|m| m.modified())
             .ok()
-            .map(|modified| chrono::DateTime::from(modified))
+            .map(chrono::DateTime::from)
     }
 
     async fn get_existing_sha256(&self, path: &Path) -> Option<String> {
@@ -271,9 +271,8 @@ mod tests {
         let entity = HttpFile {
             url: "https://httpbin.org/bytes/1024".to_string(),
             name: "test.bin".to_string(),
-            filename: "test.bin".to_string(),
             credentials: Credentials::None,
-            tags: Default::default(),
+            metadata: Default::default(),
             last_modified: None,
             content_type: None,
         };
@@ -309,9 +308,8 @@ mod tests {
         let entity = HttpFile {
             url: "https://httpbin.org/bytes/1024".to_string(),
             name: "test.bin".to_string(),
-            filename: "test.bin".to_string(),
             credentials: Credentials::None,
-            tags: Default::default(),
+            metadata: Default::default(),
             last_modified: Some(chrono::Utc::now()),
             content_type: None,
         };

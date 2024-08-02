@@ -43,15 +43,11 @@ backups:
   - kind: github/repo
     from: "orgs/my-org"
     to: /backups/work
-    filters:
-      - !Include ["my-repo-1", "my-repo-2"]
-      - !NonFork
+    filter: '!repo.fork && repo.name contains "awesome"'
   - kind: github/release
     from: "orgs/my-org"
     to: /backups/releases
-    filters:
-      - !IsNot "prerelease"
-      - !IsNot "source-code"
+    filter: '!release.prerelease && !asset.source-code'
 ```
 
 ### OpenTelemetry Reporting
@@ -73,24 +69,15 @@ This tool allows you to configure filters to control which GitHub repositories a
 which are not. Filters are used within the `backups` section of your configuration file and can
 be specified on a per-user or per-organization basis.
 
-### `!Include [repo1, repo2, ...]`
-Only include the specified repositories in the backup. This filter matches names case-insensitively.
+When writing a filter, the goal is to write a logical expression which evaluates to `true` when
+you wish to include a repository and `false` when you wish to exclude it. The filter language supports
+several operators and properties which can be used to control this process.
 
-### `!Exclude [repo1, repo2, ...]`
-Exclude the specified repositories from the backup. This filter matches names case-insensitively.
+Here are some examples of filters you might choose to use:
 
-### `!Is "tag"`
-Only include repositories which are tagged with the corresponding tag.
-
-### `!IsNot "tag"`
-Only include repositories which are not tagged with the corresponding tag.
-
-## Tags
-We support multiple tags which indicate the state of repositories, these include:
-
-- `public` which indicates that a repository is publicly accessible.
-- `private` which indicates that a repository is only accessible to authenticated users
-  (this is the opposite of `public`).
-- `fork` which indicates that a repository has been forked from an upstream repo.
-- `archived` which indicates that a repository has been archived and is no longer editable.
-- `empty` which indicates that a repository does not have any commits or other data.
+  - `!repo.fork || !repo.archived || !repo.empty` - Do not include repositories which are forks, archived, or empty.
+  - `repo.private` - Only include private repositories in your list.
+  - `repo.public && !repo.fork` - Only include public repositories which are not forks.
+  - `repo.name contains "awesome"` - Only include repositories which have "awesome" in their name.
+  - `(repo.name contains "awesome" || repo.name contains "cool") && !repo.fork` - Only include repositories which have "awesome" or "cool" in their name and are not forks.
+  - `!release.prerelease && !asset.source-code` - Only include release artifacts which are not marked as pre-releases and are not source code archives.

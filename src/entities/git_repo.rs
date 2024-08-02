@@ -1,5 +1,9 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fmt::{Debug, Display};
+
+use unicase::UniCase;
+
+use crate::{FilterValue, Filterable};
 
 use super::{BackupEntity, Credentials};
 
@@ -15,7 +19,7 @@ pub struct GitRepo {
     pub name: String,
     pub clone_url: String,
     pub credentials: Credentials,
-    pub tags: HashSet<&'static str>,
+    pub metadata: HashMap<UniCase<&'static str>, FilterValue>,
 }
 
 impl GitRepo {
@@ -24,8 +28,7 @@ impl GitRepo {
             name: name.into(),
             clone_url: clone_url.into(),
             credentials: Credentials::None,
-            // TODO: Switch to a case-insensitive hasher here
-            tags: HashSet::new(),
+            metadata: HashMap::new(),
         }
     }
 
@@ -34,10 +37,8 @@ impl GitRepo {
         self
     }
 
-    pub fn with_optional_tag(mut self, tag: Option<&'static str>) -> Self {
-        if let Some(tag) = tag {
-            self.tags.insert(tag);
-        }
+    pub fn with_metadata<V: Into<FilterValue>>(mut self, key: &'static str, value: V) -> Self {
+        self.metadata.insert(UniCase::new(key), value.into());
         self
     }
 }
@@ -46,9 +47,14 @@ impl BackupEntity for GitRepo {
     fn name(&self) -> &str {
         &self.name
     }
+}
 
-    fn has_tag(&self, tag: &str) -> bool {
-        self.tags.contains(&tag)
+impl Filterable for GitRepo {
+    fn get(&self, key: &str) -> FilterValue {
+        self.metadata
+            .get(&UniCase::new(key))
+            .cloned()
+            .unwrap_or(FilterValue::Null)
     }
 }
 
@@ -72,14 +78,14 @@ mod tests {
     fn test_entity_implementation() {
         let repo = GitRepo::new("org/repo", "https://github.com/org/repo.git")
             .with_credentials(Credentials::Token("token".to_string()))
-            .with_optional_tag(Some(TAG_ARCHIVED))
-            .with_optional_tag(Some(TAG_PUBLIC));
+            .with_metadata("repo.name", "repo")
+            .with_metadata("repo.archived", true)
+            .with_metadata("repo.public", true)
+            .with_metadata("repo.fork", false);
 
         assert_eq!(repo.name(), "org/repo");
-        assert!(repo.has_tag(TAG_ARCHIVED));
-        assert!(repo.has_tag(TAG_PUBLIC));
-        assert!(!repo.has_tag(TAG_FORK));
-
-        assert!(repo.matches(&crate::BackupFilter::Is(TAG_PUBLIC.to_string())));
+        assert_eq!(repo.get("repo.archived"), true.into());
+        assert_eq!(repo.get("repo.public"), true.into());
+        assert_eq!(repo.get("repo.fork"), false.into());
     }
 }

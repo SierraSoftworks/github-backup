@@ -4,6 +4,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 
 use crate::entities::Credentials;
+use crate::Filter;
 
 #[derive(Deserialize)]
 pub struct BackupPolicy {
@@ -14,7 +15,7 @@ pub struct BackupPolicy {
     #[serde(default)]
     pub credentials: Credentials,
     #[serde(default)]
-    pub filters: Vec<BackupFilter>,
+    pub filter: Filter,
     #[serde(default)]
     pub properties: HashMap<String, String>,
 }

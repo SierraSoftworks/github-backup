@@ -5,7 +5,7 @@ use tokio_stream::{Stream, StreamExt};
 use crate::{
     entities::GitRepo,
     errors::{self},
-    helpers::GitHubClient,
+    helpers::{github::GitHubRepo, GitHubClient},
     policy::BackupPolicy,
     BackupSource,
 };
@@ -23,7 +23,7 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
         let target = policy.from.as_str().trim_matches('/');
         match target {
-            t if t.is_empty() => Err(errors::user(
+            "" => Err(errors::user(
                 "The target field is required for GitHub repository backups.",
                 "Please provide a target field in the policy using the format 'users/<username>' or 'orgs/<orgname>'.",
             )),
@@ -52,7 +52,6 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
             policy
                 .properties
                 .get("api_url")
-                .as_deref()
                 .unwrap_or(&"https://api.github.com".to_string())
                 .trim_end_matches('/'),
             &policy.from.trim_matches('/')
@@ -61,9 +60,11 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
         self.client
             .get_paginated::<crate::helpers::github::GitHubRepo>(url, &policy.credentials, cancel)
             .map(|result| {
-                result
-                    .map(|repo| repo.into())
-                    .map(|repo: GitRepo| repo.with_credentials(policy.credentials.clone()))
+                result.map(|repo: GitHubRepo| {
+                    GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
+                        .with_credentials(policy.credentials.clone())
+                        .with_metadata_source(&repo)
+                })
             })
     }
 }

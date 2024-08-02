@@ -7,7 +7,7 @@ use reqwest::{header::LINK, Method, StatusCode, Url};
 use tokio_stream::Stream;
 
 use crate::{
-    entities::{Credentials, GitRepo},
+    entities::{Credentials, MetadataSource},
     errors::{self, ResponseError},
 };
 
@@ -331,29 +331,17 @@ impl Display for GitHubRepo {
     }
 }
 
-impl Into<GitRepo> for GitHubRepo {
-    fn into(self) -> GitRepo {
-        GitRepo::new(self.full_name, self.clone_url)
-            .with_optional_tag(if self.size == 0 {
-                Some(crate::entities::git_repo::TAG_EMPTY)
-            } else {
-                None
-            })
-            .with_optional_tag(if self.archived {
-                Some(crate::entities::git_repo::TAG_ARCHIVED)
-            } else {
-                None
-            })
-            .with_optional_tag(if self.fork {
-                Some(crate::entities::git_repo::TAG_FORK)
-            } else {
-                None
-            })
-            .with_optional_tag(if self.private {
-                Some(crate::entities::git_repo::TAG_PRIVATE)
-            } else {
-                Some(crate::entities::git_repo::TAG_PUBLIC)
-            })
+impl MetadataSource for GitHubRepo {
+    fn inject_metadata(&self, metadata: &mut crate::entities::Metadata) {
+        metadata.insert("repo.name", self.name.as_str());
+        metadata.insert("repo.fullname", self.full_name.as_str());
+        metadata.insert("repo.private", self.private);
+        metadata.insert("repo.public", !self.private);
+        metadata.insert("repo.fork", self.fork);
+        metadata.insert("repo.size", self.size as u32);
+        metadata.insert("repo.archived", self.archived);
+        metadata.insert("repo.default_branch", self.default_branch.as_str());
+        metadata.insert("repo.empty", self.size == 0);
     }
 }
 
@@ -505,6 +493,16 @@ pub struct GitHubRelease {
     pub assets: Vec<GitHubReleaseAsset>,
 }
 
+impl MetadataSource for GitHubRelease {
+    fn inject_metadata(&self, metadata: &mut crate::entities::Metadata) {
+        metadata.insert("release.tag", self.tag_name.as_str());
+        metadata.insert("release.name", self.name.as_str());
+        metadata.insert("release.draft", self.draft);
+        metadata.insert("release.prerelease", self.prerelease);
+        metadata.insert("release.published", self.published_at.is_some());
+    }
+}
+
 /// A release asset returned by the GitHub API.
 ///
 /// ```json
@@ -559,6 +557,14 @@ pub struct GitHubReleaseAsset {
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub uploader: GitHubUser,
+}
+
+impl MetadataSource for GitHubReleaseAsset {
+    fn inject_metadata(&self, metadata: &mut crate::entities::Metadata) {
+        metadata.insert("asset.name", self.name.as_str());
+        metadata.insert("asset.size", self.size);
+        metadata.insert("asset.downloaded", self.download_count > 0);
+    }
 }
 
 #[cfg(test)]
