@@ -104,6 +104,15 @@ impl<'a> Iterator for Scanner<'a> {
                 ')' => {
                     return Some(Ok(Token::RightParen));
                 }
+                '[' => {
+                    return Some(Ok(Token::LeftBracket));
+                }
+                ']' => {
+                    return Some(Ok(Token::RightBracket));
+                }
+                ',' => {
+                    return Some(Ok(Token::Comma));
+                }
                 '&' => {
                     if self.match_char('&') {
                         return Some(Ok(Token::And));

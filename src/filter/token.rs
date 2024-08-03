@@ -4,6 +4,9 @@ use std::fmt::Display;
 pub enum Token<'a> {
     LeftParen,
     RightParen,
+    LeftBracket,
+    RightBracket,
+    Comma,
 
     Property(&'a str),
 
@@ -27,6 +30,10 @@ impl Token<'_> {
         match self {
             Token::LeftParen => "(",
             Token::RightParen => ")",
+            Token::LeftBracket => "[",
+            Token::RightBracket => "]",
+            Token::Comma => ",",
+
             Token::Property(s) => s,
 
             Token::Null => "null",

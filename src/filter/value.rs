@@ -32,6 +32,7 @@ pub enum FilterValue {
     Bool(bool),
     Number(f64),
     String(String),
+    Tuple(Vec<FilterValue>),
 }
 
 impl FilterValue {
@@ -41,6 +42,7 @@ impl FilterValue {
             FilterValue::Bool(b) => *b,
             FilterValue::Number(n) => *n != 0.0,
             FilterValue::String(s) => !s.is_empty(),
+            FilterValue::Tuple(v) => !v.is_empty(),
         }
     }
 }
@@ -52,6 +54,9 @@ impl PartialEq for FilterValue {
             (FilterValue::Bool(a), FilterValue::Bool(b)) => a == b,
             (FilterValue::Number(a), FilterValue::Number(b)) => a == b,
             (FilterValue::String(a), FilterValue::String(b)) => a.eq_ignore_ascii_case(b),
+            (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a == b)
+            }
             _ => false,
         }
     }
@@ -65,6 +70,16 @@ impl Display for FilterValue {
             FilterValue::Number(n) => write!(f, "{}", n),
             FilterValue::String(s) => {
                 write!(f, "\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+            }
+            FilterValue::Tuple(v) => {
+                write!(f, "[")?;
+                for (i, value) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", value)?;
+                }
+                write!(f, "]")
             }
         }
     }
@@ -121,5 +136,11 @@ where
 {
     fn from(o: Option<T>) -> Self {
         o.map_or(FilterValue::Null, Into::into)
+    }
+}
+
+impl From<Vec<FilterValue>> for FilterValue {
+    fn from(v: Vec<FilterValue>) -> Self {
+        FilterValue::Tuple(v)
     }
 }
