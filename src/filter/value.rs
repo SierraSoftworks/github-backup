@@ -45,6 +45,16 @@ impl FilterValue {
             FilterValue::Tuple(v) => !v.is_empty(),
         }
     }
+
+    pub fn contains(&self, other: &FilterValue) -> bool {
+        match (self, other) {
+            (FilterValue::Tuple(a), b) => a.iter().any(|ai| ai == b),
+            (FilterValue::String(a), FilterValue::String(b)) => {
+                a.to_lowercase().contains(&b.to_lowercase())
+            }
+            _ => false,
+        }
+    }
 }
 
 impl PartialEq for FilterValue {

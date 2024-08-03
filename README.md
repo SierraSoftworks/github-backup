@@ -81,3 +81,4 @@ Here are some examples of filters you might choose to use:
   - `repo.name contains "awesome"` - Only include repositories which have "awesome" in their name.
   - `(repo.name contains "awesome" || repo.name contains "cool") && !repo.fork` - Only include repositories which have "awesome" or "cool" in their name and are not forks.
   - `!release.prerelease && !asset.source-code` - Only include release artifacts which are not marked as pre-releases and are not source code archives.
+  - `repo.name in ["git-tool", "grey"]` - Only include repositories with the names "git-tool" or "grey".

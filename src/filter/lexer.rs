@@ -86,6 +86,7 @@ impl<'a> Scanner<'a> {
             "null" => Ok(Token::Null),
             "true" => Ok(Token::True),
             "contains" => Ok(Token::Contains),
+            "in" => Ok(Token::In),
             lexeme => Ok(Token::Property(&lexeme)),
         }
     }
@@ -197,7 +198,15 @@ mod tests {
 
     #[test]
     fn test_parens() {
-        assert_sequence("()", &[Token::LeftParen, Token::RightParen]);
+        assert_sequence(
+            "() []",
+            &[
+                Token::LeftParen,
+                Token::RightParen,
+                Token::LeftBracket,
+                Token::RightBracket,
+            ],
+        );
     }
 
     #[test]
@@ -208,8 +217,8 @@ mod tests {
     #[test]
     fn test_comparison_operators() {
         assert_sequence(
-            "== != contains",
-            &[Token::Equals, Token::NotEquals, Token::Contains],
+            "== != contains in",
+            &[Token::Equals, Token::NotEquals, Token::Contains, Token::In],
         );
     }
 

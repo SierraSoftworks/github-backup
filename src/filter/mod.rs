@@ -104,21 +104,12 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
 
     fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> FilterValue {
         let left = self.visit_expr(left);
+        let right = self.visit_expr(right);
         match operator {
-            Token::Equals => (left == self.visit_expr(right)).into(),
-            Token::NotEquals => (left != self.visit_expr(right)).into(),
-            Token::Contains => {
-                if let FilterValue::String(left) = left {
-                    let right = self.visit_expr(right);
-                    if let FilterValue::String(right) = right {
-                        left.to_lowercase().contains(&right.to_lowercase()).into()
-                    } else {
-                        false.into()
-                    }
-                } else {
-                    false.into()
-                }
-            }
+            Token::Equals => (left == right).into(),
+            Token::NotEquals => (left != right).into(),
+            Token::Contains => left.contains(&right).into(),
+            Token::In => right.contains(&left).into(),
             token => unreachable!("Encountered an unexpected binary operator '{token}'"),
         }
     }
@@ -158,6 +149,7 @@ mod tests {
     struct TestObject {
         name: String,
         age: i32,
+        tags: Vec<&'static str>,
     }
 
     impl Filterable for TestObject {
@@ -165,6 +157,13 @@ mod tests {
             match property {
                 "name" => self.name.clone().into(),
                 "age" => self.age.into(),
+                "tags" => self
+                    .tags
+                    .iter()
+                    .cloned()
+                    .map(|v| v.into())
+                    .collect::<Vec<FilterValue>>()
+                    .into(),
                 _ => FilterValue::Null,
             }
         }
@@ -175,6 +174,7 @@ mod tests {
         let obj = TestObject {
             name: "John Doe".to_string(),
             age: 30,
+            tags: vec!["red"],
         };
 
         assert!(Filter::new("name == \"John Doe\"")
@@ -196,6 +196,11 @@ mod tests {
             .expect("parse filter")
             .matches(&obj)
             .expect("run filter"));
+
+        assert!(Filter::new("\"red\" in tags")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
     }
 
     #[test]
@@ -203,6 +208,7 @@ mod tests {
         let obj = TestObject {
             name: "John Doe".to_string(),
             age: 30,
+            tags: vec!["red", "blue"],
         };
 
         assert!(Filter::new("name == \"john doe\"")
@@ -231,6 +237,36 @@ mod tests {
             .expect("run filter"));
 
         assert!(!Filter::new("name contains \"jane\"")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(Filter::new("\"John\" in name")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(Filter::new("\"DOE\" in name")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(!Filter::new("\"jane\" in name")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(Filter::new("\"red\" in tags")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(Filter::new("\"BLUE\" in tags")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(!Filter::new("\"green\" in tags")
             .expect("parse filter")
             .matches(&obj)
             .expect("run filter"));

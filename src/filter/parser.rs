@@ -75,7 +75,10 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
     fn comparison(&mut self) -> Result<Expr<'a>, Error> {
         let mut expr = self.unary()?;
 
-        if matches!(self.tokens.peek(), Some(Ok(Token::Contains))) {
+        if matches!(
+            self.tokens.peek(),
+            Some(Ok(Token::In) | Ok(Token::Contains))
+        ) {
             let token = self.tokens.next().unwrap().unwrap();
             let right = self.unary()?;
             expr = Expr::Binary(Box::new(expr), token, Box::new(right));

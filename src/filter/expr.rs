@@ -87,10 +87,10 @@ mod tests {
     #[test]
     fn test_expr_display() {
         let expr = Expr::Binary(
-            Box::new(Expr::Property("test".into())),
-            Token::Contains,
             Box::new(Expr::Literal("value".into())),
+            Token::In,
+            Box::new(Expr::Property("test".into())),
         );
-        assert_eq!(format!("{}", expr), "(contains (property test) \"value\")");
+        assert_eq!(format!("{}", expr), "(in \"value\" (property test))");
     }
 }

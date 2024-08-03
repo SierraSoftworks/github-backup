@@ -19,6 +19,7 @@ pub enum Token<'a> {
     Equals,
     NotEquals,
     Contains,
+    In,
 
     Not,
     And,
@@ -45,6 +46,7 @@ impl Token<'_> {
             Token::Equals => "==",
             Token::NotEquals => "!=",
             Token::Contains => "contains",
+            Token::In => "in",
 
             Token::Not => "!",
             Token::And => "&&",
