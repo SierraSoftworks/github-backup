@@ -32,7 +32,7 @@ fn load_otlp_headers() -> HashMap<String, String> {
     #[cfg(debug_assertions)]
     tracing_metadata.insert(
         "x-honeycomb-team".into(),
-        "X6naTEMkzy10PMiuzJKifF".parse().unwrap(),
+        "X6naTEMkzy10PMiuzJKifF".into(),
     );
 
     match std::env::var("OTEL_EXPORTER_OTLP_HEADERS").ok() {

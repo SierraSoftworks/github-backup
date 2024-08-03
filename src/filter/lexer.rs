@@ -87,6 +87,8 @@ impl<'a> Scanner<'a> {
             "true" => Ok(Token::True),
             "contains" => Ok(Token::Contains),
             "in" => Ok(Token::In),
+            "startswith" => Ok(Token::StartsWith),
+            "endswith" => Ok(Token::EndsWith),
             lexeme => Ok(Token::Property(lexeme)),
         }
     }
@@ -217,8 +219,8 @@ mod tests {
     #[test]
     fn test_comparison_operators() {
         assert_sequence(
-            "== != contains in",
-            &[Token::Equals, Token::NotEquals, Token::Contains, Token::In],
+            "== != contains in startswith endswith",
+            &[Token::Equals, Token::NotEquals, Token::Contains, Token::In, Token::StartsWith, Token::EndsWith],
         );
     }
 
@@ -262,6 +264,21 @@ mod tests {
                 Token::Property("baz"),
                 Token::NotEquals,
                 Token::Number("123"),
+            ],
+        );
+    }
+
+    #[test]
+    fn test_negation() {
+        assert_sequence("repo.public && !release.prerelease && !artifact.source-code", 
+            &[
+            Token::Property("repo.public"),
+            Token::And,
+            Token::Not,
+            Token::Property("release.prerelease"),
+            Token::And,
+            Token::Not,
+            Token::Property("artifact.source-code")
             ],
         );
     }

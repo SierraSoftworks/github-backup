@@ -20,6 +20,8 @@ pub enum Token<'a> {
     NotEquals,
     Contains,
     In,
+    StartsWith,
+    EndsWith,
 
     Not,
     And,
@@ -47,6 +49,8 @@ impl Token<'_> {
             Token::NotEquals => "!=",
             Token::Contains => "contains",
             Token::In => "in",
+            Token::StartsWith => "startswith",
+            Token::EndsWith => "endswith",
 
             Token::Not => "!",
             Token::And => "&&",

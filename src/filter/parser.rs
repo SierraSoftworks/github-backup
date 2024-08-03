@@ -77,7 +77,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 
         if matches!(
             self.tokens.peek(),
-            Some(Ok(Token::In) | Ok(Token::Contains))
+            Some(Ok(Token::In)) | Some(Ok(Token::Contains)) | Some(Ok(Token::StartsWith)) | Some(Ok(Token::EndsWith))
         ) {
             let token = self.tokens.next().unwrap().unwrap();
             let right = self.unary()?;

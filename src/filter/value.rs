@@ -55,6 +55,26 @@ impl FilterValue {
             _ => false,
         }
     }
+
+    pub fn startswith(&self, other: &FilterValue) -> bool {
+        match (self, other) {
+            (FilterValue::Tuple(a), b) => a.iter().any(|ai| ai == b),
+            (FilterValue::String(a), FilterValue::String(b)) => {
+                a.to_lowercase().starts_with(&b.to_lowercase())
+            }
+            _ => false,
+        }
+    }
+
+    pub fn endswith(&self, other: &FilterValue) -> bool {
+        match (self, other) {
+            (FilterValue::Tuple(a), b) => a.iter().any(|ai| ai == b),
+            (FilterValue::String(a), FilterValue::String(b)) => {
+                a.to_lowercase().ends_with(&b.to_lowercase())
+            }
+            _ => false,
+        }
+    }
 }
 
 impl PartialEq for FilterValue {

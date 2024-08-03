@@ -111,6 +111,8 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
             Token::NotEquals => (left != right).into(),
             Token::Contains => left.contains(&right).into(),
             Token::In => right.contains(&left).into(),
+            Token::StartsWith => left.startswith(&right).into(),
+            Token::EndsWith => left.endswith(&right).into(),
             token => unreachable!("Encountered an unexpected binary operator '{token}'"),
         }
     }
@@ -268,6 +270,36 @@ mod tests {
             .expect("run filter"));
 
         assert!(!Filter::new("\"green\" in tags")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(Filter::new("name startswith \"John\"")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(Filter::new("name startswith \"JOHN \"")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(!Filter::new("name startswith \"jane\"")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(Filter::new("name endswith \"Doe\"")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(Filter::new("name endswith \" DOE\"")
+            .expect("parse filter")
+            .matches(&obj)
+            .expect("run filter"));
+
+        assert!(!Filter::new("name endswith \"jane\"")
             .expect("parse filter")
             .matches(&obj)
             .expect("run filter"));
