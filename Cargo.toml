@@ -1,6 +1,6 @@
 [package]
 name = "github-backup"
-version = "0.1.0"
+version = "3.0.0"
 edition = "2021"
 
 [dependencies]
@@ -34,7 +34,12 @@ serde = { version = "1.0.204", features = ["derive", "alloc"] }
 serde_json = "1.0.122"
 serde_yaml = "0.9.34"
 sha2 = "0.10.8"
-tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread", "fs"] }
+tokio = { version = "1.39.2", features = [
+  "macros",
+  "rt",
+  "rt-multi-thread",
+  "fs",
+] }
 tokio-stream = "0.1.15"
 tracing = "0.1.40"
 tracing-opentelemetry = "0.25.0"
