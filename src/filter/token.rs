@@ -1,17 +1,17 @@
 use std::fmt::Display;
 
 #[derive(Debug, PartialEq)]
-pub enum Token {
+pub enum Token<'a> {
     LeftParen,
     RightParen,
 
-    Property(String),
+    Property(&'a str),
 
     Null,
     True,
     False,
-    String(String),
-    Number(String),
+    String(&'a str),
+    Number(&'a str),
 
     Equals,
     NotEquals,
@@ -22,7 +22,7 @@ pub enum Token {
     Or,
 }
 
-impl Token {
+impl Token<'_> {
     pub fn lexeme(&self) -> &str {
         match self {
             Token::LeftParen => "(",
@@ -46,7 +46,7 @@ impl Token {
     }
 }
 
-impl Display for Token {
+impl Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::String(s) => write!(f, "\"{s}\""),

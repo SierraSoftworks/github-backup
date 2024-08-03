@@ -54,3 +54,38 @@ impl Display for BackupFilter {
 fn default_backup_path() -> PathBuf {
     PathBuf::from("./backups")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize() {
+        let policy = r#"
+          kind: backup
+          from: source
+          to: /tmp/backup
+          credentials: !UsernamePassword { username: admin, password: pass }
+          filter: repo.name == "my-repo"
+          properties:
+            key: value
+        "#;
+        let policy: BackupPolicy = serde_yaml::from_str(policy).unwrap();
+        assert_eq!(policy.kind, "backup");
+        assert_eq!(policy.from, "source");
+        assert_eq!(policy.to, PathBuf::from("/tmp/backup"));
+        assert_eq!(
+            policy.credentials,
+            Credentials::UsernamePassword {
+                username: "admin".to_string(),
+                password: "pass".to_string(),
+            }
+        );
+        assert_eq!(policy.filter.raw(), "repo.name == \"my-repo\"");
+        assert_eq!(policy.properties, {
+            let mut map = HashMap::new();
+            map.insert("key".to_string(), "value".to_string());
+            map
+        });
+    }
+}

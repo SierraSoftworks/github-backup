@@ -4,12 +4,12 @@ use crate::errors::{self, Error};
 
 use super::{expr::Expr, token::Token};
 
-pub struct Parser<I: Iterator<Item = Result<Token, Error>>> {
+pub struct Parser<'a, I: Iterator<Item = Result<Token<'a>, Error>>> {
     tokens: Peekable<I>,
 }
 
-impl<I: Iterator<Item = Result<Token, Error>>> Parser<I> {
-    pub fn parse(tokens: I) -> Result<Expr, Error> {
+impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
+    pub fn parse(tokens: I) -> Result<Expr<'a>, Error> {
         let mut parser = Parser {
             tokens: tokens.peekable(),
         };
@@ -31,7 +31,7 @@ impl<I: Iterator<Item = Result<Token, Error>>> Parser<I> {
         }
     }
 
-    fn or(&mut self) -> Result<Expr, Error> {
+    fn or(&mut self) -> Result<Expr<'a>, Error> {
         let mut expr = self.and()?;
 
         while matches!(self.tokens.peek(), Some(Ok(Token::Or))) {
@@ -42,7 +42,7 @@ impl<I: Iterator<Item = Result<Token, Error>>> Parser<I> {
         Ok(expr)
     }
 
-    fn and(&mut self) -> Result<Expr, Error> {
+    fn and(&mut self) -> Result<Expr<'a>, Error> {
         let mut expr = self.equality()?;
 
         while matches!(self.tokens.peek(), Some(Ok(Token::And))) {
@@ -53,7 +53,7 @@ impl<I: Iterator<Item = Result<Token, Error>>> Parser<I> {
         Ok(expr)
     }
 
-    fn equality(&mut self) -> Result<Expr, Error> {
+    fn equality(&mut self) -> Result<Expr<'a>, Error> {
         let mut expr = self.comparison()?;
 
         if matches!(
@@ -68,7 +68,7 @@ impl<I: Iterator<Item = Result<Token, Error>>> Parser<I> {
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Expr, Error> {
+    fn comparison(&mut self) -> Result<Expr<'a>, Error> {
         let mut expr = self.unary()?;
 
         if matches!(self.tokens.peek(), Some(Ok(Token::Contains))) {
@@ -80,7 +80,7 @@ impl<I: Iterator<Item = Result<Token, Error>>> Parser<I> {
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Expr, Error> {
+    fn unary(&mut self) -> Result<Expr<'a>, Error> {
         if matches!(self.tokens.peek(), Some(Ok(Token::Not))) {
             let token = self.tokens.next().unwrap().unwrap();
             let right = self.unary()?;
@@ -90,7 +90,7 @@ impl<I: Iterator<Item = Result<Token, Error>>> Parser<I> {
         }
     }
 
-    fn primary(&mut self) -> Result<Expr, Error> {
+    fn primary(&mut self) -> Result<Expr<'a>, Error> {
         match self.tokens.next() {
             Some(Ok(Token::True)) => Ok(Expr::Literal(true.into())),
             Some(Ok(Token::False)) => Ok(Expr::Literal(false.into())),

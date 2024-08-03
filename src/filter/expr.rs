@@ -2,13 +2,16 @@ use std::fmt::{Debug, Display};
 
 use super::{token::Token, FilterValue};
 
+// WARNING: We cannot have clone/copy semantics here because the [`Filter`] relies on
+// pinning pointers to ensure that this struct can be safely used without additional
+// allocations.
 #[derive(PartialEq)]
-pub enum Expr {
+pub enum Expr<'a> {
     Literal(FilterValue),
-    Property(String),
-    Binary(Box<Expr>, Token, Box<Expr>),
-    Logical(Box<Expr>, Token, Box<Expr>),
-    Unary(Token, Box<Expr>),
+    Property(&'a str),
+    Binary(Box<Expr<'a>>, Token<'a>, Box<Expr<'a>>),
+    Logical(Box<Expr<'a>>, Token<'a>, Box<Expr<'a>>),
+    Unary(Token<'a>, Box<Expr<'a>>),
 }
 
 pub trait ExprVisitor<T> {
@@ -29,7 +32,7 @@ pub trait ExprVisitor<T> {
     fn visit_unary(&mut self, operator: &Token, right: &Expr) -> T;
 }
 
-impl Display for Expr {
+impl Display for Expr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut printer = ExprPrinter(f);
         printer.visit_expr(self)?;
@@ -37,7 +40,7 @@ impl Display for Expr {
     }
 }
 
-impl Debug for Expr {
+impl Debug for Expr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut printer = ExprPrinter(f);
         printer.visit_expr(self)?;

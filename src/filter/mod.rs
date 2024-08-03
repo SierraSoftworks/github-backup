@@ -4,30 +4,46 @@ mod parser;
 mod token;
 mod value;
 
+use std::{pin::Pin, ptr::NonNull};
+
 use expr::{Expr, ExprVisitor};
 use token::Token;
 pub use value::*;
 
 pub struct Filter {
-    ast: Expr,
+    filter: Pin<Box<String>>,
+    ast: Expr<'static>,
 }
 
 impl Filter {
-    pub fn new(filter: &str) -> Result<Self, crate::Error> {
-        let tokens = crate::filter::lexer::Scanner::new(filter);
+    pub fn new<S: Into<String>>(filter: S) -> Result<Self, crate::Error> {
+        let filter = Box::new(filter.into());
+        let filter_ptr = NonNull::from(&filter);
+        let pinned = Box::into_pin(filter);
+
+        let tokens = crate::filter::lexer::Scanner::new(unsafe { filter_ptr.as_ref() });
         let ast = crate::filter::parser::Parser::parse(tokens.into_iter())?;
-        Ok(Self { ast })
+        Ok(Self {
+            filter: pinned,
+            ast,
+        })
     }
 
     pub fn matches<T: Filterable>(&self, target: &T) -> Result<bool, crate::Error> {
         let mut context = FilterContext { target };
         Ok(context.visit_expr(&self.ast).is_truthy())
     }
+
+    /// Gets the raw filter expression which was used to construct this filter.
+    pub fn raw(&self) -> &str {
+        &self.filter
+    }
 }
 
 impl Default for Filter {
     fn default() -> Self {
         Self {
+            filter: Box::pin("true".to_string()),
             ast: Expr::Literal(FilterValue::Bool(true)),
         }
     }
@@ -73,7 +89,7 @@ impl<'de> serde::Deserialize<'de> for Filter {
     }
 }
 
-pub struct FilterContext<'a, T: Filterable> {
+struct FilterContext<'a, T: Filterable> {
     target: &'a T,
 }
 

@@ -40,11 +40,11 @@ impl<'a> Scanner<'a> {
         length
     }
 
-    fn read_string(&mut self, start: usize) -> Result<Token, Error> {
+    fn read_string(&mut self, start: usize) -> Result<Token<'a>, Error> {
         while let Some((loc, c)) = self.chars.next() {
             match c {
                 '"' => {
-                    return Ok(Token::String(self.source[start + 1..loc].to_string()));
+                    return Ok(Token::String(&self.source[start + 1..loc]));
                 }
                 '\\' if self.match_char('"') => {}
                 _ => {}
@@ -57,7 +57,7 @@ impl<'a> Scanner<'a> {
         ))
     }
 
-    fn read_number(&mut self, start: usize) -> Result<Token, Error> {
+    fn read_number(&mut self, start: usize) -> Result<Token<'a>, Error> {
         let mut end = start + self.advance_while_fn(|_, c| c.is_numeric());
         if let Some((loc, c)) = self.chars.peek() {
             if *c == '.'
@@ -73,10 +73,10 @@ impl<'a> Scanner<'a> {
             }
         }
 
-        Ok(Token::Number(self.source[start..end + 1].to_string()))
+        Ok(Token::Number(&self.source[start..end + 1]))
     }
 
-    fn read_identifier(&mut self, start: usize) -> Result<Token, Error> {
+    fn read_identifier(&mut self, start: usize) -> Result<Token<'a>, Error> {
         let end = start
             + self.advance_while_fn(|_, c| c.is_alphanumeric() || c == '_' || c == '.' || c == '-');
         let lexeme = &self.source[start..end + 1];
@@ -86,13 +86,13 @@ impl<'a> Scanner<'a> {
             "null" => Ok(Token::Null),
             "true" => Ok(Token::True),
             "contains" => Ok(Token::Contains),
-            lexeme => Ok(Token::Property(lexeme.to_string())),
+            lexeme => Ok(Token::Property(&lexeme)),
         }
     }
 }
 
-impl Iterator for Scanner<'_> {
-    type Item = Result<Token, Error>;
+impl<'a> Iterator for Scanner<'a> {
+    type Item = Result<Token<'a>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some((loc, c)) = self.chars.next() {
@@ -206,20 +206,17 @@ mod tests {
 
     #[test]
     fn test_string() {
-        assert_sequence(
-            "\"hello world\"",
-            &[Token::String("hello world".to_string())],
-        );
+        assert_sequence("\"hello world\"", &[Token::String("hello world")]);
 
         assert_sequence(
             "\"hello \\\"world\\\"\"",
-            &[Token::String("hello \\\"world\\\"".to_string())],
+            &[Token::String("hello \\\"world\\\"")],
         );
     }
 
     #[test]
     fn test_number() {
-        assert_sequence("123.456", &[Token::Number("123.456".to_string())]);
+        assert_sequence("123.456", &[Token::Number("123.456")]);
     }
 
     #[test]
@@ -230,7 +227,7 @@ mod tests {
                 Token::True,
                 Token::False,
                 Token::Null,
-                Token::Property("foo.bar-baz".to_string()),
+                Token::Property("foo.bar-baz"),
             ],
         );
     }
@@ -240,13 +237,13 @@ mod tests {
         assert_sequence(
             "foo == \"bar\" && baz != 123",
             &[
-                Token::Property("foo".to_string()),
+                Token::Property("foo"),
                 Token::Equals,
-                Token::String("bar".to_string()),
+                Token::String("bar"),
                 Token::And,
-                Token::Property("baz".to_string()),
+                Token::Property("baz"),
                 Token::NotEquals,
-                Token::Number("123".to_string()),
+                Token::Number("123"),
             ],
         );
     }
