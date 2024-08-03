@@ -77,7 +77,10 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 
         if matches!(
             self.tokens.peek(),
-            Some(Ok(Token::In)) | Some(Ok(Token::Contains)) | Some(Ok(Token::StartsWith)) | Some(Ok(Token::EndsWith))
+            Some(Ok(Token::In))
+                | Some(Ok(Token::Contains))
+                | Some(Ok(Token::StartsWith))
+                | Some(Ok(Token::EndsWith))
         ) {
             let token = self.tokens.next().unwrap().unwrap();
             let right = self.unary()?;
@@ -174,43 +177,27 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use crate::filter::FilterValue;
 
     use super::*;
 
-    fn assert_ast(filter: &str, tree: Expr) {
-        let tokens = crate::filter::lexer::Scanner::new(filter);
+    #[rstest]
+    #[case("true", true.into())]
+    #[case("false", false.into())]
+    #[case("\"hello\"", "hello".into())]
+    #[case("123", 123.0.into())]
+    #[case("null", FilterValue::Null)]
+    #[case("[]", FilterValue::Tuple(vec![]))]
+    #[case("[true]", FilterValue::Tuple(vec![true.into()]))]
+    #[case("[true, false, \"test\", 123, null]", FilterValue::Tuple(vec![true.into(), false.into(), "test".into(), 123.into(), FilterValue::Null]))]
+    fn parsing_literals(#[case] input: &str, #[case] value: FilterValue) {
+        let tokens = crate::filter::lexer::Scanner::new(input);
         match Parser::parse(tokens.into_iter()) {
-            Ok(ast) => assert_eq!(tree, ast, "Expected {ast} to be {tree}"),
+            Ok(Expr::Literal(ast)) => assert_eq!(value, ast, "Expected {ast} to be {value}"),
+            Ok(expr) => panic!("Expected a literal, got {:?}", expr),
             Err(e) => panic!("Error: {}", e),
         }
-    }
-
-    #[test]
-    fn test_literals() {
-        assert_ast("true", Expr::Literal(true.into()));
-        assert_ast("false", Expr::Literal(false.into()));
-        assert_ast("\"hello\"", Expr::Literal("hello".into()));
-        assert_ast("123", Expr::Literal(123.0.into()));
-        assert_ast("null", Expr::Literal(FilterValue::Null));
-    }
-
-    #[test]
-    fn test_tuples() {
-        assert_ast("[]", Expr::Literal(vec![].into()));
-
-        assert_ast(
-            "[true, false, \"hello\", 123, null]",
-            Expr::Literal(
-                vec![
-                    true.into(),
-                    false.into(),
-                    "hello".into(),
-                    123.0.into(),
-                    FilterValue::Null,
-                ]
-                .into(),
-            ),
-        );
     }
 }

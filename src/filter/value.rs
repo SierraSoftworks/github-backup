@@ -174,3 +174,24 @@ impl From<Vec<FilterValue>> for FilterValue {
         FilterValue::Tuple(v)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case(FilterValue::Null, false)]
+    #[case(FilterValue::Bool(false), false)]
+    #[case(FilterValue::Bool(true), true)]
+    #[case(FilterValue::Number(0.0), false)]
+    #[case(FilterValue::Number(1.0), true)]
+    #[case(FilterValue::String("".to_string()), false)]
+    #[case(FilterValue::String("hello".to_string()), true)]
+    #[case(FilterValue::Tuple(vec![]), false)]
+    #[case(FilterValue::Tuple(vec![FilterValue::Bool(true)]), true)]
+    fn test_truthy<V: Into<FilterValue>>(#[case] value: V, #[case] truthy: bool) {
+        assert_eq!(value.into().is_truthy(), truthy);
+    }
+}

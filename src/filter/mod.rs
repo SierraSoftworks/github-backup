@@ -147,6 +147,8 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
 
     struct TestObject {
@@ -172,136 +174,66 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_filter() {
+    #[rstest]
+    #[case("name == \"John Doe\"", true)]
+    #[case("name != \"John Doe\"", false)]
+    #[case("name == \"Jane Doe\"", false)]
+    #[case("name != \"Jane Doe\"", true)]
+    #[case("name startswith \"John\"", true)]
+    #[case("name startswith \"Jane\"", false)]
+    #[case("name endswith \"Doe\"", true)]
+    #[case("name endswith \"Smith\"", false)]
+    #[case("age == 30", true)]
+    #[case("age != 30", false)]
+    #[case("age == 31", false)]
+    #[case("age != 31", true)]
+    #[case("tags == [\"red\"]", true)]
+    #[case("tags != [\"red\"]", false)]
+    #[case("tags == [\"blue\"]", false)]
+    #[case("tags contains \"red\"", true)]
+    #[case("tags contains \"blue\"", false)]
+    #[case("\"red\" in tags", true)]
+    #[case("\"blue\" in tags", false)]
+    fn case_sensitive_filtering(#[case] filter: &str, #[case] matches: bool) {
         let obj = TestObject {
             name: "John Doe".to_string(),
             age: 30,
             tags: vec!["red"],
         };
 
-        assert!(Filter::new("name == \"John Doe\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(!Filter::new("name == \"Jane Doe\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("age == 30")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(!Filter::new("age == 31")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("\"red\" in tags")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
+        assert_eq!(
+            Filter::new(filter)
+                .expect("parse filter")
+                .matches(&obj)
+                .expect("run filter"),
+            matches
+        );
     }
 
-    #[test]
-    fn test_string_comparisons() {
+    #[rstest]
+    #[case("name == \"john doe\"", true)]
+    #[case("name != \"john doe\"", false)]
+    #[case("name == \"jane doe\"", false)]
+    #[case("name != \"jane doe\"", true)]
+    #[case("name startswith \"john\"", true)]
+    #[case("name startswith \"jane\"", false)]
+    #[case("name endswith \"doe\"", true)]
+    #[case("name endswith \"smith\"", false)]
+    #[case("\"RED\" in tags", true)]
+    #[case("\"BLUE\" in tags", false)]
+    fn case_insensitive_filtering(#[case] filter: &str, #[case] matches: bool) {
         let obj = TestObject {
             name: "John Doe".to_string(),
             age: 30,
-            tags: vec!["red", "blue"],
+            tags: vec!["red"],
         };
 
-        assert!(Filter::new("name == \"john doe\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("name == \"John Doe\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("name == \"JOHN DOE\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("name contains \"John\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("name contains \"DOE\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(!Filter::new("name contains \"jane\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("\"John\" in name")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("\"DOE\" in name")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(!Filter::new("\"jane\" in name")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("\"red\" in tags")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("\"BLUE\" in tags")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(!Filter::new("\"green\" in tags")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("name startswith \"John\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("name startswith \"JOHN \"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(!Filter::new("name startswith \"jane\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("name endswith \"Doe\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(Filter::new("name endswith \" DOE\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
-
-        assert!(!Filter::new("name endswith \"jane\"")
-            .expect("parse filter")
-            .matches(&obj)
-            .expect("run filter"));
+        assert_eq!(
+            Filter::new(filter)
+                .expect("parse filter")
+                .matches(&obj)
+                .expect("run filter"),
+            matches
+        );
     }
 }

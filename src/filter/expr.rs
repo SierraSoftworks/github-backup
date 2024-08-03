@@ -82,15 +82,30 @@ impl<'a, 'b> ExprVisitor<std::fmt::Result> for ExprPrinter<'a, 'b> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
 
-    #[test]
-    fn test_expr_display() {
-        let expr = Expr::Binary(
+    #[rstest]
+    #[case(Expr::Literal("value".into()), "\"value\"")]
+    #[case(Expr::Property("test"), "(property test)")]
+    #[case(
+        Expr::Binary(
             Box::new(Expr::Literal("value".into())),
             Token::In,
             Box::new(Expr::Property("test")),
-        );
-        assert_eq!(format!("{}", expr), "(in \"value\" (property test))");
+        ),
+        "(in \"value\" (property test))"
+    )]
+    #[case(
+        Expr::Logical(
+            Box::new(Expr::Literal("value".into())),
+            Token::And,
+            Box::new(Expr::Property("test")),
+        ),
+        "(&& \"value\" (property test))"
+    )]
+    fn expression_visualization(#[case] expr: Expr<'_>, #[case] view: &str) {
+        assert_eq!(view, format!("{expr}"));
     }
 }

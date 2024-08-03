@@ -571,6 +571,7 @@ impl MetadataSource for GitHubReleaseAsset {
 mod tests {
     use std::path::PathBuf;
 
+    use rstest::rstest;
     use serde::de::DeserializeOwned;
 
     use super::*;
@@ -585,13 +586,11 @@ mod tests {
         Ok(value)
     }
 
-    #[test]
-    fn test_deserialize_releases() {
-        let cases = vec!["github.releases.0.json", "github.releases.1.json"];
-
-        for case in cases {
-            let _releases: Vec<GitHubRelease> =
-                load_test_file(case).expect("Failed to load test file");
-        }
+    #[rstest]
+    #[case("github.releases.0.json", 1)]
+    #[case("github.releases.1.json", 8)]
+    fn test_deserialize_releases(#[case] file: &str, #[case] release_count: usize) {
+        let releases: Vec<GitHubRelease> = load_test_file(file).expect("Failed to load test file");
+        assert_eq!(releases.len(), release_count);
     }
 }
