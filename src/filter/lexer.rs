@@ -87,7 +87,7 @@ impl<'a> Scanner<'a> {
             "true" => Ok(Token::True),
             "contains" => Ok(Token::Contains),
             "in" => Ok(Token::In),
-            lexeme => Ok(Token::Property(&lexeme)),
+            lexeme => Ok(Token::Property(lexeme)),
         }
     }
 }

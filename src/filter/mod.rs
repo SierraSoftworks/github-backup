@@ -11,6 +11,7 @@ use token::Token;
 pub use value::*;
 
 pub struct Filter {
+    #[allow(clippy::box_collection)]
     filter: Pin<Box<String>>,
     ast: Expr<'static>,
 }

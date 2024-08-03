@@ -139,7 +139,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
                 unreachable!()
               }
             },
-            Some(Ok(..)) => self.literal().map(|l| Expr::Literal(l)),
+            Some(Ok(..)) => self.literal().map(Expr::Literal),
             Some(Err(..)) => Err(self.tokens.next().unwrap().unwrap_err()),
             None => Err(errors::user(
                 "We reached the end of your filter expression while waiting for a [true, false, \"string\", number, (group), or property.name].",

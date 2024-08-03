@@ -89,7 +89,7 @@ mod tests {
         let expr = Expr::Binary(
             Box::new(Expr::Literal("value".into())),
             Token::In,
-            Box::new(Expr::Property("test".into())),
+            Box::new(Expr::Property("test")),
         );
         assert_eq!(format!("{}", expr), "(in \"value\" (property test))");
     }
