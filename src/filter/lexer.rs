@@ -220,7 +220,14 @@ mod tests {
     fn test_comparison_operators() {
         assert_sequence(
             "== != contains in startswith endswith",
-            &[Token::Equals, Token::NotEquals, Token::Contains, Token::In, Token::StartsWith, Token::EndsWith],
+            &[
+                Token::Equals,
+                Token::NotEquals,
+                Token::Contains,
+                Token::In,
+                Token::StartsWith,
+                Token::EndsWith,
+            ],
         );
     }
 
@@ -270,15 +277,16 @@ mod tests {
 
     #[test]
     fn test_negation() {
-        assert_sequence("repo.public && !release.prerelease && !artifact.source-code", 
+        assert_sequence(
+            "repo.public && !release.prerelease && !artifact.source-code",
             &[
-            Token::Property("repo.public"),
-            Token::And,
-            Token::Not,
-            Token::Property("release.prerelease"),
-            Token::And,
-            Token::Not,
-            Token::Property("artifact.source-code")
+                Token::Property("repo.public"),
+                Token::And,
+                Token::Not,
+                Token::Property("release.prerelease"),
+                Token::And,
+                Token::Not,
+                Token::Property("artifact.source-code"),
             ],
         );
     }
