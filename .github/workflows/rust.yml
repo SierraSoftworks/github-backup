@@ -193,6 +193,9 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
 
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Pull in platform artifact
         uses: actions/download-artifact@v4
         with:
