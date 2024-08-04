@@ -4,6 +4,10 @@
 # image, but the benefit is much faster cross-platform builds; a net win.
 FROM debian:bookworm-slim
 
+LABEL org.opencontainers.image.source=https://github.com/SierraSoftworks/github-backup
+LABEL org.opencontainers.image.description="Backup your GitHub repositories and releases automatically"
+LABEL org.opencontainers.image.licenses=MIT
+
 RUN apt-get update && apt-get install -y \
   openssl
 
