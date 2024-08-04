@@ -197,7 +197,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: github-backup-${{ env.PLATFORM_PAIR }}
-          path: /tmp/artifact
 
       - name: Build and push by digest
         id: build
@@ -205,8 +204,6 @@ jobs:
         with:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            ARTIFACT=/tmp/artifact/github-backup
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest

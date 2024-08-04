@@ -7,8 +7,6 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
   openssl
 
-ARG ARTIFACT=./github-backup
-
-ADD ${ARTIFACT} /usr/local/bin/github-backup
+ADD ./github-backup /usr/local/bin/github-backup
 
 ENTRYPOINT ["/usr/local/bin/github-backup"]
