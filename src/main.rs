@@ -11,6 +11,7 @@ mod config;
 mod engines;
 mod entities;
 mod errors;
+mod filter;
 pub(crate) mod helpers;
 mod pairing;
 mod policy;
@@ -18,6 +19,7 @@ mod sources;
 mod telemetry;
 
 pub use entities::BackupEntity;
+pub use filter::{Filter, FilterValue, Filterable};
 pub use policy::{BackupFilter, BackupPolicy};
 pub use sources::BackupSource;
 

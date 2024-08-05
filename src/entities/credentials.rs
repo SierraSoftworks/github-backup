@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display};
 use serde::Deserialize;
 
 #[allow(dead_code)]
-#[derive(Default, Clone, Deserialize)]
+#[derive(Default, Clone, Deserialize, PartialEq)]
 pub enum Credentials {
     #[default]
     None,

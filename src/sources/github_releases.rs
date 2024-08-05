@@ -13,9 +13,6 @@ use crate::{
     BackupSource,
 };
 
-pub const TAG_PRERELEASE: &str = "prerelease";
-pub const TAG_SOURCE_CODE: &str = "source-code";
-
 #[derive(Clone, Default)]
 pub struct GitHubReleasesSource {
     client: GitHubClient,
@@ -36,7 +33,7 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
         let target = policy.from.as_str().trim_matches('/');
         match target {
-          t if t.is_empty() => Err(errors::user(
+          "" => Err(errors::user(
               "The target field is required for GitHub repository backups.",
               "Please provide a target field in the policy using the format 'users/<username>' or 'orgs/<orgname>'.",
           )),
@@ -65,7 +62,6 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
             policy
                 .properties
                 .get("api_url")
-                .as_deref()
                 .unwrap_or(&"https://api.github.com".to_string())
                 .trim_end_matches('/'),
             &policy.from.trim_matches('/')
@@ -95,8 +91,10 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
               let release: GitHubRelease = release.unwrap();
 
               if let Some(tarball_url) = &release.tarball_url {
-                yield Ok(HttpFile::new(&repo.name, tarball_url)
-                    .with_filename(format!("{}/{}/source.tar.gz", &repo.full_name, &release.tag_name))
+                yield Ok(HttpFile::new(format!("{}/{}/source.tar.gz", &repo.full_name, &release.tag_name), tarball_url)
+                    .with_metadata_source(&repo)
+                    .with_metadata_source(&release)
+                    .with_metadata("asset.source-code", true)
                     .with_credentials(match &policy.credentials {
                       Credentials::Token(token) => Credentials::UsernamePassword {
                         username: token.clone(),
@@ -104,36 +102,10 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
                       },
                       creds => creds.clone(),
                     })
-                    .with_last_modified(release.published_at)
-                    .with_optional_tag(if repo.size == 0 {
-                        Some(crate::entities::git_repo::TAG_EMPTY)
-                    } else {
-                        None
-                    })
-                    .with_optional_tag(if repo.archived {
-                        Some(crate::entities::git_repo::TAG_ARCHIVED)
-                    } else {
-                        None
-                    })
-                    .with_optional_tag(if repo.fork {
-                        Some(crate::entities::git_repo::TAG_FORK)
-                    } else {
-                        None
-                    })
-                    .with_optional_tag(if repo.private {
-                        Some(crate::entities::git_repo::TAG_PRIVATE)
-                    } else {
-                        Some(crate::entities::git_repo::TAG_PUBLIC)
-                    })
-                    .with_optional_tag(if release.prerelease {
-                        Some(TAG_PRERELEASE)
-                    } else {
-                        None
-                    })
-                    .with_optional_tag(Some(TAG_SOURCE_CODE)));
+                    .with_last_modified(release.published_at));
               }
 
-              for asset in release.assets {
+              for asset in release.assets.iter() {
                 if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                   return;
                 }
@@ -144,8 +116,7 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
 
                 let asset_url = format!("{}/releases/assets/{}", repo.url, asset.id);
 
-                yield Ok(HttpFile::new(&repo.name, asset_url)
-                    .with_filename(format!("{}/{}/{}", &repo.full_name, &release.tag_name, &asset.name))
+                yield Ok(HttpFile::new(format!("{}/{}/{}", &repo.full_name, &release.tag_name, &asset.name), asset_url)
                     .with_content_type(Some("application/octet-stream".to_string()))
                     .with_credentials(match &policy.credentials {
                       Credentials::Token(token) => Credentials::UsernamePassword {
@@ -155,31 +126,9 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
                       creds => creds.clone(),
                     })
                     .with_last_modified(Some(asset.updated_at))
-                    .with_optional_tag(if repo.size == 0 {
-                        Some(crate::entities::git_repo::TAG_EMPTY)
-                    } else {
-                        None
-                    })
-                    .with_optional_tag(if repo.archived {
-                        Some(crate::entities::git_repo::TAG_ARCHIVED)
-                    } else {
-                        None
-                    })
-                    .with_optional_tag(if repo.fork {
-                        Some(crate::entities::git_repo::TAG_FORK)
-                    } else {
-                        None
-                    })
-                    .with_optional_tag(if repo.private {
-                        Some(crate::entities::git_repo::TAG_PRIVATE)
-                    } else {
-                        Some(crate::entities::git_repo::TAG_PUBLIC)
-                    })
-                    .with_optional_tag(if release.prerelease {
-                        Some(TAG_PRERELEASE)
-                    } else {
-                        None
-                    }));
+                    .with_metadata_source(&repo)
+                    .with_metadata_source(&release)
+                    .with_metadata_source(asset));
               }
             }
           }

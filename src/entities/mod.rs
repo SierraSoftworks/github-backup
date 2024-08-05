@@ -1,31 +1,46 @@
 mod credentials;
-pub mod git_repo;
-mod http_file;
+#[macro_use]
+mod macros;
 
-use crate::BackupFilter;
+use crate::{FilterValue, Filterable};
 
 pub use credentials::Credentials;
-pub use git_repo::GitRepo;
-pub use http_file::HttpFile;
+use std::collections::HashMap;
+use unicase::UniCase;
 
-pub trait BackupEntity: std::fmt::Display {
+pub trait BackupEntity: std::fmt::Display + Filterable {
     fn name(&self) -> &str;
     fn target_path(&self) -> std::path::PathBuf {
         self.name().into()
     }
-    fn has_tag(&self, _tag: &str) -> bool {
-        false
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct Metadata(HashMap<UniCase<&'static str>, FilterValue>);
+
+impl Metadata {
+    pub fn insert<V: Into<FilterValue>>(&mut self, key: &'static str, value: V) {
+        self.0.insert(UniCase::new(key), value.into());
     }
-    fn matches(&self, filter: &BackupFilter) -> bool {
-        match filter {
-            BackupFilter::Include(names) => {
-                names.iter().any(|n| self.name().eq_ignore_ascii_case(n))
-            }
-            BackupFilter::Exclude(names) => {
-                !names.iter().any(|n| self.name().eq_ignore_ascii_case(n))
-            }
-            BackupFilter::Is(tag) => self.has_tag(tag.as_str()),
-            BackupFilter::IsNot(tag) => !self.has_tag(tag.as_str()),
-        }
+
+    pub fn get(&self, key: &str) -> FilterValue {
+        self.0
+            .get(&UniCase::new(key))
+            .cloned()
+            .unwrap_or(FilterValue::Null)
     }
 }
+
+pub trait MetadataSource {
+    fn inject_metadata(&self, metadata: &mut Metadata);
+}
+
+entity!(HttpFile(url: U => String) {
+    with_credentials => credentials: Credentials,
+    with_last_modified => last_modified: Option<chrono::DateTime<chrono::Utc>>,
+    with_content_type => content_type: Option<String>,
+});
+
+entity!(GitRepo(clone_url: U => String) {
+    with_credentials => credentials: Credentials,
+});

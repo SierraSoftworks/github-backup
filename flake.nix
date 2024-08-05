@@ -31,7 +31,15 @@
         inherit (pkgs) lib;
 
         craneLib = crane.mkLib pkgs;
-        src = craneLib.cleanCargoSource ./.;
+
+        testDataFilter = path: _type: builtins.match ".*/tests/.*$" path != null;
+        sourceFilter = path: type: (testDataFilter path type) || (craneLib.filterCargoSources path type);
+
+        src = lib.cleanSourceWith {
+          src = ./.;
+          filter = sourceFilter;
+          name = "source";
+        };
 
         # Common arguments can be set here to avoid repeating them later
         commonArgs = {

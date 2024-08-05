@@ -76,9 +76,21 @@ impl<
               }
 
               let entity = entity?;
-              if self.dry_run || policy.filters.iter().any(|f| !entity.matches(f)) {
+              if self.dry_run {
                   yield Ok((entity, BackupState::Skipped));
                   continue;
+              }
+
+              match policy.filter.matches(&entity) {
+                Ok(true) => {},
+                Ok(false) => {
+                  yield Ok((entity, BackupState::Skipped));
+                  continue;
+                },
+                Err(e) => {
+                  yield Err(e);
+                  continue;
+                }
               }
 
               {
