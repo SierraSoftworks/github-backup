@@ -61,6 +61,7 @@ jobs:
         uses: codecov/codecov-action@v4.5.0
         with:
           files: ./lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     name: ${{ matrix.os }}-${{ matrix.arch }}-release
