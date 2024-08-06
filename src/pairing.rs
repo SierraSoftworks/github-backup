@@ -118,7 +118,7 @@ mod tests {
 
     use rstest::rstest;
 
-    use crate::{entities::GitRepo, FilterValue};
+    use crate::entities::GitRepo;
 
     use super::*;
 
