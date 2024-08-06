@@ -4,7 +4,7 @@ mod parser;
 mod token;
 mod value;
 
-use std::{pin::Pin, ptr::NonNull};
+use std::{fmt::Display, pin::Pin, ptr::NonNull};
 
 use expr::{Expr, ExprVisitor};
 use token::Token;
@@ -47,6 +47,12 @@ impl Default for Filter {
             filter: Box::pin("true".to_string()),
             ast: Expr::Literal(FilterValue::Bool(true)),
         }
+    }
+}
+
+impl Display for Filter {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.raw())
     }
 }
 
@@ -137,7 +143,7 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
                 if right.is_truthy() {
                     false.into()
                 } else {
-                    right
+                    true.into()
                 }
             }
             token => unreachable!("Encountered an unexpected unary operator '{token}'"),

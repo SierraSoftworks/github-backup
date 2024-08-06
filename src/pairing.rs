@@ -77,6 +77,7 @@ impl<
 
               let entity = entity?;
               if self.dry_run {
+                  eprintln!("Would backup {entity} to {}", &policy.to.display());
                   yield Ok((entity, BackupState::Skipped));
                   continue;
               }
@@ -84,6 +85,7 @@ impl<
               match policy.filter.matches(&entity) {
                 Ok(true) => {},
                 Ok(false) => {
+                  eprintln!("Skipping backup of {entity} as it did not match the filter {}", &policy.filter);
                   yield Ok((entity, BackupState::Skipped));
                   continue;
                 },
@@ -107,5 +109,123 @@ impl<
             yield fut.unwrap();
           }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use rstest::rstest;
+
+    use crate::{entities::GitRepo, FilterValue};
+
+    use super::*;
+
+    static CANCEL: AtomicBool = AtomicBool::new(false);
+
+    fn load_test_file<T: serde::de::DeserializeOwned>(
+        name: &str,
+    ) -> Result<T, Box<dyn std::error::Error>> {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("data")
+            .join(name);
+        let json = std::fs::read_to_string(path)?;
+        let value = serde_json::from_str(&json)?;
+        Ok(value)
+    }
+
+    struct MockRepoSource;
+
+    impl BackupSource<GitRepo> for MockRepoSource {
+        fn kind(&self) -> &str {
+            "mock"
+        }
+
+        fn validate(&self, _policy: &BackupPolicy) -> Result<(), crate::Error> {
+            Ok(())
+        }
+
+        fn load<'a>(
+            &'a self,
+            _policy: &'a BackupPolicy,
+            _cancel: &'a AtomicBool,
+        ) -> impl Stream<Item = Result<GitRepo, crate::Error>> + 'a {
+            async_stream::stream! {
+              let repos: Vec<crate::helpers::github::GitHubRepo> = load_test_file("github.repos.0.json").unwrap();
+              for repo in repos {
+                yield Ok(GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
+                    .with_metadata_source(&repo));
+              }
+            }
+        }
+    }
+
+    #[derive(Clone)]
+    struct MockEngine;
+
+    #[async_trait::async_trait]
+    impl BackupEngine<GitRepo> for MockEngine {
+        async fn backup<P: AsRef<Path> + Send>(
+            &self,
+            entity: &GitRepo,
+            _target: P,
+            _cancel: &AtomicBool,
+        ) -> Result<BackupState, crate::Error> {
+            Ok(BackupState::New(Some(entity.name.clone())))
+        }
+    }
+
+    #[rstest]
+    #[case("true", 30)]
+    #[case("false", 0)]
+    #[case("repo.fork", 19)]
+    #[case("!repo.fork", 11)]
+    #[case("repo.empty", 2)]
+    #[case("!repo.empty", 28)]
+    #[case("!repo.fork && !repo.empty", 11)]
+    #[tokio::test]
+    async fn filtering(#[case] filter: &str, #[case] matches: usize) {
+        use tokio_stream::StreamExt;
+
+        let policy: BackupPolicy = serde_yaml::from_str(&format!(
+            r#"
+            kind: mock
+            from: mock
+            to: /tmp
+            filter: '{}'
+            "#,
+            filter
+        ))
+        .unwrap();
+
+        let source = MockRepoSource;
+        let engine = MockEngine;
+        let pairing = Pairing::new(source, engine);
+
+        let stream = pairing.run(&policy, &CANCEL);
+
+        tokio::pin!(stream);
+
+        let mut count = 0;
+        while let Some(result) = stream.next().await {
+            let (entity, state) = result.unwrap();
+            match state {
+                BackupState::New(name) if name == Some(entity.name.clone()) => {
+                    count += 1;
+                    continue;
+                }
+                BackupState::New(name) => {
+                    panic!(
+                        "Expected BackupState::New(Some({:?})) but got BackupState::New({:?})",
+                        entity.name, name
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        assert_eq!(count, matches);
     }
 }
