@@ -236,4 +236,28 @@ mod tests {
             matches
         );
     }
+
+    #[rstest]
+    #[case("name == \"John Doe\" && age == 30", true)]
+    #[case("name == \"John Doe\" && age == 31", false)]
+    #[case("name == \"Jane Doe\" && age == 30", false)]
+    #[case("name == \"John Doe\" || age == 30", true)]
+    #[case("name == \"John Doe\" || age == 31", true)]
+    #[case("name == \"Jane Doe\" || age == 30", true)]
+    #[case("name == \"Jane Doe\" || age == 31", false)]
+    fn binary_operator_filtering(#[case] filter: &str, #[case] matches: bool) {
+        let obj = TestObject {
+            name: "John Doe".to_string(),
+            age: 30,
+            tags: vec!["red"],
+        };
+
+        assert_eq!(
+            Filter::new(filter)
+                .expect("parse filter")
+                .matches(&obj)
+                .expect("run filter"),
+            matches
+        );
+    }
 }

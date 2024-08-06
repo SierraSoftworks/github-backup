@@ -39,8 +39,9 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
         let mut expr = self.and()?;
 
         while matches!(self.tokens.peek(), Some(Ok(Token::Or))) {
+            let token = self.tokens.next().unwrap()?;
             let right = self.and()?;
-            expr = Expr::Logical(Box::new(expr), Token::Or, Box::new(right));
+            expr = Expr::Logical(Box::new(expr), token, Box::new(right));
         }
 
         Ok(expr)
@@ -50,8 +51,9 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
         let mut expr = self.equality()?;
 
         while matches!(self.tokens.peek(), Some(Ok(Token::And))) {
+            let token = self.tokens.next().unwrap()?;
             let right = self.equality()?;
-            expr = Expr::Logical(Box::new(expr), Token::And, Box::new(right));
+            expr = Expr::Logical(Box::new(expr), token, Box::new(right));
         }
 
         Ok(expr)
@@ -197,6 +199,43 @@ mod tests {
         match Parser::parse(tokens.into_iter()) {
             Ok(Expr::Literal(ast)) => assert_eq!(value, ast, "Expected {ast} to be {value}"),
             Ok(expr) => panic!("Expected a literal, got {:?}", expr),
+            Err(e) => panic!("Error: {}", e),
+        }
+    }
+
+    #[rstest]
+    #[case("!true", Expr::Unary(Token::Not, Box::new(Expr::Literal(true.into()))))]
+    #[case("!false", Expr::Unary(Token::Not, Box::new(Expr::Literal(false.into()))))]
+    #[case("!\"hello\"", Expr::Unary(Token::Not, Box::new(Expr::Literal("hello".into()))))]
+    fn parsing_unary_expressions(#[case] input: &str, #[case] ast: Expr) {
+        let tokens = crate::filter::lexer::Scanner::new(input);
+        match Parser::parse(tokens.into_iter()) {
+            Ok(expr) => assert_eq!(ast, expr, "Expected {ast} to be {expr}"),
+            Err(e) => panic!("Error: {}", e),
+        }
+    }
+
+    #[rstest]
+    #[case("true == false", Expr::Binary(Box::new(Expr::Literal(true.into())), Token::Equals, Box::new(Expr::Literal(false.into()))))]
+    #[case("true != false", Expr::Binary(Box::new(Expr::Literal(true.into())), Token::NotEquals, Box::new(Expr::Literal(false.into()))))]
+    #[case("\"xyz\" startswith \"x\"", Expr::Binary(Box::new(Expr::Literal("xyz".into())), Token::StartsWith, Box::new(Expr::Literal("x".into()))))]
+    #[case("\"xyz\" endswith \"z\"", Expr::Binary(Box::new(Expr::Literal("xyz".into())), Token::EndsWith, Box::new(Expr::Literal("z".into()))))]
+    fn parse_comparison_expressions(#[case] input: &str, #[case] ast: Expr) {
+        let tokens = crate::filter::lexer::Scanner::new(input);
+        match Parser::parse(tokens.into_iter()) {
+            Ok(expr) => assert_eq!(ast, expr, "Expected {ast} to be {expr}"),
+            Err(e) => panic!("Error: {}", e),
+        }
+    }
+
+    #[rstest]
+    #[case("true && false", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::And, Box::new(Expr::Literal(false.into()))))]
+    #[case("true || false", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::Or, Box::new(Expr::Literal(false.into()))))]
+    #[case("true && (true || false)", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::And, Box::new(Expr::Logical(Box::new(Expr::Literal(true.into())), Token::Or, Box::new(Expr::Literal(false.into()))))))]
+    fn parsing_logical_expressions(#[case] input: &str, #[case] ast: Expr) {
+        let tokens = crate::filter::lexer::Scanner::new(input);
+        match Parser::parse(tokens.into_iter()) {
+            Ok(expr) => assert_eq!(ast, expr, "Expected {ast} to be {expr}"),
             Err(e) => panic!("Error: {}", e),
         }
     }
