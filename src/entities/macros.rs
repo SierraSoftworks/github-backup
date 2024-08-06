@@ -7,7 +7,7 @@ macro_rules! entity {
             pub name: String,
             $(pub $rfield: $rtype,)*
             $(pub $field: $type,)*
-            pub metadata: Metadata,
+            pub metadata: $crate::entities::Metadata,
         }
 
         #[allow(dead_code)]
@@ -34,13 +34,13 @@ macro_rules! entity {
                 self
             }
 
-            pub fn with_metadata_source(mut self, source: &dyn MetadataSource) -> Self {
+            pub fn with_metadata_source(mut self, source: &dyn $crate::entities::MetadataSource) -> Self {
                 source.inject_metadata(&mut self.metadata);
                 self
             }
         }
 
-        impl BackupEntity for $name {
+        impl $crate::entities::BackupEntity for $name {
             fn name(&self) -> &str {
                 &self.name
             }
@@ -57,5 +57,29 @@ macro_rules! entity {
                 write!(f, "{}", self.name)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{entities::Credentials, FilterValue, Filterable};
+
+    entity!(TestEntity(url: U  => String) {
+      with_credentials => credentials: Credentials,
+    });
+
+    #[test]
+    fn test_entity() {
+        let entity = TestEntity::new("test", "http://example.com")
+            .with_credentials(Credentials::Token("test".to_string()))
+            .with_metadata("test", "test")
+            .with_metadata("test2", 1);
+
+        assert_eq!(entity.name, "test");
+        assert_eq!(entity.url, "http://example.com");
+        assert_eq!(entity.credentials, Credentials::Token("test".to_string()));
+
+        assert_eq!(entity.get("test"), FilterValue::String("test".to_string()));
+        assert_eq!(entity.get("test2"), FilterValue::Number(1 as f64));
     }
 }
