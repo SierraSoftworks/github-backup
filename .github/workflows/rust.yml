@@ -52,7 +52,7 @@ jobs:
       - name: Run tests
         run: cargo test --all-features --no-fail-fast
         env:
-            RUSTFLAGS: -Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off
+            RUSTFLAGS: -Cinstrument-coverage
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: grcov
