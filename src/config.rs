@@ -48,3 +48,17 @@ where
 
     Ok(None)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("0 0 * * *")]
+    #[case("0 */5 * * *")]
+    fn deserialize_cron(#[case] format: &str) {
+        let config: Config = serde_yaml::from_str(&format!("schedule: {}", format)).unwrap();
+        assert!(config.schedule.is_some());
+    }
+}
