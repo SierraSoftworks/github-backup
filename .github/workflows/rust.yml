@@ -50,7 +50,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests
-        run: cargo test --all-features --no-fail-fast
+        run: cargo test --no-fail-fast
         env:
             RUSTFLAGS: -Cinstrument-coverage
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
