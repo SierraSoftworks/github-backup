@@ -171,6 +171,8 @@ mod tests {
         ))
         .unwrap();
 
+        println!("Using credentials: {}", policy.credentials);
+
         let stream = source.load(&policy, &CANCEL);
         tokio::pin!(stream);
 
