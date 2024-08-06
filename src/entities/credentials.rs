@@ -33,3 +33,25 @@ impl Debug for Credentials {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case::none(Credentials::None, "No credentials")]
+    #[case::token(Credentials::Token("token".to_string()), "Token")]
+    #[case::username_password(Credentials::UsernamePassword { username: "admin".to_string(), password: "pass".to_string() }, "Username+Password")]
+    fn test_display(#[case] credentials: Credentials, #[case] expected: &str) {
+        assert_eq!(format!("{}", credentials), expected);
+    }
+
+    #[rstest]
+    #[case::none(Credentials::None, "None")]
+    #[case::token(Credentials::Token("token".to_string()), "Token")]
+    #[case::username_password(Credentials::UsernamePassword { username: "admin".to_string(), password: "pass".to_string() }, "UsernamePassword")]
+    fn test_debug(#[case] credentials: Credentials, #[case] expected: &str) {
+        assert_eq!(format!("{:?}", credentials), expected);
+    }
+}
