@@ -121,7 +121,7 @@ impl GitHubClient {
 
         req = match creds {
             Credentials::None => req,
-            Credentials::Token(token) => req.basic_auth(token, Some("".to_string())),
+            Credentials::Token(token) => req.bearer_auth(token),
             Credentials::UsernamePassword { username, password } => {
                 req.basic_auth(username, Some(password))
             }

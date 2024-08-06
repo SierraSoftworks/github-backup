@@ -39,7 +39,9 @@ backups:
   - kind: github/repo
     from: users/my-user
     to: /backups/personal
-    credentials: !Token "<my-user-token>"
+    credentials: !UsernamePassword:
+      username: "<your username>"
+      password: "<your personal access token>"
   - kind: github/repo
     from: "orgs/my-org"
     to: /backups/work
