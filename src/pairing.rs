@@ -202,7 +202,9 @@ mod tests {
 
         let source = MockRepoSource;
         let engine = MockEngine;
-        let pairing = Pairing::new(source, engine);
+        let pairing = Pairing::new(source, engine)
+            .with_concurrency_limit(5)
+            .with_dry_run(false);
 
         let stream = pairing.run(&policy, &CANCEL);
 
