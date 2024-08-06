@@ -22,32 +22,13 @@ pub struct BackupPolicy {
 
 impl Display for BackupPolicy {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.kind, self.from)
+        write!(f, "{}/{}", self.kind, self.from)
     }
 }
 
 impl Debug for BackupPolicy {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.kind, self.from)
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub enum BackupFilter {
-    Include(Vec<String>),
-    Exclude(Vec<String>),
-    Is(String),
-    IsNot(String),
-}
-
-impl Display for BackupFilter {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BackupFilter::Include(names) => write!(f, "name in [{}]", names.join(", ")),
-            BackupFilter::Exclude(names) => write!(f, "name !in [{}]", names.join(", ")),
-            BackupFilter::Is(name) => write!(f, "#{}", name),
-            BackupFilter::IsNot(name) => write!(f, "!#{}", name),
-        }
+        write!(f, "{}/{}", self.kind, self.from)
     }
 }
 
