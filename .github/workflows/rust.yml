@@ -53,6 +53,7 @@ jobs:
         run: cargo test --all-features --no-fail-fast
         env:
             RUSTFLAGS: -Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: grcov
         run: grcov . --binary-path target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../**' --ignore '/*' --ignore 'C:/' -o ./lcov.info

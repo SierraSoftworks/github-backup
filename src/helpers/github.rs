@@ -577,6 +577,9 @@ mod tests {
 
     use super::*;
 
+    #[cfg(not(feature = "pure_tests"))]
+    static CANCEL: AtomicBool = AtomicBool::new(false);
+
     fn load_test_file<T: DeserializeOwned>(name: &str) -> Result<T, Box<dyn std::error::Error>> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
@@ -626,5 +629,63 @@ mod tests {
                 release.prerelease.into()
             );
         }
+    }
+
+    #[cfg(not(feature = "pure_tests"))]
+    #[rstest]
+    #[case("users/notheotherben")]
+    #[case("orgs/sierrasoftworks")]
+    #[tokio::test]
+    async fn fetch_repos(#[case] target: &str) {
+        use tokio_stream::StreamExt;
+
+        let client = GitHubClient::default();
+        let creds = get_test_credentials();
+
+        let stream = client.get_paginated(
+            format!("https://api.github.com/{target}/repos"),
+            &creds,
+            &CANCEL,
+        );
+        tokio::pin!(stream);
+
+        let mut count = 0;
+        while let Some(repo) = stream.next().await {
+            let repo: GitHubRepo = repo.expect("Failed to fetch repo");
+            assert!(!repo.name.is_empty());
+            count += 1;
+        }
+
+        assert!(count > 0, "at least one repo should be returned");
+    }
+
+    #[cfg(not(feature = "pure_tests"))]
+    #[rstest]
+    #[case("sierrasoftworks/github-backup")]
+    #[tokio::test]
+    async fn get_repo(#[case] target: &str) {
+        let client = GitHubClient::default();
+        let creds = get_test_credentials();
+
+        let repo = client
+            .get(
+                format!("https://api.github.com/repos/{target}"),
+                &creds,
+                &CANCEL,
+            )
+            .await;
+        let repo: GitHubRepo = repo.expect("Failed to fetch repo");
+
+        assert_eq!(repo.full_name.to_lowercase(), target.to_lowercase());
+    }
+
+    #[cfg(not(feature = "pure_tests"))]
+    fn get_test_credentials() -> Credentials {
+        std::env::var("GITHUB_TOKEN")
+            .map(|t| Credentials::UsernamePassword {
+                username: t,
+                password: String::new(),
+            })
+            .unwrap_or(Credentials::None)
     }
 }
