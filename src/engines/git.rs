@@ -281,8 +281,8 @@ impl Display for GitEngine {
 mod tests {
     use super::*;
 
-    #[cfg(not(feature = "pure_tests"))]
     #[tokio::test]
+    #[cfg_attr(feature = "pure_tests", ignore)]
     async fn test_backup() {
         let temp_dir = tempfile::tempdir().expect("a temporary directory");
 
