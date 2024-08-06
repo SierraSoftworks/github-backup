@@ -340,6 +340,7 @@ impl MetadataSource for GitHubRepo {
         metadata.insert("repo.fork", self.fork);
         metadata.insert("repo.size", self.size as u32);
         metadata.insert("repo.archived", self.archived);
+        metadata.insert("repo.disabled", self.disabled);
         metadata.insert("repo.default_branch", self.default_branch.as_str());
         metadata.insert("repo.empty", self.size == 0);
     }
@@ -587,10 +588,43 @@ mod tests {
     }
 
     #[rstest]
+    #[case("github.repos.0.json", 30)]
+    fn test_deserialize_repos(#[case] file: &str, #[case] repo_count: usize) {
+        let repos: Vec<GitHubRepo> = load_test_file(file).expect("Failed to load test file");
+        assert_eq!(repos.len(), repo_count);
+
+        for repo in repos {
+            let mut metadata = crate::entities::Metadata::default();
+            repo.inject_metadata(&mut metadata);
+
+            assert_eq!(metadata.get("repo.name"), repo.name.into());
+            assert_eq!(metadata.get("repo.fullname"), repo.full_name.into());
+            assert_eq!(metadata.get("repo.private"), repo.private.into());
+            assert_eq!(metadata.get("repo.fork"), repo.fork.into());
+            assert_eq!(metadata.get("repo.archived"), repo.archived.into());
+            assert_eq!(metadata.get("repo.disabled"), repo.disabled.into());
+            assert_eq!(metadata.get("repo.empty"), (repo.size == 0).into());
+        }
+    }
+
+    #[rstest]
     #[case("github.releases.0.json", 1)]
     #[case("github.releases.1.json", 8)]
     fn test_deserialize_releases(#[case] file: &str, #[case] release_count: usize) {
         let releases: Vec<GitHubRelease> = load_test_file(file).expect("Failed to load test file");
         assert_eq!(releases.len(), release_count);
+
+        for release in releases {
+            let mut metadata = crate::entities::Metadata::default();
+            release.inject_metadata(&mut metadata);
+
+            assert_eq!(metadata.get("release.tag"), release.tag_name.into());
+            assert_eq!(metadata.get("release.name"), release.name.into());
+            assert_eq!(metadata.get("release.draft"), release.draft.into());
+            assert_eq!(
+                metadata.get("release.prerelease"),
+                release.prerelease.into()
+            );
+        }
     }
 }

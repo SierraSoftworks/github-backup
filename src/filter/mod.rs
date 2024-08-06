@@ -154,7 +154,19 @@ mod tests {
     struct TestObject {
         name: String,
         age: i32,
+        alive: bool,
         tags: Vec<&'static str>,
+    }
+
+    impl Default for TestObject {
+        fn default() -> Self {
+            Self {
+                name: "John Doe".to_string(),
+                age: 30,
+                alive: true,
+                tags: vec!["red"],
+            }
+        }
     }
 
     impl Filterable for TestObject {
@@ -162,6 +174,7 @@ mod tests {
             match property {
                 "name" => self.name.clone().into(),
                 "age" => self.age.into(),
+                "alive" => self.alive.into(),
                 "tags" => self
                     .tags
                     .iter()
@@ -195,11 +208,7 @@ mod tests {
     #[case("\"red\" in tags", true)]
     #[case("\"blue\" in tags", false)]
     fn case_sensitive_filtering(#[case] filter: &str, #[case] matches: bool) {
-        let obj = TestObject {
-            name: "John Doe".to_string(),
-            age: 30,
-            tags: vec!["red"],
-        };
+        let obj = TestObject::default();
 
         assert_eq!(
             Filter::new(filter)
@@ -222,11 +231,7 @@ mod tests {
     #[case("\"RED\" in tags", true)]
     #[case("\"BLUE\" in tags", false)]
     fn case_insensitive_filtering(#[case] filter: &str, #[case] matches: bool) {
-        let obj = TestObject {
-            name: "John Doe".to_string(),
-            age: 30,
-            tags: vec!["red"],
-        };
+        let obj = TestObject::default();
 
         assert_eq!(
             Filter::new(filter)
@@ -246,11 +251,24 @@ mod tests {
     #[case("name == \"Jane Doe\" || age == 30", true)]
     #[case("name == \"Jane Doe\" || age == 31", false)]
     fn binary_operator_filtering(#[case] filter: &str, #[case] matches: bool) {
-        let obj = TestObject {
-            name: "John Doe".to_string(),
-            age: 30,
-            tags: vec!["red"],
-        };
+        let obj = TestObject::default();
+
+        assert_eq!(
+            Filter::new(filter)
+                .expect("parse filter")
+                .matches(&obj)
+                .expect("run filter"),
+            matches
+        );
+    }
+
+    #[rstest]
+    #[case("alive", true)]
+    #[case("!alive", false)]
+    #[case("name && age", true)]
+    #[case("name && !age", false)]
+    fn logical_operator_filtering(#[case] filter: &str, #[case] matches: bool) {
+        let obj = TestObject::default();
 
         assert_eq!(
             Filter::new(filter)
