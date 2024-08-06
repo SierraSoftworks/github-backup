@@ -135,3 +135,47 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::AtomicBool;
+
+    use rstest::rstest;
+
+    use crate::{BackupPolicy, BackupSource};
+
+    use super::GitHubReleasesSource;
+
+    static CANCEL: AtomicBool = AtomicBool::new(false);
+
+    #[rstest]
+    #[case("users/notheotherben")]
+    #[tokio::test]
+    #[cfg_attr(feature = "pure_tests", ignore)]
+    async fn get_releases(#[case] target: &str) {
+        use tokio_stream::StreamExt;
+
+        let source = GitHubReleasesSource::default();
+
+        let policy: BackupPolicy = serde_yaml::from_str(&format!(
+            r#"
+          kind: github/release
+          from: {}
+          to: /tmp
+          credentials: {}
+        "#,
+            target,
+            std::env::var("GITHUB_TOKEN")
+                .map(|t| format!("!Token {t}"))
+                .unwrap_or_else(|_| "!None".to_string())
+        ))
+        .unwrap();
+
+        let stream = source.load(&policy, &CANCEL);
+        tokio::pin!(stream);
+
+        while let Some(release) = stream.next().await {
+            println!("{}", release.expect("Failed to load release"));
+        }
+    }
+}
