@@ -80,6 +80,6 @@ mod tests {
         assert_eq!(entity.credentials, Credentials::Token("test".to_string()));
 
         assert_eq!(entity.get("test"), FilterValue::String("test".to_string()));
-        assert_eq!(entity.get("test2"), FilterValue::Number(1 as f64));
+        assert_eq!(entity.get("test2"), FilterValue::Number(1_f64));
     }
 }
