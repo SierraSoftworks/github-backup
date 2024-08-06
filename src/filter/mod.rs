@@ -1,4 +1,5 @@
 mod expr;
+mod interpreter;
 mod lexer;
 mod parser;
 mod token;
@@ -7,7 +8,7 @@ mod value;
 use std::{fmt::Display, pin::Pin, ptr::NonNull};
 
 use expr::{Expr, ExprVisitor};
-use token::Token;
+use interpreter::FilterContext;
 pub use value::*;
 
 pub struct Filter {
@@ -31,8 +32,7 @@ impl Filter {
     }
 
     pub fn matches<T: Filterable>(&self, target: &T) -> Result<bool, crate::Error> {
-        let mut context = FilterContext { target };
-        Ok(context.visit_expr(&self.ast).is_truthy())
+        Ok(FilterContext::new(target).visit_expr(&self.ast).is_truthy())
     }
 
     /// Gets the raw filter expression which was used to construct this filter.
@@ -93,61 +93,6 @@ impl<'de> serde::Deserialize<'de> for Filter {
         }
 
         deserializer.deserialize_option(FilterVisitor)
-    }
-}
-
-struct FilterContext<'a, T: Filterable> {
-    target: &'a T,
-}
-
-impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
-    fn visit_literal(&mut self, value: &FilterValue) -> FilterValue {
-        value.clone()
-    }
-
-    fn visit_property(&mut self, name: &str) -> FilterValue {
-        self.target.get(name).clone()
-    }
-
-    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> FilterValue {
-        let left = self.visit_expr(left);
-        let right = self.visit_expr(right);
-        match operator {
-            Token::Equals => (left == right).into(),
-            Token::NotEquals => (left != right).into(),
-            Token::Contains => left.contains(&right).into(),
-            Token::In => right.contains(&left).into(),
-            Token::StartsWith => left.startswith(&right).into(),
-            Token::EndsWith => left.endswith(&right).into(),
-            token => unreachable!("Encountered an unexpected binary operator '{token}'"),
-        }
-    }
-
-    fn visit_logical(&mut self, left: &Expr, operator: &Token, right: &Expr) -> FilterValue {
-        let left = self.visit_expr(left);
-
-        match operator {
-            Token::And if left.is_truthy() => self.visit_expr(right),
-            Token::And => false.into(),
-            Token::Or if !left.is_truthy() => self.visit_expr(right),
-            Token::Or => true.into(),
-            token => unreachable!("Encountered an unexpected logical operator '{token}'"),
-        }
-    }
-
-    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> FilterValue {
-        let right = self.visit_expr(right);
-
-        match operator {
-            Token::Not => {
-                if right.is_truthy() {
-                    false.into()
-                } else {
-                    true.into()
-                }
-            }
-            token => unreachable!("Encountered an unexpected unary operator '{token}'"),
-        }
     }
 }
 
