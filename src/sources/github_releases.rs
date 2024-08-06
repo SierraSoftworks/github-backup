@@ -148,6 +148,37 @@ mod tests {
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
+    #[test]
+    fn check_name() {
+        assert_eq!(GitHubReleasesSource::default().kind(), "github/release");
+    }
+
+    #[rstest]
+    #[case("users/notheotherben", true)]
+    #[case("orgs/sierrasoftworks", true)]
+    #[case("notheotherben", false)]
+    #[case("sierrasoftworks/github-backup", false)]
+    #[case("users/notheotherben/repos", false)]
+    fn validation(#[case] from: &str, #[case] success: bool) {
+        let source = GitHubReleasesSource::default();
+
+        let policy = serde_yaml::from_str(&format!(
+            r#"
+        kind: github/release
+        from: {}
+        to: /tmp
+        "#,
+            from
+        ))
+        .expect("parse policy");
+
+        if success {
+            source.validate(&policy).expect("validation to succeed");
+        } else {
+            source.validate(&policy).expect_err("validation to fail");
+        }
+    }
+
     #[rstest]
     #[case("users/notheotherben")]
     #[tokio::test]

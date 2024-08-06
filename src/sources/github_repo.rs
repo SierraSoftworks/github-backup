@@ -10,7 +10,7 @@ use crate::{
     BackupSource,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GitHubRepoSource {
     client: GitHubClient,
 }
@@ -70,12 +70,6 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
 }
 
 impl GitHubRepoSource {
-    pub fn new() -> Self {
-        GitHubRepoSource {
-            client: Default::default(),
-        }
-    }
-
     #[allow(dead_code)]
     pub fn with_client(client: GitHubClient) -> Self {
         GitHubRepoSource { client }
@@ -94,6 +88,37 @@ mod tests {
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
+    #[test]
+    fn check_name() {
+        assert_eq!(GitHubRepoSource::default().kind(), "github/repo");
+    }
+
+    #[rstest]
+    #[case("users/notheotherben", true)]
+    #[case("orgs/sierrasoftworks", true)]
+    #[case("notheotherben", false)]
+    #[case("sierrasoftworks/github-backup", false)]
+    #[case("users/notheotherben/repos", false)]
+    fn validation(#[case] from: &str, #[case] success: bool) {
+        let source = GitHubRepoSource::default();
+
+        let policy = serde_yaml::from_str(&format!(
+            r#"
+            kind: github/repo
+            from: {}
+            to: /tmp
+            "#,
+            from
+        ))
+        .expect("parse policy");
+
+        if success {
+            source.validate(&policy).expect("validation to succeed");
+        } else {
+            source.validate(&policy).expect_err("validation to fail");
+        }
+    }
+
     #[rstest]
     #[case("users/notheotherben")]
     #[tokio::test]
@@ -101,7 +126,7 @@ mod tests {
     async fn get_repos(#[case] target: &str) {
         use tokio_stream::StreamExt;
 
-        let source = GitHubRepoSource::new();
+        let source = GitHubRepoSource::default();
 
         let policy: BackupPolicy = serde_yaml::from_str(&format!(
             r#"
