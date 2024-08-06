@@ -68,5 +68,8 @@ mod tests {
             map.insert("key".to_string(), "value".to_string());
             map
         });
+
+        assert_eq!(format!("{}", policy), "backup/source");
+        assert_eq!(format!("{:?}", policy), "backup/source");
     }
 }
