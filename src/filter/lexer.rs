@@ -55,6 +55,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn read_string(&mut self, start: usize) -> Result<Token<'a>, Error> {
+        let start_loc = Loc::new(self.line, 1 + start - self.line_start);
         while let Some((idx, c)) = self.chars.next() {
             match c {
                 '\n' => {
@@ -62,10 +63,7 @@ impl<'a> Scanner<'a> {
                     self.line_start = idx;
                 }
                 '"' => {
-                    return Ok(Token::String(
-                        Loc::new(self.line, 1 + idx - self.line_start),
-                        &self.source[start + 1..idx],
-                    ));
+                    return Ok(Token::String(start_loc, &self.source[start + 1..idx]));
                 }
                 '\\' if self.match_char('"') => {}
                 _ => {}
@@ -73,7 +71,7 @@ impl<'a> Scanner<'a> {
         }
 
         Err(errors::user(
-            "Reached the end of the filter without finding the closing quote for a string.",
+            &format!("Reached the end of the filter without finding the closing quote for a string starting at {}.", start_loc),
             "Make sure that you have terminated your string with a '\"' character.",
         ))
     }
@@ -125,7 +123,11 @@ impl<'a> Iterator for Scanner<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         while let Some((idx, c)) = self.chars.next() {
             match c {
-                ' ' | '\t' | '\n' => {}
+                ' ' | '\t' => {}
+                '\n' => {
+                    self.line += 1;
+                    self.line_start = idx;
+                }
                 '(' => {
                     return Some(Ok(Token::LeftParen(Loc::new(
                         self.line,
@@ -164,7 +166,7 @@ impl<'a> Iterator for Scanner<'a> {
                         ))));
                     } else {
                         return Some(Err(errors::user(
-                          "Filter included an orphaned '&' which is not a valid operator.",
+                          &format!("Filter included an orphaned '&' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
                           "Ensure that you are using the '&&' operator to implement a logical AND within your filter."
                         )));
                     }
@@ -177,7 +179,7 @@ impl<'a> Iterator for Scanner<'a> {
                         ))));
                     } else {
                         return Some(Err(errors::user(
-                          "Filter included an orphaned '|' which is not a valid operator.",
+                          &format!("Filter included an orphaned '|' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
                           "Ensure that you are using the '||' operator to implement a logical OR within your filter."
                         )));
                     }
@@ -190,7 +192,7 @@ impl<'a> Iterator for Scanner<'a> {
                         ))));
                     } else {
                         return Some(Err(errors::user(
-                          "Filter included an orphaned '=' which is not a valid operator.",
+                          &format!("Filter included an orphaned '=' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
                           "Ensure that you are using the '==' operator to implement a logical equality within your filter."
                         )));
                     }

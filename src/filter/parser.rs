@@ -25,8 +25,9 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
             let token = result?;
             Err(errors::user(
                 &format!(
-                    "Your filter expression contained an unexpected '{}'.",
-                    token
+                    "Your filter expression contained an unexpected '{}' at {}.",
+                    token,
+                    token.location(),
                 ),
                 "Make sure that you have written a valid filter query.",
             ))
@@ -105,37 +106,37 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
     fn primary(&mut self) -> Result<Expr<'a>, Error> {
         match self.tokens.peek() {
             Some(Ok(Token::LeftParen(..))) => {
-                self.tokens.next();
+                let start = self.tokens.next().unwrap().unwrap();
                 let expr = self.or()?;
                 if let Some(Ok(Token::RightParen(..))) = self.tokens.next() {
                     Ok(expr)
                 } else {
                     Err(errors::user(
-                        "When attempting to parse a grouped filter expression, we didn't find the closing ')' where we expected to.",
+                        &format!("When attempting to parse a grouped filter expression starting at {}, we didn't find the closing ')' where we expected to.", start.location()),
                         "Make sure that you have balanced your parentheses correctly.",
                     ))
                 }
             }
             Some(Ok(Token::LeftBracket(..))) => {
-              self.tokens.next();
-                let mut items = Vec::new();
-                while !matches!(self.tokens.peek(), Some(Ok(Token::RightBracket(..)))) {
-                    items.push(self.literal()?);
-                    if matches!(self.tokens.peek(), Some(Ok(Token::Comma(..)))) {
-                        self.tokens.next();
-                    } else {
-                        break;
-                    }
-                }
+              let start = self.tokens.next().unwrap().unwrap();
+              let mut items = Vec::new();
+              while !matches!(self.tokens.peek(), Some(Ok(Token::RightBracket(..)))) {
+                  items.push(self.literal()?);
+                  if matches!(self.tokens.peek(), Some(Ok(Token::Comma(..)))) {
+                      self.tokens.next();
+                  } else {
+                      break;
+                  }
+              }
 
-                if let Some(Ok(Token::RightBracket(..))) = self.tokens.next() {
-                  Ok(Expr::Literal(items.into()))
-                } else {
-                  Err(errors::user(
-                      "When attempting to parse a list filter expression, we didn't find the closing ']' where we expected to.",
-                      "Make sure that you have closed your tuple brackets correctly.",
-                  ))
-                }
+              if let Some(Ok(Token::RightBracket(..))) = self.tokens.next() {
+                Ok(Expr::Literal(items.into()))
+              } else {
+                Err(errors::user(
+                    &format!("When attempting to parse a list filter expression starting at {}, we didn't find the closing ']' where we expected to.", start.location()),
+                    "Make sure that you have closed your tuple brackets correctly.",
+                ))
+              }
             }
             Some(Ok(Token::Property(..))) => {
               if let Some(Ok(Token::Property(.., p))) = self.tokens.next() {
@@ -157,15 +158,15 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
         match self.tokens.next() {
             Some(Ok(Token::True(..))) => Ok(true.into()),
             Some(Ok(Token::False(..))) => Ok(false.into()),
-            Some(Ok(Token::Number(.., n))) => Ok(super::FilterValue::Number(n.parse().map_err(|e| errors::user_with_internal(
-              "Failed to parse the number '{n}' which you provided.",
+            Some(Ok(Token::Number(loc, n))) => Ok(super::FilterValue::Number(n.parse().map_err(|e| errors::user_with_internal(
+              &format!("Failed to parse the number '{n}' which you provided at {}.", loc),
               "Please make sure that the number is well formatted. It should be in the form 123, or 123.45.",
               e,
             ))?)),
             Some(Ok(Token::String(.., s))) => Ok(s.replace("\\\"", "\"").replace("\\\\", "\\").into()),
             Some(Ok(Token::Null(..))) => Ok(super::FilterValue::Null),
             Some(Ok(token)) => Err(errors::user(
-                &format!("While parsing your filter, we found an unexpected '{}'.", token),
+                &format!("While parsing your filter, we found an unexpected '{}' at {}.", token, token.location()),
                 "Make sure that you have written a valid filter query.",
             )),
             Some(Err(err)) => Err(err),
