@@ -4,6 +4,7 @@ mod lexer;
 mod parser;
 mod token;
 mod value;
+mod globex;
 
 use std::{fmt::Display, pin::Pin, ptr::NonNull};
 
