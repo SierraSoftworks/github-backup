@@ -25,8 +25,9 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
             let token = result?;
             Err(errors::user(
                 &format!(
-                    "Your filter expression contained an unexpected '{}'.",
-                    token
+                    "Your filter expression contained an unexpected '{}' at {}.",
+                    token,
+                    token.location(),
                 ),
                 "Make sure that you have written a valid filter query.",
             ))
@@ -38,7 +39,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
     fn or(&mut self) -> Result<Expr<'a>, Error> {
         let mut expr = self.and()?;
 
-        while matches!(self.tokens.peek(), Some(Ok(Token::Or))) {
+        while matches!(self.tokens.peek(), Some(Ok(Token::Or(..)))) {
             let token = self.tokens.next().unwrap()?;
             let right = self.and()?;
             expr = Expr::Logical(Box::new(expr), token, Box::new(right));
@@ -50,7 +51,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
     fn and(&mut self) -> Result<Expr<'a>, Error> {
         let mut expr = self.equality()?;
 
-        while matches!(self.tokens.peek(), Some(Ok(Token::And))) {
+        while matches!(self.tokens.peek(), Some(Ok(Token::And(..)))) {
             let token = self.tokens.next().unwrap()?;
             let right = self.equality()?;
             expr = Expr::Logical(Box::new(expr), token, Box::new(right));
@@ -64,7 +65,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 
         if matches!(
             self.tokens.peek(),
-            Some(Ok(Token::Equals) | Ok(Token::NotEquals))
+            Some(Ok(Token::Equals(..)) | Ok(Token::NotEquals(..)))
         ) {
             let token = self.tokens.next().unwrap().unwrap();
             let right = self.comparison()?;
@@ -79,10 +80,10 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 
         if matches!(
             self.tokens.peek(),
-            Some(Ok(Token::In))
-                | Some(Ok(Token::Contains))
-                | Some(Ok(Token::StartsWith))
-                | Some(Ok(Token::EndsWith))
+            Some(Ok(Token::In(..)))
+                | Some(Ok(Token::Contains(..)))
+                | Some(Ok(Token::StartsWith(..)))
+                | Some(Ok(Token::EndsWith(..)))
         ) {
             let token = self.tokens.next().unwrap().unwrap();
             let right = self.unary()?;
@@ -93,7 +94,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
     }
 
     fn unary(&mut self) -> Result<Expr<'a>, Error> {
-        if matches!(self.tokens.peek(), Some(Ok(Token::Not))) {
+        if matches!(self.tokens.peek(), Some(Ok(Token::Not(..)))) {
             let token = self.tokens.next().unwrap().unwrap();
             let right = self.unary()?;
             Ok(Expr::Unary(token, Box::new(right)))
@@ -104,41 +105,41 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 
     fn primary(&mut self) -> Result<Expr<'a>, Error> {
         match self.tokens.peek() {
-            Some(Ok(Token::LeftParen)) => {
-                self.tokens.next();
+            Some(Ok(Token::LeftParen(..))) => {
+                let start = self.tokens.next().unwrap().unwrap();
                 let expr = self.or()?;
-                if let Some(Ok(Token::RightParen)) = self.tokens.next() {
+                if let Some(Ok(Token::RightParen(..))) = self.tokens.next() {
                     Ok(expr)
                 } else {
                     Err(errors::user(
-                        "When attempting to parse a grouped filter expression, we didn't find the closing ')' where we expected to.",
+                        &format!("When attempting to parse a grouped filter expression starting at {}, we didn't find the closing ')' where we expected to.", start.location()),
                         "Make sure that you have balanced your parentheses correctly.",
                     ))
                 }
             }
-            Some(Ok(Token::LeftBracket)) => {
-              self.tokens.next();
-                let mut items = Vec::new();
-                while !matches!(self.tokens.peek(), Some(Ok(Token::RightBracket))) {
-                    items.push(self.literal()?);
-                    if matches!(self.tokens.peek(), Some(Ok(Token::Comma))) {
-                        self.tokens.next();
-                    } else {
-                        break;
-                    }
-                }
+            Some(Ok(Token::LeftBracket(..))) => {
+              let start = self.tokens.next().unwrap().unwrap();
+              let mut items = Vec::new();
+              while !matches!(self.tokens.peek(), Some(Ok(Token::RightBracket(..)))) {
+                  items.push(self.literal()?);
+                  if matches!(self.tokens.peek(), Some(Ok(Token::Comma(..)))) {
+                      self.tokens.next();
+                  } else {
+                      break;
+                  }
+              }
 
-                if let Some(Ok(Token::RightBracket)) = self.tokens.next() {
-                  Ok(Expr::Literal(items.into()))
-                } else {
-                  Err(errors::user(
-                      "When attempting to parse a list filter expression, we didn't find the closing ']' where we expected to.",
-                      "Make sure that you have closed your tuple brackets correctly.",
-                  ))
-                }
+              if let Some(Ok(Token::RightBracket(..))) = self.tokens.next() {
+                Ok(Expr::Literal(items.into()))
+              } else {
+                Err(errors::user(
+                    &format!("When attempting to parse a list filter expression starting at {}, we didn't find the closing ']' where we expected to.", start.location()),
+                    "Make sure that you have closed your tuple brackets correctly.",
+                ))
+              }
             }
             Some(Ok(Token::Property(..))) => {
-              if let Some(Ok(Token::Property(p))) = self.tokens.next() {
+              if let Some(Ok(Token::Property(.., p))) = self.tokens.next() {
                 Ok(Expr::Property(p))
               } else {
                 unreachable!()
@@ -155,17 +156,17 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 
     fn literal(&mut self) -> Result<FilterValue, Error> {
         match self.tokens.next() {
-            Some(Ok(Token::True)) => Ok(true.into()),
-            Some(Ok(Token::False)) => Ok(false.into()),
-            Some(Ok(Token::Number(n))) => Ok(super::FilterValue::Number(n.parse().map_err(|e| errors::user_with_internal(
-              "Failed to parse the number '{n}' which you provided.",
+            Some(Ok(Token::True(..))) => Ok(true.into()),
+            Some(Ok(Token::False(..))) => Ok(false.into()),
+            Some(Ok(Token::Number(loc, n))) => Ok(super::FilterValue::Number(n.parse().map_err(|e| errors::user_with_internal(
+              &format!("Failed to parse the number '{n}' which you provided at {}.", loc),
               "Please make sure that the number is well formatted. It should be in the form 123, or 123.45.",
               e,
             ))?)),
-            Some(Ok(Token::String(s))) => Ok(s.replace("\\\"", "\"").replace("\\\\", "\\").into()),
-            Some(Ok(Token::Null)) => Ok(super::FilterValue::Null),
+            Some(Ok(Token::String(.., s))) => Ok(s.replace("\\\"", "\"").replace("\\\\", "\\").into()),
+            Some(Ok(Token::Null(..))) => Ok(super::FilterValue::Null),
             Some(Ok(token)) => Err(errors::user(
-                &format!("While parsing your filter, we found an unexpected '{}'.", token),
+                &format!("While parsing your filter, we found an unexpected '{}' at {}.", token, token.location()),
                 "Make sure that you have written a valid filter query.",
             )),
             Some(Err(err)) => Err(err),
@@ -181,7 +182,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 mod tests {
     use rstest::rstest;
 
-    use crate::filter::FilterValue;
+    use crate::filter::{location::Loc, FilterValue};
 
     use super::*;
 
@@ -204,9 +205,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("!true", Expr::Unary(Token::Not, Box::new(Expr::Literal(true.into()))))]
-    #[case("!false", Expr::Unary(Token::Not, Box::new(Expr::Literal(false.into()))))]
-    #[case("!\"hello\"", Expr::Unary(Token::Not, Box::new(Expr::Literal("hello".into()))))]
+    #[case("!true", Expr::Unary(Token::Not(Loc::new(1, 1)), Box::new(Expr::Literal(true.into()))))]
+    #[case("!false", Expr::Unary(Token::Not(Loc::new(1, 1)), Box::new(Expr::Literal(false.into()))))]
+    #[case("!\"hello\"", Expr::Unary(Token::Not(Loc::new(1, 1)), Box::new(Expr::Literal("hello".into()))))]
     fn parsing_unary_expressions(#[case] input: &str, #[case] ast: Expr) {
         let tokens = crate::filter::lexer::Scanner::new(input);
         match Parser::parse(tokens.into_iter()) {
@@ -216,10 +217,10 @@ mod tests {
     }
 
     #[rstest]
-    #[case("true == false", Expr::Binary(Box::new(Expr::Literal(true.into())), Token::Equals, Box::new(Expr::Literal(false.into()))))]
-    #[case("true != false", Expr::Binary(Box::new(Expr::Literal(true.into())), Token::NotEquals, Box::new(Expr::Literal(false.into()))))]
-    #[case("\"xyz\" startswith \"x\"", Expr::Binary(Box::new(Expr::Literal("xyz".into())), Token::StartsWith, Box::new(Expr::Literal("x".into()))))]
-    #[case("\"xyz\" endswith \"z\"", Expr::Binary(Box::new(Expr::Literal("xyz".into())), Token::EndsWith, Box::new(Expr::Literal("z".into()))))]
+    #[case("true == false", Expr::Binary(Box::new(Expr::Literal(true.into())), Token::Equals(Loc::new(1, 6)), Box::new(Expr::Literal(false.into()))))]
+    #[case("true != false", Expr::Binary(Box::new(Expr::Literal(true.into())), Token::NotEquals(Loc::new(1, 6)), Box::new(Expr::Literal(false.into()))))]
+    #[case("\"xyz\" startswith \"x\"", Expr::Binary(Box::new(Expr::Literal("xyz".into())), Token::StartsWith(Loc::new(1, 7)), Box::new(Expr::Literal("x".into()))))]
+    #[case("\"xyz\" endswith \"z\"", Expr::Binary(Box::new(Expr::Literal("xyz".into())), Token::EndsWith(Loc::new(1, 7)), Box::new(Expr::Literal("z".into()))))]
     fn parse_comparison_expressions(#[case] input: &str, #[case] ast: Expr) {
         let tokens = crate::filter::lexer::Scanner::new(input);
         match Parser::parse(tokens.into_iter()) {
@@ -229,9 +230,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("true && false", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::And, Box::new(Expr::Literal(false.into()))))]
-    #[case("true || false", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::Or, Box::new(Expr::Literal(false.into()))))]
-    #[case("true && (true || false)", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::And, Box::new(Expr::Logical(Box::new(Expr::Literal(true.into())), Token::Or, Box::new(Expr::Literal(false.into()))))))]
+    #[case("true && false", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::And(Loc::new(1, 6)), Box::new(Expr::Literal(false.into()))))]
+    #[case("true || false", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::Or(Loc::new(1, 6)), Box::new(Expr::Literal(false.into()))))]
+    #[case("true && (true || false)", Expr::Logical(Box::new(Expr::Literal(true.into())), Token::And(Loc::new(1, 6)), Box::new(Expr::Logical(Box::new(Expr::Literal(true.into())), Token::Or(Loc::new(1, 15)), Box::new(Expr::Literal(false.into()))))))]
     fn parsing_logical_expressions(#[case] input: &str, #[case] ast: Expr) {
         let tokens = crate::filter::lexer::Scanner::new(input);
         match Parser::parse(tokens.into_iter()) {
