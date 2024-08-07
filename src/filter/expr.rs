@@ -84,6 +84,8 @@ impl<'a, 'b> ExprVisitor<std::fmt::Result> for ExprPrinter<'a, 'b> {
 mod tests {
     use rstest::rstest;
 
+    use crate::filter::location::Loc;
+
     use super::*;
 
     #[rstest]
@@ -92,7 +94,7 @@ mod tests {
     #[case(
         Expr::Binary(
             Box::new(Expr::Literal("value".into())),
-            Token::In,
+            Token::In(Loc::new(1, 8)),
             Box::new(Expr::Property("test")),
         ),
         "(in \"value\" (property test))"
@@ -100,7 +102,7 @@ mod tests {
     #[case(
         Expr::Logical(
             Box::new(Expr::Literal("value".into())),
-            Token::And,
+            Token::And(Loc::new(1, 8)),
             Box::new(Expr::Property("test")),
         ),
         "(&& \"value\" (property test))"

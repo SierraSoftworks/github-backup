@@ -27,12 +27,12 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
         let left = self.visit_expr(left);
         let right = self.visit_expr(right);
         match operator {
-            Token::Equals => (left == right).into(),
-            Token::NotEquals => (left != right).into(),
-            Token::Contains => left.contains(&right).into(),
-            Token::In => right.contains(&left).into(),
-            Token::StartsWith => left.startswith(&right).into(),
-            Token::EndsWith => left.endswith(&right).into(),
+            Token::Equals(..) => (left == right).into(),
+            Token::NotEquals(..) => (left != right).into(),
+            Token::Contains(..) => left.contains(&right).into(),
+            Token::In(..) => right.contains(&left).into(),
+            Token::StartsWith(..) => left.startswith(&right).into(),
+            Token::EndsWith(..) => left.endswith(&right).into(),
             token => unreachable!("Encountered an unexpected binary operator '{token}'"),
         }
     }
@@ -41,10 +41,10 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
         let left = self.visit_expr(left);
 
         match operator {
-            Token::And if left.is_truthy() => self.visit_expr(right),
-            Token::And => false.into(),
-            Token::Or if !left.is_truthy() => self.visit_expr(right),
-            Token::Or => true.into(),
+            Token::And(..) if left.is_truthy() => self.visit_expr(right),
+            Token::And(..) => false.into(),
+            Token::Or(..) if !left.is_truthy() => self.visit_expr(right),
+            Token::Or(..) => true.into(),
             token => unreachable!("Encountered an unexpected logical operator '{token}'"),
         }
     }
@@ -53,7 +53,7 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
         let right = self.visit_expr(right);
 
         match operator {
-            Token::Not => {
+            Token::Not(..) => {
                 if right.is_truthy() {
                     false.into()
                 } else {

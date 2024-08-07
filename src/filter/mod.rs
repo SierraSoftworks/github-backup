@@ -1,6 +1,7 @@
 mod expr;
 mod interpreter;
 mod lexer;
+mod location;
 mod parser;
 mod token;
 mod value;

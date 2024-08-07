@@ -1,10 +1,12 @@
 use crate::errors::{self, Error};
 
-use super::token::Token;
+use super::{location::Loc, token::Token};
 
 pub struct Scanner<'a> {
     source: &'a str,
     chars: std::iter::Peekable<std::str::CharIndices<'a>>,
+    line: usize,
+    line_start: usize,
 }
 
 impl<'a> Scanner<'a> {
@@ -12,11 +14,18 @@ impl<'a> Scanner<'a> {
         Self {
             source,
             chars: source.char_indices().peekable(),
+            line: 1,
+            line_start: 0,
         }
     }
 
     fn match_char(&mut self, next: char) -> bool {
-        if let Some((_, c)) = self.chars.peek() {
+        if let Some((idx, c)) = self.chars.peek() {
+            if *c == '\n' {
+                self.line += 1;
+                self.line_start = *idx;
+            }
+
             if *c == next {
                 self.chars.next();
                 return true;
@@ -28,8 +37,13 @@ impl<'a> Scanner<'a> {
 
     fn advance_while_fn<F: Fn(usize, char) -> bool>(&mut self, f: F) -> usize {
         let mut length = 0;
-        while let Some((loc, c)) = self.chars.peek() {
-            if !f(*loc, *c) {
+        while let Some((idx, c)) = self.chars.peek() {
+            if *c == '\n' {
+                self.line += 1;
+                self.line_start = *idx;
+            }
+
+            if !f(*idx, *c) {
                 break;
             }
 
@@ -41,10 +55,17 @@ impl<'a> Scanner<'a> {
     }
 
     fn read_string(&mut self, start: usize) -> Result<Token<'a>, Error> {
-        while let Some((loc, c)) = self.chars.next() {
+        while let Some((idx, c)) = self.chars.next() {
             match c {
+                '\n' => {
+                    self.line += 1;
+                    self.line_start = idx;
+                }
                 '"' => {
-                    return Ok(Token::String(&self.source[start + 1..loc]));
+                    return Ok(Token::String(
+                        Loc::new(self.line, 1 + idx - self.line_start),
+                        &self.source[start + 1..idx],
+                    ));
                 }
                 '\\' if self.match_char('"') => {}
                 _ => {}
@@ -73,23 +94,27 @@ impl<'a> Scanner<'a> {
             }
         }
 
-        Ok(Token::Number(&self.source[start..end + 1]))
+        Ok(Token::Number(
+            Loc::new(self.line, 1 + start - self.line_start),
+            &self.source[start..end + 1],
+        ))
     }
 
     fn read_identifier(&mut self, start: usize) -> Result<Token<'a>, Error> {
         let end = start
             + self.advance_while_fn(|_, c| c.is_alphanumeric() || c == '_' || c == '.' || c == '-');
         let lexeme = &self.source[start..end + 1];
+        let location = Loc::new(self.line, 1 + start - self.line_start);
 
         match lexeme {
-            "false" => Ok(Token::False),
-            "null" => Ok(Token::Null),
-            "true" => Ok(Token::True),
-            "contains" => Ok(Token::Contains),
-            "in" => Ok(Token::In),
-            "startswith" => Ok(Token::StartsWith),
-            "endswith" => Ok(Token::EndsWith),
-            lexeme => Ok(Token::Property(lexeme)),
+            "false" => Ok(Token::False(location)),
+            "null" => Ok(Token::Null(location)),
+            "true" => Ok(Token::True(location)),
+            "contains" => Ok(Token::Contains(location)),
+            "in" => Ok(Token::In(location)),
+            "startswith" => Ok(Token::StartsWith(location)),
+            "endswith" => Ok(Token::EndsWith(location)),
+            lexeme => Ok(Token::Property(location, lexeme)),
         }
     }
 }
@@ -98,27 +123,45 @@ impl<'a> Iterator for Scanner<'a> {
     type Item = Result<Token<'a>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((loc, c)) = self.chars.next() {
+        while let Some((idx, c)) = self.chars.next() {
             match c {
                 ' ' | '\t' | '\n' => {}
                 '(' => {
-                    return Some(Ok(Token::LeftParen));
+                    return Some(Ok(Token::LeftParen(Loc::new(
+                        self.line,
+                        1 + idx - self.line_start,
+                    ))));
                 }
                 ')' => {
-                    return Some(Ok(Token::RightParen));
+                    return Some(Ok(Token::RightParen(Loc::new(
+                        self.line,
+                        1 + idx - self.line_start,
+                    ))));
                 }
                 '[' => {
-                    return Some(Ok(Token::LeftBracket));
+                    return Some(Ok(Token::LeftBracket(Loc::new(
+                        self.line,
+                        1 + idx - self.line_start,
+                    ))));
                 }
                 ']' => {
-                    return Some(Ok(Token::RightBracket));
+                    return Some(Ok(Token::RightBracket(Loc::new(
+                        self.line,
+                        1 + idx - self.line_start,
+                    ))));
                 }
                 ',' => {
-                    return Some(Ok(Token::Comma));
+                    return Some(Ok(Token::Comma(Loc::new(
+                        self.line,
+                        1 + idx - self.line_start,
+                    ))));
                 }
                 '&' => {
                     if self.match_char('&') {
-                        return Some(Ok(Token::And));
+                        return Some(Ok(Token::And(Loc::new(
+                            self.line,
+                            1 + idx - self.line_start,
+                        ))));
                     } else {
                         return Some(Err(errors::user(
                           "Filter included an orphaned '&' which is not a valid operator.",
@@ -128,7 +171,10 @@ impl<'a> Iterator for Scanner<'a> {
                 }
                 '|' => {
                     if self.match_char('|') {
-                        return Some(Ok(Token::Or));
+                        return Some(Ok(Token::Or(Loc::new(
+                            self.line,
+                            1 + idx - self.line_start,
+                        ))));
                     } else {
                         return Some(Err(errors::user(
                           "Filter included an orphaned '|' which is not a valid operator.",
@@ -138,7 +184,10 @@ impl<'a> Iterator for Scanner<'a> {
                 }
                 '=' => {
                     if self.match_char('=') {
-                        return Some(Ok(Token::Equals));
+                        return Some(Ok(Token::Equals(Loc::new(
+                            self.line,
+                            1 + idx - self.line_start,
+                        ))));
                     } else {
                         return Some(Err(errors::user(
                           "Filter included an orphaned '=' which is not a valid operator.",
@@ -148,19 +197,25 @@ impl<'a> Iterator for Scanner<'a> {
                 }
                 '!' => {
                     if self.match_char('=') {
-                        return Some(Ok(Token::NotEquals));
+                        return Some(Ok(Token::NotEquals(Loc::new(
+                            self.line,
+                            1 + idx - self.line_start,
+                        ))));
                     } else {
-                        return Some(Ok(Token::Not));
+                        return Some(Ok(Token::Not(Loc::new(
+                            self.line,
+                            1 + idx - self.line_start,
+                        ))));
                     }
                 }
                 '"' => {
-                    return Some(self.read_string(loc));
+                    return Some(self.read_string(idx));
                 }
                 c if c.is_numeric() => {
-                    return Some(self.read_number(loc));
+                    return Some(self.read_number(idx));
                 }
                 _ => {
-                    return Some(self.read_identifier(loc));
+                    return Some(self.read_identifier(idx));
                 }
             }
         }
@@ -173,121 +228,112 @@ impl<'a> Iterator for Scanner<'a> {
 mod tests {
     use super::*;
 
-    fn assert_sequence(filter: &str, tokens: &[Token]) {
-        let mut scanner = Scanner::new(filter);
-        for token in tokens {
-            match scanner.next() {
-                Some(Ok(lexed)) => assert_eq!(lexed, *token),
-                Some(Err(e)) => panic!("Error: {}", e),
-                None => panic!(
-                    "Expected '{}' but got the end of the parse sequence instead",
-                    token
-                ),
-            }
-        }
-        assert!(scanner.next().is_none());
+    macro_rules! assert_sequence {
+      ($filter:expr $(, $item:pat)* $(,)?) => {
+        let mut scanner = Scanner::new($filter);
+        $(
+          match scanner.next() {
+            Some(Ok($item)) => {},
+            Some(Ok(item)) => panic!("Expected '{}' but got '{}'", stringify!($item), item),
+            Some(Err(e)) => panic!("Error: {}", e),
+            None => panic!("Expected '{}' but got the end of the parse sequence instead", stringify!($item)),
+          }
+        )*
+
+        assert!(scanner.next().is_none(), "expected end of sequence, but got an item");
+      };
     }
 
     #[test]
     fn test_empty() {
-        assert_sequence("", &[]);
+        assert_sequence!("");
     }
 
     #[test]
     fn test_whitespace() {
-        assert_sequence("  \t\n", &[]);
+        assert_sequence!("  \t\n");
     }
 
     #[test]
     fn test_parens() {
-        assert_sequence(
+        assert_sequence!(
             "() []",
-            &[
-                Token::LeftParen,
-                Token::RightParen,
-                Token::LeftBracket,
-                Token::RightBracket,
-            ],
+            Token::LeftParen(..),
+            Token::RightParen(..),
+            Token::LeftBracket(..),
+            Token::RightBracket(..),
         );
     }
 
     #[test]
     fn test_logical_operators() {
-        assert_sequence("&& ||", &[Token::And, Token::Or]);
+        assert_sequence!("&& ||", Token::And(..), Token::Or(..));
     }
 
     #[test]
     fn test_comparison_operators() {
-        assert_sequence(
+        assert_sequence!(
             "== != contains in startswith endswith",
-            &[
-                Token::Equals,
-                Token::NotEquals,
-                Token::Contains,
-                Token::In,
-                Token::StartsWith,
-                Token::EndsWith,
-            ],
+            Token::Equals(..),
+            Token::NotEquals(..),
+            Token::Contains(..),
+            Token::In(..),
+            Token::StartsWith(..),
+            Token::EndsWith(..),
         );
     }
 
     #[test]
     fn test_string() {
-        assert_sequence("\"hello world\"", &[Token::String("hello world")]);
+        assert_sequence!("\"hello world\"", Token::String(.., "hello world"));
 
-        assert_sequence(
+        assert_sequence!(
             "\"hello \\\"world\\\"\"",
-            &[Token::String("hello \\\"world\\\"")],
+            Token::String(.., "hello \\\"world\\\""),
         );
     }
 
     #[test]
     fn test_number() {
-        assert_sequence("123.456", &[Token::Number("123.456")]);
+        assert_sequence!("123.456", Token::Number(.., "123.456"));
     }
 
     #[test]
     fn test_identifiers() {
-        assert_sequence(
+        assert_sequence!(
             "true false null foo.bar-baz",
-            &[
-                Token::True,
-                Token::False,
-                Token::Null,
-                Token::Property("foo.bar-baz"),
-            ],
+            Token::True(..),
+            Token::False(..),
+            Token::Null(..),
+            Token::Property(.., "foo.bar-baz"),
         );
     }
 
     #[test]
     fn test_mixed() {
-        assert_sequence(
+        assert_sequence!(
             "foo == \"bar\" && baz != 123",
-            &[
-                Token::Property("foo"),
-                Token::Equals,
-                Token::String("bar"),
-                Token::And,
-                Token::Property("baz"),
-                Token::NotEquals,
-                Token::Number("123"),
-            ],
+            Token::Property(.., "foo"),
+            Token::Equals(..),
+            Token::String(.., "bar"),
+            Token::And(..),
+            Token::Property(.., "baz"),
+            Token::NotEquals(..),
+            Token::Number(.., "123"),
         );
     }
 
     #[test]
     fn test_negation() {
-        assert_sequence(
+        assert_sequence!(
             "repo.public && !release.prerelease && !artifact.source-code",
-            &[
-                Token::Property("repo.public"),
-                Token::And,
-                Token::Not,
-                Token::Property("release.prerelease"),
-                Token::And,
-                Token::Not,
-                Token::Property("artifact.source-code"),
-            ],
+            Token::Property(.., "repo.public"),
+            Token::And(..),
+            Token::Not(..),
+            Token::Property(.., "release.prerelease"),
+            Token::And(..),
+            Token::Not(..),
+            Token::Property(.., "artifact.source-code"),
         );
     }
 }
