@@ -23,7 +23,7 @@ impl<'a> Scanner<'a> {
         if let Some((idx, c)) = self.chars.peek() {
             if *c == '\n' {
                 self.line += 1;
-                self.line_start = *idx;
+                self.line_start = *idx + 1;
             }
 
             if *c == next {
@@ -40,7 +40,7 @@ impl<'a> Scanner<'a> {
         while let Some((idx, c)) = self.chars.peek() {
             if *c == '\n' {
                 self.line += 1;
-                self.line_start = *idx;
+                self.line_start = *idx + 1;
             }
 
             if !f(*idx, *c) {
@@ -60,7 +60,7 @@ impl<'a> Scanner<'a> {
             match c {
                 '\n' => {
                     self.line += 1;
-                    self.line_start = idx;
+                    self.line_start = idx + 1;
                 }
                 '"' => {
                     return Ok(Token::String(start_loc, &self.source[start + 1..idx]));
@@ -126,7 +126,7 @@ impl<'a> Iterator for Scanner<'a> {
                 ' ' | '\t' => {}
                 '\n' => {
                     self.line += 1;
-                    self.line_start = idx;
+                    self.line_start = idx + 1;
                 }
                 '(' => {
                     return Some(Ok(Token::LeftParen(Loc::new(
@@ -236,7 +236,7 @@ mod tests {
         $(
           match scanner.next() {
             Some(Ok($item)) => {},
-            Some(Ok(item)) => panic!("Expected '{}' but got '{}'", stringify!($item), item),
+            Some(Ok(item)) => panic!("Expected '{}' but got '{:?}'", stringify!($item), item),
             Some(Err(e)) => panic!("Error: {}", e),
             None => panic!("Expected '{}' but got the end of the parse sequence instead", stringify!($item)),
           }
@@ -336,6 +336,16 @@ mod tests {
             Token::And(..),
             Token::Not(..),
             Token::Property(.., "artifact.source-code"),
+        );
+    }
+
+    #[test]
+    fn test_location() {
+        assert_sequence!(
+            "true !=\nfalse",
+            Token::True(Loc { line: 1, column: 1 }),
+            Token::NotEquals(Loc { line: 1, column: 6 }),
+            Token::False(Loc { line: 2, column: 1 })
         );
     }
 }

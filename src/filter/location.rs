@@ -2,8 +2,8 @@ use std::fmt::Display;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Hash, Default)]
 pub struct Loc {
-    line: usize,
-    column: usize,
+    pub line: usize,
+    pub column: usize,
 }
 
 impl Loc {
