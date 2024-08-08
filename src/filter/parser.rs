@@ -194,6 +194,7 @@ mod tests {
     #[case("null", FilterValue::Null)]
     #[case("[]", FilterValue::Tuple(vec![]))]
     #[case("[true]", FilterValue::Tuple(vec![true.into()]))]
+    #[case("[\ntrue,\n]", FilterValue::Tuple(vec![true.into()]))]
     #[case("[true, false, \"test\", 123, null]", FilterValue::Tuple(vec![true.into(), false.into(), "test".into(), 123.into(), FilterValue::Null]))]
     fn parsing_literals(#[case] input: &str, #[case] value: FilterValue) {
         let tokens = crate::filter::lexer::Scanner::new(input);
@@ -238,6 +239,40 @@ mod tests {
         match Parser::parse(tokens.into_iter()) {
             Ok(expr) => assert_eq!(ast, expr, "Expected {ast} to be {expr}"),
             Err(e) => panic!("Error: {}", e),
+        }
+    }
+
+    #[rstest]
+    #[case(
+        "true false",
+        "Your filter expression contained an unexpected 'false' at line 1, column 6."
+    )]
+    #[case(
+      "true ==",
+      "We reached the end of your filter expression while waiting for a [true, false, \"string\", number, (group), or property.name]."
+    )]
+    #[case(
+      "(true",
+      "When attempting to parse a grouped filter expression starting at line 1, column 1, we didn't find the closing ')' where we expected to."
+    )]
+    #[case(
+      "[true, false",
+      "When attempting to parse a list filter expression starting at line 1, column 1, we didn't find the closing ']' where we expected to."
+    )]
+    #[case(
+        ")",
+        "While parsing your filter, we found an unexpected ')' at line 1, column 1."
+    )]
+    fn invalid_filters(#[case] input: &str, #[case] message: &str) {
+        let tokens = crate::filter::lexer::Scanner::new(input);
+        match Parser::parse(tokens.into_iter()) {
+            Ok(expr) => panic!("Expected an error, got {:?}", expr),
+            Err(e) => assert!(
+                e.to_string().contains(message),
+                "Expected error message to contain '{}', got '{}'",
+                message,
+                e
+            ),
         }
     }
 }
