@@ -1,4 +1,5 @@
 use clap::Parser;
+use engines::BackupState;
 use errors::Error;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
@@ -77,6 +78,7 @@ async fn run(args: Args) -> Result<(), Error> {
                         tokio::pin!(stream);
                         while let Some(result) = stream.next().await {
                             match result {
+                                Ok((_, BackupState::Skipped)) => {}
                                 Ok((entity, state)) => {
                                     println!(" - {} ({})", entity, state);
                                 }
@@ -93,6 +95,7 @@ async fn run(args: Args) -> Result<(), Error> {
                         tokio::pin!(stream);
                         while let Some(result) = stream.next().await {
                             match result {
+                                Ok((_, BackupState::Skipped)) => {}
                                 Ok((entity, state)) => {
                                     println!(" - {} ({})", entity, state);
                                 }
@@ -109,6 +112,10 @@ async fn run(args: Args) -> Result<(), Error> {
 
                 println!();
             }
+        }
+
+        if CANCEL.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
         }
 
         if let Some(next_run) = next_run {

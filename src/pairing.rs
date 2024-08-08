@@ -85,7 +85,6 @@ impl<
               match policy.filter.matches(&entity) {
                 Ok(true) => {},
                 Ok(false) => {
-                  eprintln!("Skipping backup of {entity} as it did not match the filter {}", &policy.filter);
                   yield Ok((entity, BackupState::Skipped));
                   continue;
                 },
