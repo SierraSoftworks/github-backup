@@ -206,7 +206,7 @@ mod tests {
 
         println!("Using credentials: {}", policy.credentials);
 
-        let stream = source.load(&policy, &CANCEL);
+        let stream = source.load(tracing::info_span!("test"), &policy, &CANCEL);
         tokio::pin!(stream);
 
         while let Some(release) = stream.next().await {

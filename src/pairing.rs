@@ -150,6 +150,7 @@ mod tests {
 
         fn load<'a>(
             &'a self,
+            _span: tracing::Span,
             _policy: &'a BackupPolicy,
             _cancel: &'a AtomicBool,
         ) -> impl Stream<Item = Result<GitRepo, crate::Error>> + 'a {
