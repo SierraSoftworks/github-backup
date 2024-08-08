@@ -77,7 +77,7 @@ impl<
 
               let entity = entity?;
               if self.dry_run {
-                  eprintln!("Would backup {entity} to {}", &policy.to.display());
+                  log::info!("Would backup {entity} to {}", &policy.to.display());
                   yield Ok((entity, BackupState::Skipped));
                   continue;
               }
