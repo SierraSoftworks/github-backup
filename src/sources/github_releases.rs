@@ -54,6 +54,7 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
 
     fn load<'a>(
         &'a self,
+        span: tracing::Span,
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<HttpFile, crate::Error>> + 'a {
@@ -68,6 +69,7 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
         );
 
         async_stream::stream! {
+          let _span = span.entered();
           for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
             if let Err(e) = repo {
               yield Err(e);

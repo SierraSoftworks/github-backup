@@ -1,4 +1,5 @@
 use std::{fmt::Display, path::Path, sync::atomic::AtomicBool};
+use tracing::trace;
 
 use gix::{
     credentials::helper::Action,
@@ -32,13 +33,13 @@ impl BackupEngine<GitRepo> for GitEngine {
         self.ensure_directory(&target_path)?;
 
         if target_path.join(".git").exists() {
-            log::trace!(
+            trace!(
                 "Git directory exists at {}/.git, using fetch mode.",
                 target_path.display()
             );
             self.fetch(entity, &target_path, cancel)
         } else {
-            log::trace!(
+            trace!(
                 "No Git directory found at {}/.git, using clone mode.",
                 target_path.display()
             );
@@ -49,7 +50,7 @@ impl BackupEngine<GitRepo> for GitEngine {
 
 impl GitEngine {
     fn ensure_directory(&self, path: &Path) -> Result<(), errors::Error> {
-        log::trace!("Ensuring directory exists: {}", path.display());
+        trace!("Ensuring directory exists: {}", path.display());
         std::fs::create_dir_all(path).map_err(|e| {
             errors::user_with_internal(
                 &format!("Unable to create backup directory '{}'", path.display()),
@@ -66,7 +67,7 @@ impl GitEngine {
         target: &Path,
         cancel: &AtomicBool,
     ) -> Result<BackupState, errors::Error> {
-        log::trace!(
+        trace!(
             "Cloning repository {} into {}",
             repo.clone_url,
             target.display()
@@ -88,13 +89,13 @@ impl GitEngine {
             }
         }
 
-        log::trace!("Running clone in bare mode (not checking out files)");
+        trace!("Running clone in bare mode (not checking out files)");
         let (repository, _outcome) = fetch.fetch_only(Discard, cancel).map_err(|e| errors::system_with_internal(
             &format!("Unable to clone remote repository '{}'", repo.clone_url),
             "Make sure that your internet connectivity is working correctly, and that your local git configuration is able to clone this repo.",
             e))?;
 
-        log::trace!("Configuring core.bare for Git repository");
+        trace!("Configuring core.bare for Git repository");
         self.update_config(&repository, |c| {
             c.set_raw_value(&gix::config::tree::Core::BARE, "true").map_err(|e| errors::system_with_internal(
                 &format!("Unable to set the 'core.bare' configuration option for repository '{}'", repo.name()),
@@ -119,7 +120,7 @@ impl GitEngine {
         target: &Path,
         cancel: &AtomicBool,
     ) -> Result<BackupState, errors::Error> {
-        log::trace!("Opening repository {}", target.display());
+        trace!("Opening repository {}", target.display());
         let repository = gix::open(target).map_err(|e| {
             errors::user_with_internal(
                 &format!(
@@ -134,7 +135,7 @@ impl GitEngine {
 
         let original_head = repository.head_id().ok();
 
-        log::trace!(
+        trace!(
             "Configuring fetch operation for repository {}",
             target.display()
         );
@@ -163,7 +164,7 @@ impl GitEngine {
                 )
             })?;
 
-        log::trace!("Connecting to remote repository {}", repo.clone_url);
+        trace!("Connecting to remote repository {}", repo.clone_url);
         let mut connection = remote.connect(gix::remote::Direction::Fetch).map_err(|e| {
             errors::user_with_internal(
                 &format!(
@@ -177,7 +178,7 @@ impl GitEngine {
 
         Self::authenticate_connection(&mut connection, &repo.credentials);
 
-        log::trace!(
+        trace!(
             "Running fetch operation for remote repository {}",
             repo.clone_url
         );
@@ -227,7 +228,7 @@ impl GitEngine {
         match creds {
             Credentials::None => {}
             creds => {
-                log::trace!("Configuring credentials for Git connection");
+                trace!("Configuring credentials for Git connection");
                 let creds = creds.clone();
                 connection.set_credentials(move |a| match a {
                     Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {

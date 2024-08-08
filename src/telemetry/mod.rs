@@ -15,10 +15,14 @@ pub fn setup() {
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::filter::LevelFilter::INFO)
-        .with(tracing_subscriber::filter::filter_fn(|meta| {
-            meta.target() != "h2::proto::connection"
-        }))
-        .with(load_output_layer())
+        .with(
+            tracing_subscriber::filter::filter_fn(|meta| meta.target() != "h2::proto::connection")
+                .and_then(load_output_layer()),
+        )
+        .with(
+            tracing_subscriber::filter::filter_fn(|meta| meta.is_event())
+                .and_then(tracing_subscriber::fmt::layer()),
+        )
         .init();
 }
 

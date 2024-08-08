@@ -2,7 +2,7 @@ use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
 use tokio::task::JoinSet;
 use tokio_stream::Stream;
-use tracing::Instrument as _;
+use tracing::{debug, info, Instrument as _};
 
 use crate::{
     engines::{BackupEngine, BackupState},
@@ -66,9 +66,9 @@ impl<
 
           let mut join_set: JoinSet<Result<(E, BackupState), crate::Error>> = JoinSet::new();
 
-          for await entity in self.source.load(policy, cancel) {
+          for await entity in self.source.load(tracing::info_span!("backup.source.load", kind=self.source.kind()), policy, cancel) {
               while join_set.len() >= self.concurrency_limit {
-                log::debug!("Reached concurrency limit of {}, waiting for a task to complete", self.concurrency_limit);
+                debug!("Reached concurrency limit of {}, waiting for a task to complete", self.concurrency_limit);
                 yield join_set.join_next().await.unwrap().unwrap();
               }
 
@@ -78,7 +78,7 @@ impl<
 
               let entity = entity?;
               if self.dry_run {
-                  log::info!("Would backup {entity} to {}", &policy.to.display());
+                  info!("Would backup {entity} to {}", &policy.to.display());
                   yield Ok((entity, BackupState::Skipped));
                   continue;
               }
@@ -100,9 +100,9 @@ impl<
                 let target = self.target.clone();
                 let to = policy.to.clone();
                 join_set.spawn(async move {
-                    log::debug!("Starting backup of {entity}");
-                    target.backup(&entity, to.as_path(), cancel).instrument(span).await.map(|state| (entity, state))
-                });
+                    debug!("Starting backup of {entity}");
+                    target.backup(&entity, to.as_path(), cancel).await.map(|state| (entity, state))
+                }.instrument(span));
               }
           }
 
