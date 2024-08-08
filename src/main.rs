@@ -79,7 +79,9 @@ async fn run(args: Args) -> Result<(), Error> {
                         tokio::pin!(stream);
                         while let Some(result) = stream.next().await {
                             match result {
-                                Ok((_, BackupState::Skipped)) => {}
+                                Ok((entity, BackupState::Skipped)) => {
+                                    log::debug!(" - {} ({})", entity, BackupState::Skipped);
+                                }
                                 Ok((entity, state)) => {
                                     log::info!(" - {} ({})", entity, state);
                                 }
@@ -96,7 +98,9 @@ async fn run(args: Args) -> Result<(), Error> {
                         tokio::pin!(stream);
                         while let Some(result) = stream.next().await {
                             match result {
-                                Ok((_, BackupState::Skipped)) => {}
+                                Ok((entity, BackupState::Skipped)) => {
+                                    log::debug!(" - {} ({})", entity, BackupState::Skipped);
+                                }
                                 Ok((entity, state)) => {
                                     log::info!(" - {} ({})", entity, state);
                                 }

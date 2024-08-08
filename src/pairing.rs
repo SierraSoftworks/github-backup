@@ -68,6 +68,7 @@ impl<
 
           for await entity in self.source.load(policy, cancel) {
               while join_set.len() >= self.concurrency_limit {
+                log::debug!("Reached concurrency limit of {}, waiting for a task to complete", self.concurrency_limit);
                 yield join_set.join_next().await.unwrap().unwrap();
               }
 
@@ -99,6 +100,7 @@ impl<
                 let target = self.target.clone();
                 let to = policy.to.clone();
                 join_set.spawn(async move {
+                    log::debug!("Starting backup of {entity}");
                     target.backup(&entity, to.as_path(), cancel).instrument(span).await.map(|state| (entity, state))
                 });
               }
