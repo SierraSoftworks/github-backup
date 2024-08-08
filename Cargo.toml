@@ -24,6 +24,7 @@ opentelemetry-otlp = { version = "0.17.0", default-features = false, features = 
 ] }
 opentelemetry_sdk = { version = "0.24.1", features = ["rt-tokio"] }
 parse_link_header = "0.3.3"
+pin-project = "1.1.5"
 reqwest = { version = "0.12.5", default-features = false, features = [
   "brotli",
   "charset",
@@ -44,6 +45,7 @@ tokio = { version = "1.39.2", features = [
 ] }
 tokio-stream = "0.1.15"
 tracing = { version = "0.1.40" }
+tracing-futures = { version = "0.2.5", features = ["std-future", "futures-03"] }
 tracing-opentelemetry = "0.25.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 unicase = "2.7.0"

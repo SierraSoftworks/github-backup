@@ -1,5 +1,6 @@
 use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
+use crate::telemetry::StreamExt;
 use tokio::task::JoinSet;
 use tokio_stream::Stream;
 use tracing::{debug, info, Instrument as _};
@@ -66,7 +67,7 @@ impl<
 
           let mut join_set: JoinSet<Result<(E, BackupState), crate::Error>> = JoinSet::new();
 
-          for await entity in self.source.load(tracing::info_span!("backup.source.load", kind=self.source.kind()), policy, cancel) {
+          for await entity in self.source.load(policy, cancel).trace(tracing::info_span!("backup.source.load")) {
               while join_set.len() >= self.concurrency_limit {
                 debug!("Reached concurrency limit of {}, waiting for a task to complete", self.concurrency_limit);
                 yield join_set.join_next().await.unwrap().unwrap();
@@ -150,7 +151,6 @@ mod tests {
 
         fn load<'a>(
             &'a self,
-            _span: tracing::Span,
             _policy: &'a BackupPolicy,
             _cancel: &'a AtomicBool,
         ) -> impl Stream<Item = Result<GitRepo, crate::Error>> + 'a {

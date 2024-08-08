@@ -13,7 +13,6 @@ pub trait BackupSource<T: BackupEntity> {
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error>;
     fn load<'a>(
         &'a self,
-        span: tracing::Span,
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<T, crate::Error>> + 'a;

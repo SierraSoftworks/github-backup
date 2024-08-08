@@ -1,3 +1,7 @@
+mod traced_stream;
+
+pub use traced_stream::*;
+
 use std::collections::HashMap;
 
 use opentelemetry::global;

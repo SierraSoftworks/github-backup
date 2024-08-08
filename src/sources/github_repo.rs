@@ -44,7 +44,6 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
 
     fn load<'a>(
         &'a self,
-        span: tracing::Span,
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<GitRepo, errors::Error>> + 'a {
@@ -59,7 +58,6 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
         );
 
         async_stream::try_stream! {
-          let _span = span.entered();
           for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
             let repo = repo?;
             yield GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
@@ -145,7 +143,7 @@ mod tests {
 
         println!("Using credentials: {}", policy.credentials);
 
-        let stream = source.load(tracing::info_span!("test"), &policy, &CANCEL);
+        let stream = source.load(&policy, &CANCEL);
         tokio::pin!(stream);
 
         while let Some(repo) = stream.next().await {
