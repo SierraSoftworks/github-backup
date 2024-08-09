@@ -1,6 +1,6 @@
 use std::sync::atomic::AtomicBool;
 
-use tokio_stream::{Stream, StreamExt};
+use tokio_stream::Stream;
 
 use crate::{
     entities::GitRepo,
@@ -57,15 +57,14 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
             &policy.from.trim_matches('/')
         );
 
-        self.client
-            .get_paginated::<crate::helpers::github::GitHubRepo>(url, &policy.credentials, cancel)
-            .map(|result| {
-                result.map(|repo: GitHubRepo| {
-                    GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
-                        .with_credentials(policy.credentials.clone())
-                        .with_metadata_source(&repo)
-                })
-            })
+        async_stream::try_stream! {
+          for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
+            let repo = repo?;
+            yield GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
+                .with_credentials(policy.credentials.clone())
+                .with_metadata_source(&repo);
+          }
+        }
     }
 }
 

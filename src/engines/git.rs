@@ -1,4 +1,5 @@
 use std::{fmt::Display, path::Path, sync::atomic::AtomicBool};
+use tracing::trace;
 
 use gix::{
     credentials::helper::Action,
@@ -32,8 +33,16 @@ impl BackupEngine<GitRepo> for GitEngine {
         self.ensure_directory(&target_path)?;
 
         if target_path.join(".git").exists() {
+            trace!(
+                "Git directory exists at {}/.git, using fetch mode.",
+                target_path.display()
+            );
             self.fetch(entity, &target_path, cancel)
         } else {
+            trace!(
+                "No Git directory found at {}/.git, using clone mode.",
+                target_path.display()
+            );
             self.clone(entity, &target_path, cancel)
         }
     }
@@ -41,6 +50,7 @@ impl BackupEngine<GitRepo> for GitEngine {
 
 impl GitEngine {
     fn ensure_directory(&self, path: &Path) -> Result<(), errors::Error> {
+        trace!("Ensuring directory exists: {}", path.display());
         std::fs::create_dir_all(path).map_err(|e| {
             errors::user_with_internal(
                 &format!("Unable to create backup directory '{}'", path.display()),
@@ -57,6 +67,11 @@ impl GitEngine {
         target: &Path,
         cancel: &AtomicBool,
     ) -> Result<BackupState, errors::Error> {
+        trace!(
+            "Cloning repository {} into {}",
+            repo.clone_url,
+            target.display()
+        );
         let mut fetch = gix::prepare_clone(repo.clone_url.as_str(), target).map_err(|e| errors::system_with_internal(
             &format!("Failed to clone the repository {}.", &repo.clone_url),
             "Please make sure that the target directory is writable and that the repository is accessible.",
@@ -74,11 +89,13 @@ impl GitEngine {
             }
         }
 
+        trace!("Running clone in bare mode (not checking out files)");
         let (repository, _outcome) = fetch.fetch_only(Discard, cancel).map_err(|e| errors::system_with_internal(
             &format!("Unable to clone remote repository '{}'", repo.clone_url),
             "Make sure that your internet connectivity is working correctly, and that your local git configuration is able to clone this repo.",
             e))?;
 
+        trace!("Configuring core.bare for Git repository");
         self.update_config(&repository, |c| {
             c.set_raw_value(&gix::config::tree::Core::BARE, "true").map_err(|e| errors::system_with_internal(
                 &format!("Unable to set the 'core.bare' configuration option for repository '{}'", repo.name()),
@@ -103,6 +120,7 @@ impl GitEngine {
         target: &Path,
         cancel: &AtomicBool,
     ) -> Result<BackupState, errors::Error> {
+        trace!("Opening repository {}", target.display());
         let repository = gix::open(target).map_err(|e| {
             errors::user_with_internal(
                 &format!(
@@ -117,6 +135,10 @@ impl GitEngine {
 
         let original_head = repository.head_id().ok();
 
+        trace!(
+            "Configuring fetch operation for repository {}",
+            target.display()
+        );
         let remote = repository.find_fetch_remote(Some(repo.clone_url.as_str().into())).map_err(|e| {
             errors::user_with_internal(
                 &format!(
@@ -142,6 +164,7 @@ impl GitEngine {
                 )
             })?;
 
+        trace!("Connecting to remote repository {}", repo.clone_url);
         let mut connection = remote.connect(gix::remote::Direction::Fetch).map_err(|e| {
             errors::user_with_internal(
                 &format!(
@@ -155,6 +178,10 @@ impl GitEngine {
 
         Self::authenticate_connection(&mut connection, &repo.credentials);
 
+        trace!(
+            "Running fetch operation for remote repository {}",
+            repo.clone_url
+        );
         connection
             .prepare_fetch(Discard, Default::default())
             .map_err(|e| {
@@ -201,6 +228,7 @@ impl GitEngine {
         match creds {
             Credentials::None => {}
             creds => {
+                trace!("Configuring credentials for Git connection");
                 let creds = creds.clone();
                 connection.set_credentials(move |a| match a {
                     Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {

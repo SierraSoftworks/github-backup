@@ -1,8 +1,10 @@
 use clap::Parser;
+use engines::BackupState;
 use errors::Error;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tokio_stream::StreamExt;
+use tracing::{debug, error, info, warn};
 
 #[macro_use]
 mod macros;
@@ -71,39 +73,45 @@ async fn run(args: Args) -> Result<(), Error> {
 
                 match policy.kind.as_str() {
                     "github/repo" => {
-                        println!("Backing up repositories for {}", &policy);
+                        info!("Backing up repositories for {}", &policy);
 
                         let stream = github_repo.run(policy, &CANCEL);
                         tokio::pin!(stream);
                         while let Some(result) = stream.next().await {
                             match result {
+                                Ok((entity, BackupState::Skipped)) => {
+                                    debug!(" - {} ({})", entity, BackupState::Skipped);
+                                }
                                 Ok((entity, state)) => {
-                                    println!(" - {} ({})", entity, state);
+                                    info!(" - {} ({})", entity, state);
                                 }
                                 Err(e) => {
-                                    eprintln!("Error: {}", e);
+                                    warn!("Error: {}", e);
                                 }
                             }
                         }
                     }
                     "github/release" => {
-                        println!("Backing up release artifacts for {}", &policy);
+                        info!("Backing up release artifacts for {}", &policy);
 
                         let stream = github_release.run(policy, &CANCEL);
                         tokio::pin!(stream);
                         while let Some(result) = stream.next().await {
                             match result {
+                                Ok((entity, BackupState::Skipped)) => {
+                                    debug!(" - {} ({})", entity, BackupState::Skipped);
+                                }
                                 Ok((entity, state)) => {
-                                    println!(" - {} ({})", entity, state);
+                                    info!(" - {} ({})", entity, state);
                                 }
                                 Err(e) => {
-                                    eprintln!("Error: {}", e);
+                                    warn!("Error: {}", e);
                                 }
                             }
                         }
                     }
                     _ => {
-                        eprintln!("Unknown policy kind: {}", policy.kind);
+                        error!("Unknown policy kind: {}", policy.kind);
                     }
                 }
 
@@ -111,8 +119,12 @@ async fn run(args: Args) -> Result<(), Error> {
             }
         }
 
+        if CANCEL.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
+        }
+
         if let Some(next_run) = next_run {
-            println!("Next backup scheduled for: {}", next_run);
+            info!("Next backup scheduled for: {}", next_run);
 
             while chrono::Utc::now() < next_run
                 && !CANCEL.load(std::sync::atomic::Ordering::Relaxed)
@@ -131,6 +143,7 @@ async fn run(args: Args) -> Result<(), Error> {
 async fn main() {
     ctrlc::set_handler(|| {
         CANCEL.store(true, std::sync::atomic::Ordering::Relaxed);
+        info!("Received SIGINT, shutting down...");
     })
     .unwrap_or_default();
 
@@ -143,7 +156,7 @@ async fn main() {
     telemetry::shutdown();
 
     if let Err(e) = result {
-        eprintln!("{}", e);
+        error!("{}", e);
         std::process::exit(1);
     }
 }
