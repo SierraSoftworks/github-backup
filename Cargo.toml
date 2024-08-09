@@ -7,7 +7,7 @@ edition = "2021"
 async-stream = "0.3.5"
 async-trait = "0.1.81"
 chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.13", features = ["derive", "string"] }
+clap = { version = "4.5.14", features = ["derive", "string"] }
 croner = "2.0.5"
 ctrlc = "3.4.4"
 gix = { version = "0.64.0", features = [
