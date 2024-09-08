@@ -1,5 +1,6 @@
 use pin_project::pin_project;
 use tokio_stream::Stream;
+use tracing_batteries::prelude::*;
 
 #[pin_project]
 pub struct TracedStream<T: Stream> {

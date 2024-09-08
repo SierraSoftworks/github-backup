@@ -4,7 +4,7 @@ use errors::Error;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tokio_stream::StreamExt;
-use tracing::{debug, error, info, warn};
+use tracing_batteries::prelude::*;
 
 #[macro_use]
 mod macros;
@@ -149,14 +149,16 @@ async fn main() {
 
     let args = Args::parse();
 
-    telemetry::setup();
+    let session = telemetry::setup();
 
     let result = run(args).await;
 
-    telemetry::shutdown();
-
     if let Err(e) = result {
+        session.record_error(&e);
         error!("{}", e);
+        session.shutdown();
         std::process::exit(1);
+    } else {
+        session.shutdown();
     }
 }

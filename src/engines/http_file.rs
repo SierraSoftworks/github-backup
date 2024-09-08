@@ -5,7 +5,7 @@ use std::{
 
 use sha2::Digest;
 use tokio::io::AsyncWriteExt;
-use tracing::instrument;
+use tracing_batteries::prelude::*;
 
 use crate::{
     entities::{Credentials, HttpFile},
@@ -61,7 +61,7 @@ impl HttpFileEngine {
 
 #[async_trait::async_trait]
 impl BackupEngine<HttpFile> for HttpFileEngine {
-    #[instrument(skip(self, cancel, target))]
+    #[tracing::instrument(skip(self, cancel, target))]
     async fn backup<P: AsRef<Path> + Send>(
         &self,
         entity: &HttpFile,

@@ -3,7 +3,7 @@ use std::{marker::PhantomData, sync::atomic::AtomicBool};
 use crate::telemetry::StreamExt;
 use tokio::task::JoinSet;
 use tokio_stream::Stream;
-use tracing::{debug, info, Instrument as _};
+use tracing_batteries::prelude::*;
 
 use crate::{
     engines::{BackupEngine, BackupState},
@@ -97,7 +97,7 @@ impl<
               }
 
               {
-                let span = tracing::info_span!(parent: &span, "backup.step", item=%entity);
+                let span = tracing_batteries::prelude::info_span!(parent: &span, "backup.step", item=%entity);
                 let target = self.target.clone();
                 let to = policy.to.clone();
                 join_set.spawn(async move {

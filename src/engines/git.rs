@@ -1,5 +1,4 @@
 use std::{fmt::Display, path::Path, sync::atomic::AtomicBool};
-use tracing::trace;
 
 use gix::{
     credentials::helper::Action,
@@ -7,7 +6,7 @@ use gix::{
     remote::{fetch::Tags, Connection},
     sec::identity::Account,
 };
-use tracing::instrument;
+use tracing_batteries::prelude::*;
 
 use crate::{
     entities::{Credentials, GitRepo},
@@ -60,7 +59,7 @@ impl GitEngine {
         })
     }
 
-    #[instrument(skip(self, repo, target, cancel), err)]
+    #[tracing::instrument(skip(self, repo, target, cancel), err)]
     fn clone(
         &self,
         repo: &GitRepo,
@@ -113,7 +112,7 @@ impl GitEngine {
         Ok(BackupState::New(Some(format!("at {}", head_id.to_hex()))))
     }
 
-    #[instrument(skip(self, repo, target, cancel), err)]
+    #[tracing::instrument(skip(self, repo, target, cancel), err)]
     fn fetch(
         &self,
         repo: &GitRepo,
