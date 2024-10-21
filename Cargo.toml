@@ -37,7 +37,7 @@ tokio = { version = "1.40.0", features = [
 ] }
 tokio-stream = "0.1.16"
 tracing-batteries = { git = "https://github.com/sierrasoftworks/tracing-batteries-rs.git" }
-unicase = "2.7.0"
+unicase = "2.8.0"
 
 [dev-dependencies]
 tempfile = "3.13.0"
