@@ -10,3 +10,5 @@ backups:
   - kind: github/release
     from: orgs/SierraSoftworks
     filter: repo.public && !release.prerelease && !artifact.source-code
+  - kind: github/star
+    from: users/notheotherben

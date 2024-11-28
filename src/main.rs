@@ -24,6 +24,7 @@ pub use entities::BackupEntity;
 pub use filter::{Filter, FilterValue, Filterable};
 pub use policy::BackupPolicy;
 pub use sources::BackupSource;
+use crate::helpers::github::GitHubKind;
 
 static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -48,7 +49,12 @@ async fn run(args: Args) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
     let github_repo =
-        pairing::Pairing::new(sources::GitHubRepoSource::default(), engines::GitEngine)
+        pairing::Pairing::new(sources::GitHubRepoSource::repo(), engines::GitEngine)
+            .with_dry_run(args.dry_run)
+            .with_concurrency_limit(args.concurrency);
+
+    let github_star =
+        pairing::Pairing::new(sources::GitHubRepoSource::star(), engines::GitEngine)
             .with_dry_run(args.dry_run)
             .with_concurrency_limit(args.concurrency);
 
@@ -72,7 +78,7 @@ async fn run(args: Args) -> Result<(), Error> {
                 let _policy_span = tracing::info_span!("backup.policy", policy = %policy).entered();
 
                 match policy.kind.as_str() {
-                    "github/repo" => {
+                    k if k == GitHubKind::Repo.as_str() => {
                         info!("Backing up repositories for {}", &policy);
 
                         let stream = github_repo.run(policy, &CANCEL);
@@ -91,7 +97,26 @@ async fn run(args: Args) -> Result<(), Error> {
                             }
                         }
                     }
-                    "github/release" => {
+                    k if k == GitHubKind::Star.as_str() => {
+                        info!("Backing up repositories for {}", &policy);
+
+                        let stream = github_star.run(policy, &CANCEL);
+                        tokio::pin!(stream);
+                        while let Some(result) = stream.next().await {
+                            match result {
+                                Ok((entity, BackupState::Skipped)) => {
+                                    debug!(" - {} ({})", entity, BackupState::Skipped);
+                                }
+                                Ok((entity, state)) => {
+                                    info!(" - {} ({})", entity, state);
+                                }
+                                Err(e) => {
+                                    warn!("Error: {}", e);
+                                }
+                            }
+                        }
+                    }
+                    k if k == GitHubKind::Release.as_str()  => {
                         info!("Backing up release artifacts for {}", &policy);
 
                         let stream = github_release.run(policy, &CANCEL);

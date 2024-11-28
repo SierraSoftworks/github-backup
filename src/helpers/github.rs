@@ -568,6 +568,57 @@ impl MetadataSource for GitHubReleaseAsset {
     }
 }
 
+#[allow(dead_code)]
+#[derive(PartialEq)]
+#[derive(Debug)]
+pub enum GitHubKind {
+    Repo,
+    Star,
+    Release,
+}
+
+impl GitHubKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            GitHubKind::Repo => "github/repo",
+            GitHubKind::Star => "github/star",
+            GitHubKind::Release => "github/release",
+        }
+    }
+
+    pub fn api_endpoint(&self) -> &'static str {
+        match self {
+            GitHubKind::Repo => "repos",
+            GitHubKind::Star => "starred",
+            GitHubKind::Release => "repos",
+        }
+    }
+}
+
+impl serde::Serialize for GitHubKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for GitHubKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: &str = serde::Deserialize::deserialize(deserializer)?;
+        match s {
+            "github/repo" => Ok(GitHubKind::Repo),
+            "github/star" => Ok(GitHubKind::Star),
+            "github/release" => Ok(GitHubKind::Release),
+            _ => Err(serde::de::Error::custom(format!("Invalid kind: {}", s))),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -685,5 +736,17 @@ mod tests {
                 password: String::new(),
             })
             .unwrap_or(Credentials::None)
+    }
+
+    #[rstest]
+    #[case("github/repo", GitHubKind::Repo, "repos",)]
+    #[case("github/star", GitHubKind::Star, "starred",)]
+    #[case("github/release", GitHubKind::Release, "repos",)]
+    fn test_deserialize_gh_repo_kind(#[case] kind_str: &str, #[case] expected_kind: GitHubKind, #[case] url: &str) {
+        let kind: GitHubKind = serde_yaml::from_str(&format!("\"{}\"", kind_str)).unwrap();
+
+        assert_eq!(kind, expected_kind);
+        assert_eq!(kind.as_str(), kind_str);
+        assert_eq!(kind.api_endpoint(), url);
     }
 }
