@@ -10,6 +10,7 @@ use crate::{
     BackupSource,
 };
 
+#[derive(Clone)]
 pub struct GitHubRepoSource {
     client: GitHubClient,
     kind: GitHubKind,

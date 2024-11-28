@@ -569,8 +569,7 @@ impl MetadataSource for GitHubReleaseAsset {
 }
 
 #[allow(dead_code)]
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum GitHubKind {
     Repo,
     Star,
