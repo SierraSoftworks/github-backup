@@ -170,7 +170,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case("users/cedi")]
+    #[case("users/notheotherben")]
     #[tokio::test]
     #[cfg_attr(feature = "pure_tests", ignore)]
     async fn get_repos(#[case] target: &str) {
