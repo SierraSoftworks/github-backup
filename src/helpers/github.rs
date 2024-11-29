@@ -343,6 +343,9 @@ impl MetadataSource for GitHubRepo {
         metadata.insert("repo.disabled", self.disabled);
         metadata.insert("repo.default_branch", self.default_branch.as_str());
         metadata.insert("repo.empty", self.size == 0);
+        metadata.insert("repo.template", self.is_template);
+        metadata.insert("repo.forks", self.forks_count as u32);
+        metadata.insert("repo.stargazers", self.stargazers_count as u32);
     }
 }
 

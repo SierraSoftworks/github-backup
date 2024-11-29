@@ -180,13 +180,17 @@ mod tests {
     }
 
     #[rstest]
-    #[case("true", 30)]
+    #[case("true", 31)]
     #[case("false", 0)]
     #[case("repo.fork", 19)]
     #[case("!repo.fork", 11)]
     #[case("repo.empty", 2)]
     #[case("!repo.empty", 28)]
     #[case("!repo.fork && !repo.empty", 11)]
+    #[case("repo.stargazers >= 1", 7)]
+    #[case("repo.forks > 3", 1)]
+    #[case("repo.template", 1)]
+    #[case("!repo.template", 30)]
     #[tokio::test]
     async fn filtering(#[case] filter: &str, #[case] matches: usize) {
         use tokio_stream::StreamExt;

@@ -84,6 +84,10 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
                 | Some(Ok(Token::Contains(..)))
                 | Some(Ok(Token::StartsWith(..)))
                 | Some(Ok(Token::EndsWith(..)))
+                | Some(Ok(Token::GreaterThan(..)))
+                | Some(Ok(Token::GreaterEqual(..)))
+                | Some(Ok(Token::SmallerThan(..)))
+                | Some(Ok(Token::SmallerEqual(..)))
         ) {
             let token = self.tokens.next().unwrap().unwrap();
             let right = self.unary()?;
@@ -222,6 +226,10 @@ mod tests {
     #[case("true != false", Expr::Binary(Box::new(Expr::Literal(true.into())), Token::NotEquals(Loc::new(1, 6)), Box::new(Expr::Literal(false.into()))))]
     #[case("\"xyz\" startswith \"x\"", Expr::Binary(Box::new(Expr::Literal("xyz".into())), Token::StartsWith(Loc::new(1, 7)), Box::new(Expr::Literal("x".into()))))]
     #[case("\"xyz\" endswith \"z\"", Expr::Binary(Box::new(Expr::Literal("xyz".into())), Token::EndsWith(Loc::new(1, 7)), Box::new(Expr::Literal("z".into()))))]
+    #[case("1 < 2", Expr::Binary(Box::new(Expr::Literal(1.0.into())), Token::SmallerThan(Loc::new(1, 2)), Box::new(Expr::Literal(2.0.into()))))]
+    #[case("1 > 2", Expr::Binary(Box::new(Expr::Literal(1.0.into())), Token::GreaterThan(Loc::new(1, 2)), Box::new(Expr::Literal(2.0.into()))))]
+    #[case("1 <= 2", Expr::Binary(Box::new(Expr::Literal(1.0.into())), Token::SmallerEqual(Loc::new(1, 3)), Box::new(Expr::Literal(2.0.into()))))]
+    #[case("1 >= 2", Expr::Binary(Box::new(Expr::Literal(1.0.into())), Token::GreaterEqual(Loc::new(1, 3)), Box::new(Expr::Literal(2.0.into()))))]
     fn parse_comparison_expressions(#[case] input: &str, #[case] ast: Expr) {
         let tokens = crate::filter::lexer::Scanner::new(input);
         match Parser::parse(tokens.into_iter()) {

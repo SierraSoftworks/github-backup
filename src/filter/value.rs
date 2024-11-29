@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display};
+use std::cmp::Ordering;
 
 /// A trait for types which can be filtered by the filter system.
 ///
@@ -88,6 +89,81 @@ impl PartialEq for FilterValue {
                 a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a == b)
             }
             _ => false,
+        }
+    }
+}
+
+impl PartialOrd for FilterValue {
+    fn lt(&self, other: &Self) -> bool {
+        match (self, other) {
+            (FilterValue::Null, FilterValue::Null) => true,
+            (FilterValue::Bool(a), FilterValue::Bool(b)) => a < b,
+            (FilterValue::Number(a), FilterValue::Number(b)) => a < b,
+            (FilterValue::String(a), FilterValue::String(b)) => a < b,
+            (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
+                a.len() < b.len() && a.iter().zip(b.iter()).all(|(a, b)| a < b)
+            }
+            _ => false,
+        }
+    }
+
+    fn le(&self, other: &Self) -> bool {
+        match (self, other) {
+            (FilterValue::Null, FilterValue::Null) => true,
+            (FilterValue::Bool(a), FilterValue::Bool(b)) => a <= b,
+            (FilterValue::Number(a), FilterValue::Number(b)) => a <= b,
+            (FilterValue::String(a), FilterValue::String(b)) => a <= b,
+            (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
+                a.len() <= b.len() && a.iter().zip(b.iter()).all(|(a, b)| a <= b)
+            }
+            _ => false,
+        }
+    }
+
+    fn gt(&self, other: &Self) -> bool {
+        match (self, other) {
+            (FilterValue::Null, FilterValue::Null) => true,
+            (FilterValue::Bool(a), FilterValue::Bool(b)) => a > b,
+            (FilterValue::Number(a), FilterValue::Number(b)) => a > b,
+            (FilterValue::String(a), FilterValue::String(b)) => a > b,
+            (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
+                a.len() > b.len() && a.iter().zip(b.iter()).all(|(a, b)| a > b)
+            }
+            _ => false,
+        }
+    }
+
+    fn ge(&self, other: &Self) -> bool {
+        match (self, other) {
+            (FilterValue::Null, FilterValue::Null) => true,
+            (FilterValue::Bool(a), FilterValue::Bool(b)) => a >= b,
+            (FilterValue::Number(a), FilterValue::Number(b)) => a >= b,
+            (FilterValue::String(a), FilterValue::String(b)) => a >= b,
+            (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
+                a.len() >= b.len() && a.iter().zip(b.iter()).all(|(a, b)| a >= b)
+            }
+            _ => false,
+        }
+    }
+
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (FilterValue::Null, FilterValue::Null) => Some(Ordering::Equal),
+            (FilterValue::Bool(a), FilterValue::Bool(b)) => a.partial_cmp(b),
+            (FilterValue::Number(a), FilterValue::Number(b)) => a.partial_cmp(b),
+            (FilterValue::String(a), FilterValue::String(b)) => a.partial_cmp(b),
+            (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
+                if a.len() != b.len() {
+                    a.len().partial_cmp(&b.len())
+                } else {
+                    a.iter()
+                        .zip(b.iter())
+                        .map(|(x, y)| x.partial_cmp(y))
+                        .find(|&cmp| cmp != Some(Ordering::Equal))
+                        .unwrap_or(Some(Ordering::Equal))
+                }
+            }
+            _ => None, // Return None for non-comparable types
         }
     }
 }
@@ -193,5 +269,30 @@ mod tests {
     #[case(FilterValue::Tuple(vec![FilterValue::Bool(true)]), true)]
     fn test_truthy<V: Into<FilterValue>>(#[case] value: V, #[case] truthy: bool) {
         assert_eq!(value.into().is_truthy(), truthy);
+    }
+
+    #[test]
+    fn test_bool_comparison() {
+        assert!(FilterValue::Bool(false) < FilterValue::Bool(true));
+        assert!(FilterValue::Bool(true) > FilterValue::Bool(false));
+        assert_eq!(FilterValue::Bool(true), FilterValue::Bool(true));
+        assert_eq!(FilterValue::Bool(false), FilterValue::Bool(false));
+    }
+
+    #[test]
+    fn test_number_comparison() {
+        assert!(FilterValue::Number(1.0) < FilterValue::Number(2.0));
+        assert!(FilterValue::Number(2.0) > FilterValue::Number(1.0));
+        assert_eq!(FilterValue::Number(2.0), FilterValue::Number(2.0));
+    }
+
+    #[test]
+    fn test_string_comparison() {
+        assert!(FilterValue::String(String::from("abc")) < FilterValue::String(String::from("xyz")));
+        assert!(FilterValue::String(String::from("xyz")) > FilterValue::String(String::from("abc")));
+        assert_eq!(
+            FilterValue::String(String::from("abc")),
+            FilterValue::String(String::from("abc"))
+        );
     }
 }

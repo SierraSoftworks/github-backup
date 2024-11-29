@@ -33,6 +33,10 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
             Token::In(..) => right.contains(&left).into(),
             Token::StartsWith(..) => left.startswith(&right).into(),
             Token::EndsWith(..) => left.endswith(&right).into(),
+            Token::GreaterThan(..) => (left > right).into(),
+            Token::SmallerThan(..) => (left < right).into(),
+            Token::GreaterEqual(..) => (left >= right).into(),
+            Token::SmallerEqual(..) => (left <= right).into(),
             token => unreachable!("Encountered an unexpected binary operator '{token}'"),
         }
     }
@@ -136,6 +140,25 @@ mod tests {
     #[case("tuple == []", false)]
     #[case("null == null", true)]
     fn equals(#[case] filter: &str, #[case] expected: bool) {
+        assert_eq!(TestFilterable::matches(filter), expected);
+    }
+
+    #[rstest]
+    #[case("2 > 1", true)]
+    #[case("1 > 2", false)]
+    #[case("2 >= 1", true)]
+    #[case("2 >= 2", true)]
+    fn greater_than(#[case] filter: &str, #[case] expected: bool) {
+        assert_eq!(TestFilterable::matches(filter), expected);
+    }
+
+    #[rstest]
+    #[case("1 < 2", true)]
+    #[case("2 < 1", false)]
+    #[case("1 <= 2", true)]
+    #[case("1 <= 1", true)]
+    #[case("2 <= 1", false)]
+    fn smaller(#[case] filter: &str, #[case] expected: bool) {
         assert_eq!(TestFilterable::matches(filter), expected);
     }
 

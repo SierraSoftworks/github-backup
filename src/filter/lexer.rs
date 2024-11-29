@@ -210,6 +210,32 @@ impl<'a> Iterator for Scanner<'a> {
                         ))));
                     }
                 }
+                '>' => {
+                    if self.match_char('=') {
+                        return Some(Ok(Token::GreaterEqual(Loc::new(
+                            self.line,
+                            1 + idx - self.line_start,
+                        ))));
+                    } else {
+                        return Some(Ok(Token::GreaterThan(Loc::new(
+                            self.line,
+                            idx - self.line_start,
+                        ))));
+                    }
+                }
+                '<' => {
+                    if self.match_char('=') {
+                        return Some(Ok(Token::SmallerEqual(Loc::new(
+                            self.line,
+                            1 + idx - self.line_start,
+                        ))));
+                    } else {
+                        return Some(Ok(Token::SmallerThan(Loc::new(
+                            self.line,
+                            idx - self.line_start,
+                        ))));
+                    }
+                }
                 '"' => {
                     return Some(self.read_string(idx));
                 }
@@ -275,13 +301,17 @@ mod tests {
     #[test]
     fn test_comparison_operators() {
         assert_sequence!(
-            "== != contains in startswith endswith",
+            "== != contains in startswith endswith > >= < <=",
             Token::Equals(..),
             Token::NotEquals(..),
             Token::Contains(..),
             Token::In(..),
             Token::StartsWith(..),
             Token::EndsWith(..),
+            Token::GreaterThan(..),
+            Token::GreaterEqual(..),
+            Token::SmallerThan(..),
+            Token::SmallerEqual(..),
         );
     }
 
