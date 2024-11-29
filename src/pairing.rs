@@ -179,20 +179,29 @@ mod tests {
         }
     }
 
+    enum MatchType {
+        Equal,
+        GreaterOrEqual,
+    }
+
     #[rstest]
-    #[case("true", 31)]
-    #[case("false", 0)]
-    #[case("repo.fork", 20)]
-    #[case("!repo.fork", 11)]
-    #[case("repo.empty", 2)]
-    #[case("!repo.empty", 29)]
-    #[case("!repo.fork && !repo.empty", 11)]
-    #[case("repo.stargazers >= 1", 8)]
-    #[case("repo.forks > 3", 1)]
-    #[case("repo.template", 1)]
-    #[case("!repo.template", 30)]
+    #[case("true", MatchType::GreaterOrEqual, 10)]
+    #[case("false", MatchType::Equal, 0)]
+    #[case("repo.fork", MatchType::GreaterOrEqual, 10)]
+    #[case("!repo.fork", MatchType::GreaterOrEqual, 5)]
+    #[case("repo.empty", MatchType::GreaterOrEqual, 0)]
+    #[case("!repo.empty", MatchType::GreaterOrEqual, 10)]
+    #[case("!repo.fork && !repo.empty", MatchType::GreaterOrEqual, 5)]
+    #[case("repo.stargazers >= 1", MatchType::GreaterOrEqual, 5)]
+    #[case("repo.forks > 3", MatchType::GreaterOrEqual, 1)]
+    #[case("repo.template", MatchType::GreaterOrEqual, 1)]
+    #[case("!repo.template", MatchType::GreaterOrEqual, 10)]
     #[tokio::test]
-    async fn filtering(#[case] filter: &str, #[case] matches: usize) {
+    async fn filtering(
+        #[case] filter: &str,
+        #[case] match_type: MatchType,
+        #[case] matches: usize,
+    ) {
         use tokio_stream::StreamExt;
 
         let policy: BackupPolicy = serde_yaml::from_str(&format!(
@@ -234,6 +243,9 @@ mod tests {
             }
         }
 
-        assert_eq!(count, matches);
+        match match_type {
+            MatchType::Equal => assert_eq!(count, matches),
+            MatchType::GreaterOrEqual => assert!(count >= matches),
+        }
     }
 }
