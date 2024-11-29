@@ -98,7 +98,7 @@ async fn run(args: Args) -> Result<(), Error> {
                         }
                     }
                     k if k == GitHubKind::Star.as_str() => {
-                        info!("Backing up repositories for {}", &policy);
+                        info!("Backing up starred repositories for {}", &policy);
 
                         let stream = github_star.run(policy, &CANCEL);
                         tokio::pin!(stream);
