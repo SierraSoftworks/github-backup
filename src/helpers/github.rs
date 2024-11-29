@@ -569,10 +569,13 @@ impl MetadataSource for GitHubReleaseAsset {
 }
 
 #[allow(dead_code)]
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum GitHubKind {
+    #[serde(rename="github/repo")]
     Repo,
+    #[serde(rename="github/star")]
     Star,
+    #[serde(rename="github/release")]
     Release,
 }
 
@@ -590,30 +593,6 @@ impl GitHubKind {
             GitHubKind::Repo => "repos",
             GitHubKind::Star => "starred",
             GitHubKind::Release => "repos",
-        }
-    }
-}
-
-impl serde::Serialize for GitHubKind {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(self.as_str())
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for GitHubKind {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s: &str = serde::Deserialize::deserialize(deserializer)?;
-        match s {
-            "github/repo" => Ok(GitHubKind::Repo),
-            "github/star" => Ok(GitHubKind::Star),
-            "github/release" => Ok(GitHubKind::Release),
-            _ => Err(serde::de::Error::custom(format!("Invalid kind: {}", s))),
         }
     }
 }
