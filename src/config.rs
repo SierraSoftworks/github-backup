@@ -52,6 +52,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
     use rstest::rstest;
 
     #[rstest]
@@ -60,5 +61,24 @@ mod tests {
     fn deserialize_cron(#[case] format: &str) {
         let config: Config = serde_yaml::from_str(&format!("schedule: {}", format)).unwrap();
         assert!(config.schedule.is_some());
+    }
+
+    #[test]
+    fn deserialize_example_config() {
+        let args = Args::parse_from(&[
+            "github-backup",
+            "--config",
+            &format!(
+                "{}",
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("examples")
+                    .join("config.yaml")
+                    .display()
+            ),
+        ]);
+
+        let config: Config = Config::try_from(&args).expect("the example config should be valid");
+        assert!(config.schedule.is_some());
+        assert!(config.backups.iter().len() > 0);
     }
 }
