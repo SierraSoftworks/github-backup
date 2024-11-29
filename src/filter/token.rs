@@ -24,6 +24,10 @@ pub enum Token<'a> {
     In(Loc),
     StartsWith(Loc),
     EndsWith(Loc),
+    GreaterThan(Loc),
+    SmallerThan(Loc),
+    GreaterEqual(Loc),
+    SmallerEqual(Loc),
 
     Not(Loc),
     And(Loc),
@@ -53,6 +57,10 @@ impl Token<'_> {
             Token::In(..) => "in",
             Token::StartsWith(..) => "startswith",
             Token::EndsWith(..) => "endswith",
+            Token::GreaterThan(..) => ">",
+            Token::GreaterEqual(..) => ">=",
+            Token::SmallerThan(..) => "<",
+            Token::SmallerEqual(..) => "<=",
 
             Token::Not(..) => "!",
             Token::And(..) => "&&",
@@ -82,6 +90,10 @@ impl Token<'_> {
             Token::In(loc) => *loc,
             Token::StartsWith(loc) => *loc,
             Token::EndsWith(loc) => *loc,
+            Token::GreaterThan(loc) => *loc,
+            Token::SmallerThan(loc) => *loc,
+            Token::GreaterEqual(loc) => *loc,
+            Token::SmallerEqual(loc) => *loc,
 
             Token::Not(loc) => *loc,
             Token::And(loc) => *loc,
