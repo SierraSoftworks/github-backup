@@ -5,7 +5,7 @@ use tokio_stream::Stream;
 use crate::{
     entities::GitRepo,
     errors::{self},
-    helpers::{github::GitHubRepo, GitHubClient, github::GitHubKind},
+    helpers::{github::GitHubKind, github::GitHubRepo, GitHubClient},
     policy::BackupPolicy,
     BackupSource,
 };
@@ -78,10 +78,7 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
 impl GitHubRepoSource {
     #[allow(dead_code)]
     pub fn with_client(client: GitHubClient, kind: GitHubKind) -> Self {
-        GitHubRepoSource {
-            client: client,
-            kind: kind,
-        }
+        GitHubRepoSource { client, kind }
     }
 
     pub fn repo() -> Self {

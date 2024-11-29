@@ -574,11 +574,11 @@ impl MetadataSource for GitHubReleaseAsset {
 #[allow(dead_code)]
 #[derive(PartialEq, Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum GitHubKind {
-    #[serde(rename="github/repo")]
+    #[serde(rename = "github/repo")]
     Repo,
-    #[serde(rename="github/star")]
+    #[serde(rename = "github/star")]
     Star,
-    #[serde(rename="github/release")]
+    #[serde(rename = "github/release")]
     Release,
 }
 
@@ -720,10 +720,14 @@ mod tests {
     }
 
     #[rstest]
-    #[case("github/repo", GitHubKind::Repo, "repos",)]
-    #[case("github/star", GitHubKind::Star, "starred",)]
-    #[case("github/release", GitHubKind::Release, "repos",)]
-    fn test_deserialize_gh_repo_kind(#[case] kind_str: &str, #[case] expected_kind: GitHubKind, #[case] url: &str) {
+    #[case("github/repo", GitHubKind::Repo, "repos")]
+    #[case("github/star", GitHubKind::Star, "starred")]
+    #[case("github/release", GitHubKind::Release, "repos")]
+    fn test_deserialize_gh_repo_kind(
+        #[case] kind_str: &str,
+        #[case] expected_kind: GitHubKind,
+        #[case] url: &str,
+    ) {
         let kind: GitHubKind = serde_yaml::from_str(&format!("\"{}\"", kind_str)).unwrap();
 
         assert_eq!(kind, expected_kind);

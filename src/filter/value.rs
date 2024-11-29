@@ -1,5 +1,5 @@
-use std::fmt::{Debug, Display};
 use std::cmp::Ordering;
+use std::fmt::{Debug, Display};
 
 /// A trait for types which can be filtered by the filter system.
 ///
@@ -288,8 +288,12 @@ mod tests {
 
     #[test]
     fn test_string_comparison() {
-        assert!(FilterValue::String(String::from("abc")) < FilterValue::String(String::from("xyz")));
-        assert!(FilterValue::String(String::from("xyz")) > FilterValue::String(String::from("abc")));
+        assert!(
+            FilterValue::String(String::from("abc")) < FilterValue::String(String::from("xyz"))
+        );
+        assert!(
+            FilterValue::String(String::from("xyz")) > FilterValue::String(String::from("abc"))
+        );
         assert_eq!(
             FilterValue::String(String::from("abc")),
             FilterValue::String(String::from("abc"))

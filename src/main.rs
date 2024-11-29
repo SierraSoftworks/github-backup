@@ -20,11 +20,11 @@ mod policy;
 mod sources;
 mod telemetry;
 
+use crate::helpers::github::GitHubKind;
 pub use entities::BackupEntity;
 pub use filter::{Filter, FilterValue, Filterable};
 pub use policy::BackupPolicy;
 pub use sources::BackupSource;
-use crate::helpers::github::GitHubKind;
 
 static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -48,15 +48,13 @@ pub struct Args {
 async fn run(args: Args) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
-    let github_repo =
-        pairing::Pairing::new(sources::GitHubRepoSource::repo(), engines::GitEngine)
-            .with_dry_run(args.dry_run)
-            .with_concurrency_limit(args.concurrency);
+    let github_repo = pairing::Pairing::new(sources::GitHubRepoSource::repo(), engines::GitEngine)
+        .with_dry_run(args.dry_run)
+        .with_concurrency_limit(args.concurrency);
 
-    let github_star =
-        pairing::Pairing::new(sources::GitHubRepoSource::star(), engines::GitEngine)
-            .with_dry_run(args.dry_run)
-            .with_concurrency_limit(args.concurrency);
+    let github_star = pairing::Pairing::new(sources::GitHubRepoSource::star(), engines::GitEngine)
+        .with_dry_run(args.dry_run)
+        .with_concurrency_limit(args.concurrency);
 
     let github_release = pairing::Pairing::new(
         sources::GitHubReleasesSource::default(),
@@ -116,7 +114,7 @@ async fn run(args: Args) -> Result<(), Error> {
                             }
                         }
                     }
-                    k if k == GitHubKind::Release.as_str()  => {
+                    k if k == GitHubKind::Release.as_str() => {
                         info!("Backing up release artifacts for {}", &policy);
 
                         let stream = github_release.run(policy, &CANCEL);
