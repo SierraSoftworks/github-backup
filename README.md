@@ -11,8 +11,7 @@ copy of all of your GitHub repositories should the unthinkable happen.
 
 - **Backup Multiple Organizations**, automatically gathering the full list of repositories for
   each organization through the GitHub API.
-- **Backup Starred Repos**, automatically gathering the full list of your starred repositories for your account
-  up and which are not.
+- **Backup Starred Repos**, automatically gathering the full list of your starred repositories
 - **Repo Allowlists/Denylists** to provide fine-grained control over which repositories are backed
   up and which are not.
 - **GitHub Enterprise Support** for those of you running your own GitHub instances and not relying
