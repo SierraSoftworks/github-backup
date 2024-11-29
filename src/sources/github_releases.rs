@@ -6,7 +6,7 @@ use crate::{
     entities::{Credentials, HttpFile},
     errors::{self},
     helpers::{
-        github::{GitHubRelease, GitHubRepo},
+        github::{GitHubRelease, GitHubRepo, GitHubKind},
         GitHubClient,
     },
     policy::BackupPolicy,
@@ -27,7 +27,7 @@ impl GitHubReleasesSource {
 
 impl BackupSource<HttpFile> for GitHubReleasesSource {
     fn kind(&self) -> &str {
-        "github/release"
+      GitHubKind::Release.as_str()
     }
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
@@ -58,13 +58,14 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<HttpFile, crate::Error>> + 'a {
         let url = format!(
-            "{}/{}/repos",
-            policy
-                .properties
-                .get("api_url")
-                .unwrap_or(&"https://api.github.com".to_string())
-                .trim_end_matches('/'),
-            &policy.from.trim_matches('/')
+          "{}/{}/{}",
+          policy
+              .properties
+              .get("api_url")
+              .unwrap_or(&"https://api.github.com".to_string())
+              .trim_end_matches('/'),
+          &policy.from.trim_matches('/'),
+          GitHubKind::Release.api_endpoint()
         );
 
         async_stream::stream! {
