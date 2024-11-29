@@ -622,7 +622,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case("github.repos.0.json", 30)]
+    #[case("github.repos.0.json", 31)]
     fn test_deserialize_repos(#[case] file: &str, #[case] repo_count: usize) {
         let repos: Vec<GitHubRepo> = load_test_file(file).expect("Failed to load test file");
         assert_eq!(repos.len(), repo_count);
