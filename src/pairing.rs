@@ -2,7 +2,7 @@ use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
 use crate::telemetry::StreamExt;
 use tokio::task::JoinSet;
-use tokio_stream::Stream;
+use tokio_stream::{Stream, StreamExt as _};
 use tracing_batteries::prelude::*;
 
 use crate::{
@@ -49,7 +49,23 @@ impl<
         }
     }
 
-    pub fn run<'a>(
+    pub async fn run(
+        &self,
+        policy: &BackupPolicy,
+        handler: &dyn PairingHandler<E>,
+        cancel: &'static AtomicBool,
+    ) {
+        let stream = self.run_all_backups(policy, cancel);
+        tokio::pin!(stream);
+        while let Some(result) = stream.next().await {
+            match result {
+                Ok((entity, state)) => handler.on_complete(entity, state),
+                Err(e) => handler.on_error(e),
+            }
+        }
+    }
+
+    pub fn run_all_backups<'a>(
         &'a self,
         policy: &'a BackupPolicy,
         cancel: &'static AtomicBool,
@@ -112,6 +128,11 @@ impl<
           }
         }
     }
+}
+
+pub trait PairingHandler<E: BackupEntity> {
+    fn on_complete(&self, entity: E, state: BackupState);
+    fn on_error(&self, error: crate::Error);
 }
 
 #[cfg(test)]
@@ -221,7 +242,7 @@ mod tests {
             .with_concurrency_limit(5)
             .with_dry_run(false);
 
-        let stream = pairing.run(&policy, &CANCEL);
+        let stream = pairing.run_all_backups(&policy, &CANCEL);
 
         tokio::pin!(stream);
 

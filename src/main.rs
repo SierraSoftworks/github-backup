@@ -1,9 +1,9 @@
 use clap::Parser;
 use engines::BackupState;
 use errors::Error;
+use pairing::PairingHandler;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
-use tokio_stream::StreamExt;
 use tracing_batteries::prelude::*;
 
 #[macro_use]
@@ -78,60 +78,21 @@ async fn run(args: Args) -> Result<(), Error> {
                 match policy.kind.as_str() {
                     k if k == GitHubKind::Repo.as_str() => {
                         info!("Backing up repositories for {}", &policy);
-
-                        let stream = github_repo.run(policy, &CANCEL);
-                        tokio::pin!(stream);
-                        while let Some(result) = stream.next().await {
-                            match result {
-                                Ok((entity, BackupState::Skipped)) => {
-                                    debug!(" - {} ({})", entity, BackupState::Skipped);
-                                }
-                                Ok((entity, state)) => {
-                                    info!(" - {} ({})", entity, state);
-                                }
-                                Err(e) => {
-                                    warn!("Error: {}", e);
-                                }
-                            }
-                        }
+                        github_repo
+                            .run(policy, &LoggingPairingHandler, &CANCEL)
+                            .await;
                     }
                     k if k == GitHubKind::Star.as_str() => {
                         info!("Backing up starred repositories for {}", &policy);
-
-                        let stream = github_star.run(policy, &CANCEL);
-                        tokio::pin!(stream);
-                        while let Some(result) = stream.next().await {
-                            match result {
-                                Ok((entity, BackupState::Skipped)) => {
-                                    debug!(" - {} ({})", entity, BackupState::Skipped);
-                                }
-                                Ok((entity, state)) => {
-                                    info!(" - {} ({})", entity, state);
-                                }
-                                Err(e) => {
-                                    warn!("Error: {}", e);
-                                }
-                            }
-                        }
+                        github_star
+                            .run(policy, &LoggingPairingHandler, &CANCEL)
+                            .await;
                     }
                     k if k == GitHubKind::Release.as_str() => {
                         info!("Backing up release artifacts for {}", &policy);
-
-                        let stream = github_release.run(policy, &CANCEL);
-                        tokio::pin!(stream);
-                        while let Some(result) = stream.next().await {
-                            match result {
-                                Ok((entity, BackupState::Skipped)) => {
-                                    debug!(" - {} ({})", entity, BackupState::Skipped);
-                                }
-                                Ok((entity, state)) => {
-                                    info!(" - {} ({})", entity, state);
-                                }
-                                Err(e) => {
-                                    warn!("Error: {}", e);
-                                }
-                            }
-                        }
+                        github_release
+                            .run(policy, &LoggingPairingHandler, &CANCEL)
+                            .await;
                     }
                     _ => {
                         error!("Unknown policy kind: {}", policy.kind);
@@ -160,6 +121,18 @@ async fn run(args: Args) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+pub struct LoggingPairingHandler;
+
+impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
+    fn on_complete(&self, entity: E, state: BackupState) {
+        info!(" - {} ({})", entity, state);
+    }
+
+    fn on_error(&self, error: crate::Error) {
+        warn!("Error: {}", error);
+    }
 }
 
 #[tokio::main]
