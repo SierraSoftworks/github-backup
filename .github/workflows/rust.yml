@@ -207,6 +207,10 @@ jobs:
         with:
           name: github-backup-${{ env.PLATFORM_PAIR }}
 
+      - name: mark artifact as executable
+        run: |
+          chmod +x github-backup
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
