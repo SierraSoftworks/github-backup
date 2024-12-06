@@ -59,7 +59,7 @@ jobs:
         run: grcov . --binary-path target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../**' --ignore '/*' --ignore 'C:/' -o ./lcov.info
 
       - name: codecov upload
-        uses: codecov/codecov-action@v5.0.7
+        uses: codecov/codecov-action@v5.1.1
         with:
           files: ./lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
