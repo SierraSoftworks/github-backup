@@ -20,7 +20,7 @@ mod policy;
 mod sources;
 mod telemetry;
 
-use crate::helpers::github::GitHubKind;
+use crate::helpers::github::GitHubArtifactKind;
 pub use entities::BackupEntity;
 pub use filter::{Filter, FilterValue, Filterable};
 pub use policy::BackupPolicy;
@@ -76,19 +76,19 @@ async fn run(args: Args) -> Result<(), Error> {
                 let _policy_span = tracing::info_span!("backup.policy", policy = %policy).entered();
 
                 match policy.kind.as_str() {
-                    k if k == GitHubKind::Repo.as_str() => {
+                    k if k == GitHubArtifactKind::Repo.as_str() => {
                         info!("Backing up repositories for {}", &policy);
                         github_repo
                             .run(policy, &LoggingPairingHandler, &CANCEL)
                             .await;
                     }
-                    k if k == GitHubKind::Star.as_str() => {
+                    k if k == GitHubArtifactKind::Star.as_str() => {
                         info!("Backing up starred repositories for {}", &policy);
                         github_star
                             .run(policy, &LoggingPairingHandler, &CANCEL)
                             .await;
                     }
-                    k if k == GitHubKind::Release.as_str() => {
+                    k if k == GitHubArtifactKind::Release.as_str() => {
                         info!("Backing up release artifacts for {}", &policy);
                         github_release
                             .run(policy, &LoggingPairingHandler, &CANCEL)
