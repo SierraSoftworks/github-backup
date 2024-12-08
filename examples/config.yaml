@@ -1,14 +1,31 @@
 schedule: "0 * * * *"
 
 backups:
+  # Backup all the repositories that the provided credentials have access to
+  - kind: github/repo
+    from: user
+    to: /backup/github
+    credentials: !Token your_access_token
+
+  # Backup the repository from "notheotherben" called "nix-env"
   - kind: github/repo
     from: users/notheotherben
+    to: /backup/github
     filter: repo.name == "nix-env"
+
+  # Backup public, non-forked, repositories called "git-tool" or "grey" from the "SierraSoftworks" organization
   - kind: github/repo
     from: orgs/SierraSoftworks
+    to: /backup/github
     filter: repo.public && !repo.fork && repo.name in ["git-tool", "grey"]
+
+  # Backup production non-source releases from the "SierraSoftworks" organization
   - kind: github/release
     from: orgs/SierraSoftworks
+    to: /backup/github
     filter: repo.public && !release.prerelease && !artifact.source-code
+
+  # Backup all repositories that the user `notheotherben` has starred
   - kind: github/star
     from: users/notheotherben
+    to: /backup/github

@@ -40,11 +40,17 @@ schedule: "0 * * * *"
 
 backups:
   - kind: github/repo
-    from: users/my-user
+    from: user # The user associated with the provided credentials
     to: /backups/personal
     credentials: !UsernamePassword:
       username: "<your username>"
       password: "<your personal access token>"
+    properties:
+      query: "affiliation=owner" # Additional query parameters to pass to GitHub when fetching repositories
+  - kind: github/repo
+    from: "users/another-user"
+    to: /backups/friend
+    credentials: !Token "your_github_token"
   - kind: github/repo
     from: "orgs/my-org"
     to: /backups/work

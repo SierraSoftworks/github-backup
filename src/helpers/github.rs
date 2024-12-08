@@ -573,7 +573,7 @@ impl MetadataSource for GitHubReleaseAsset {
 
 #[allow(dead_code)]
 #[derive(PartialEq, Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub enum GitHubKind {
+pub enum GitHubArtifactKind {
     #[serde(rename = "github/repo")]
     Repo,
     #[serde(rename = "github/star")]
@@ -582,20 +582,20 @@ pub enum GitHubKind {
     Release,
 }
 
-impl GitHubKind {
+impl GitHubArtifactKind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            GitHubKind::Repo => "github/repo",
-            GitHubKind::Star => "github/star",
-            GitHubKind::Release => "github/release",
+            GitHubArtifactKind::Repo => "github/repo",
+            GitHubArtifactKind::Star => "github/star",
+            GitHubArtifactKind::Release => "github/release",
         }
     }
 
     pub fn api_endpoint(&self) -> &'static str {
         match self {
-            GitHubKind::Repo => "repos",
-            GitHubKind::Star => "starred",
-            GitHubKind::Release => "repos",
+            GitHubArtifactKind::Repo => "repos",
+            GitHubArtifactKind::Star => "starred",
+            GitHubArtifactKind::Release => "repos",
         }
     }
 }
@@ -720,15 +720,15 @@ mod tests {
     }
 
     #[rstest]
-    #[case("github/repo", GitHubKind::Repo, "repos")]
-    #[case("github/star", GitHubKind::Star, "starred")]
-    #[case("github/release", GitHubKind::Release, "repos")]
+    #[case("github/repo", GitHubArtifactKind::Repo, "repos")]
+    #[case("github/star", GitHubArtifactKind::Star, "starred")]
+    #[case("github/release", GitHubArtifactKind::Release, "repos")]
     fn test_deserialize_gh_repo_kind(
         #[case] kind_str: &str,
-        #[case] expected_kind: GitHubKind,
+        #[case] expected_kind: GitHubArtifactKind,
         #[case] url: &str,
     ) {
-        let kind: GitHubKind = serde_yaml::from_str(&format!("\"{}\"", kind_str)).unwrap();
+        let kind: GitHubArtifactKind = serde_yaml::from_str(&format!("\"{}\"", kind_str)).unwrap();
 
         assert_eq!(kind, expected_kind);
         assert_eq!(kind.as_str(), kind_str);

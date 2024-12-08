@@ -5,7 +5,7 @@ use tokio_stream::Stream;
 use crate::{
     entities::GitRepo,
     errors::{self},
-    helpers::{github::GitHubKind, github::GitHubRepo, GitHubClient},
+    helpers::{github::GitHubArtifactKind, github::GitHubRepo, GitHubClient},
     policy::BackupPolicy,
     BackupSource,
 };
@@ -13,12 +13,12 @@ use crate::{
 #[derive(Clone)]
 pub struct GitHubRepoSource {
     client: GitHubClient,
-    kind: GitHubKind,
+    artifact_kind: GitHubArtifactKind,
 }
 
 impl BackupSource<GitRepo> for GitHubRepoSource {
     fn kind(&self) -> &str {
-        self.kind.as_str()
+        self.artifact_kind.as_str()
     }
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
@@ -34,17 +34,19 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
                 "Please provide a target field in the policy using the format 'users/<username>' or 'orgs/<orgname>'.",
             )),
 
-            t if !t.starts_with("users/") && !t.starts_with("orgs/") => Err(errors::user(
-                &format!("The target field '{target}' does not include a valid user or org specifier."),
-                "Please specify either 'users/<username>' or 'orgs/<orgname>' as your target.",
-            )),
+            t if t == "user" => Ok(()),
+            t if t.starts_with("users/") => Ok(()),
 
-            t if t.starts_with("orgs/") && self.kind == GitHubKind::Star => Err(errors::user(
+            t if t.starts_with("orgs/") && self.artifact_kind == GitHubArtifactKind::Star => Err(errors::user(
                 &format!("The target field '{target}' specifies an org which is not support for kind 'github/star'."),
                 "Please specify either 'users/<username>' as your target when using 'github/star' as kind.",
             )),
+            t if t.starts_with("orgs/") => Ok(()),
 
-            _ => Ok(()),
+            _ => Err(errors::user(
+                &format!("The target field '{target}' does not include a valid user or org specifier."),
+                "Please specify either 'user', 'users/<username>' or 'orgs/<orgname>' as your target.",
+            )),
         }
     }
 
@@ -54,14 +56,15 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<GitRepo, errors::Error>> + 'a {
         let url = format!(
-            "{}/{}/{}",
+            "{}/{}/{}?{}",
             policy
                 .properties
                 .get("api_url")
                 .unwrap_or(&"https://api.github.com".to_string())
                 .trim_end_matches('/'),
             &policy.from.trim_matches('/'),
-            self.kind.api_endpoint()
+            self.artifact_kind.api_endpoint(),
+            policy.properties.get("query").unwrap_or(&"".to_string())
         );
 
         async_stream::try_stream! {
@@ -77,21 +80,24 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
 
 impl GitHubRepoSource {
     #[allow(dead_code)]
-    pub fn with_client(client: GitHubClient, kind: GitHubKind) -> Self {
-        GitHubRepoSource { client, kind }
+    pub fn with_client(client: GitHubClient, kind: GitHubArtifactKind) -> Self {
+        GitHubRepoSource {
+            client,
+            artifact_kind: kind,
+        }
     }
 
     pub fn repo() -> Self {
         GitHubRepoSource {
             client: GitHubClient::default(),
-            kind: GitHubKind::Repo,
+            artifact_kind: GitHubArtifactKind::Repo,
         }
     }
 
     pub fn star() -> Self {
         GitHubRepoSource {
             client: GitHubClient::default(),
-            kind: GitHubKind::Star,
+            artifact_kind: GitHubArtifactKind::Star,
         }
     }
 }
@@ -102,7 +108,7 @@ mod tests {
 
     use rstest::rstest;
 
-    use crate::{helpers::github::GitHubKind, BackupPolicy, BackupSource};
+    use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
 
     use super::GitHubRepoSource;
 
@@ -110,15 +116,22 @@ mod tests {
 
     #[test]
     fn check_name_repo() {
-        assert_eq!(GitHubRepoSource::repo().kind(), GitHubKind::Repo.as_str());
+        assert_eq!(
+            GitHubRepoSource::repo().kind(),
+            GitHubArtifactKind::Repo.as_str()
+        );
     }
 
     #[test]
     fn check_name_star() {
-        assert_eq!(GitHubRepoSource::star().kind(), GitHubKind::Star.as_str());
+        assert_eq!(
+            GitHubRepoSource::star().kind(),
+            GitHubArtifactKind::Star.as_str()
+        );
     }
 
     #[rstest]
+    #[case("user", true)]
     #[case("users/notheotherben", true)]
     #[case("orgs/sierrasoftworks", true)]
     #[case("notheotherben", false)]
@@ -145,6 +158,7 @@ mod tests {
     }
 
     #[rstest]
+    #[case("user", true)]
     #[case("users/notheotherben", true)]
     #[case("orgs/sierrasoftworks", false)]
     fn validation_stars(#[case] from: &str, #[case] success: bool) {
