@@ -41,6 +41,6 @@ entity!(HttpFile(url: U => String) {
     with_content_type => content_type: Option<String>,
 });
 
-entity!(GitRepo(clone_url: U => String) {
+entity!(GitRepo(clone_url: U => String, refspecs: R => Option<Vec<String>>) {
     with_credentials => credentials: Credentials,
 });

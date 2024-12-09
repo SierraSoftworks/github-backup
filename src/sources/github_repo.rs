@@ -86,13 +86,19 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
         async_stream::try_stream! {
           if matches!(target, GitHubRepoSourceKind::Repo(_)) {
             let repo = self.client.get::<GitHubRepo>(url, &policy.credentials, cancel).await?;
-            yield GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
+            yield GitRepo::new(
+              repo.full_name.as_str(),
+              repo.clone_url.as_str(),
+              policy.properties.get("refspecs").map(|r| r.split(",").map(|r| r.to_string()).collect::<Vec<String>>()))
                 .with_credentials(policy.credentials.clone())
                 .with_metadata_source(&repo);
           } else {
             for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
               let repo = repo?;
-              yield GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
+              yield GitRepo::new(
+                repo.full_name.as_str(),
+                repo.clone_url.as_str(),
+                policy.properties.get("refspecs").map(|r| r.split(",").map(|r| r.to_string()).collect::<Vec<String>>()))
                   .with_credentials(policy.credentials.clone())
                   .with_metadata_source(&repo);
             }

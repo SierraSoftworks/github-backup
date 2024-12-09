@@ -134,6 +134,8 @@ impl GitEngine {
 
         let original_head = repository.head_id().ok();
 
+        let default_refspecs = vec!["+refs/heads/*:refs/remotes/origin/*".to_string()];
+
         trace!(
             "Configuring fetch operation for repository {}",
             target.display()
@@ -150,7 +152,12 @@ impl GitEngine {
             )
         })?
             .with_fetch_tags(Tags::All)
-            .with_refspecs(["+refs/heads/*:refs/remotes/origin/*"], gix::remote::Direction::Fetch)
+            .with_refspecs(
+              repo.refspecs.as_ref().unwrap_or(&default_refspecs)
+                .iter()
+                .map(|s| gix::bstr::BString::from(s.as_str()))
+                .collect::<Vec<gix::bstr::BString>>(),
+              gix::remote::Direction::Fetch)
             .map_err(|e| {
                 errors::user_with_internal(
                     &format!(
@@ -319,6 +326,7 @@ mod tests {
         let repo = GitRepo::new(
             "SierraSoftworks/grey",
             "https://github.com/sierrasoftworks/grey.git",
+            None,
         );
 
         let state1 = agent
