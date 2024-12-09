@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn deserialize_example_config() {
-        let args = Args::parse_from(&[
+        let args = Args::parse_from([
             "github-backup",
             "--config",
             &format!(

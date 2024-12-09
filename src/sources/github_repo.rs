@@ -29,11 +29,11 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
         let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
 
         match target {
-            GitHubRepoSourceKind::Org(_) if self.artifact_kind == GitHubArtifactKind::Star => return Err(errors::user(
+            GitHubRepoSourceKind::Org(_) if self.artifact_kind == GitHubArtifactKind::Star => Err(errors::user(
               "You cannot use an organization as the source for a starred repository backup.",
               "Either use `from: user` or `from: users/<name>` when using a github/stars source kind.",
             )),
-            GitHubRepoSourceKind::Repo(_) if self.artifact_kind == GitHubArtifactKind::Star => return Err(errors::user(
+            GitHubRepoSourceKind::Repo(_) if self.artifact_kind == GitHubArtifactKind::Star => Err(errors::user(
               "You cannot use a repository as the source for a starred repository backup.",
               "Either use `from: user` or `from: users/<name>` when using a github/stars source kind.",
             )),
@@ -83,13 +83,18 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
 
         tracing_batteries::prelude::debug!("Calling {} to fetch repos", &url);
 
+        let refspecs = policy
+            .properties
+            .get("refspecs")
+            .map(|r| r.split(',').map(|r| r.to_string()).collect::<Vec<String>>());
+
         async_stream::try_stream! {
           if matches!(target, GitHubRepoSourceKind::Repo(_)) {
             let repo = self.client.get::<GitHubRepo>(url, &policy.credentials, cancel).await?;
             yield GitRepo::new(
               repo.full_name.as_str(),
               repo.clone_url.as_str(),
-              policy.properties.get("refspecs").map(|r| r.split(",").map(|r| r.to_string()).collect::<Vec<String>>()))
+              refspecs.clone())
                 .with_credentials(policy.credentials.clone())
                 .with_metadata_source(&repo);
           } else {
@@ -98,7 +103,7 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
               yield GitRepo::new(
                 repo.full_name.as_str(),
                 repo.clone_url.as_str(),
-                policy.properties.get("refspecs").map(|r| r.split(",").map(|r| r.to_string()).collect::<Vec<String>>()))
+                refspecs.clone())
                   .with_credentials(policy.credentials.clone())
                   .with_metadata_source(&repo);
             }
