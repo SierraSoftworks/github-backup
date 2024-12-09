@@ -29,3 +29,12 @@ backups:
   - kind: github/star
     from: users/notheotherben
     to: /backup/github
+
+  - kind: github/repo
+    from: repos/SierraSoftworks/github-backup
+    to: /backup/github
+
+  - kind: github/release
+    from: repos/SierraSoftworks/github-backup
+    to: /backup/github-releases
+    filter: '!release.prerelease'

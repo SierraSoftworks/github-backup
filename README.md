@@ -47,18 +47,33 @@ backups:
       password: "<your personal access token>"
     properties:
       query: "affiliation=owner" # Additional query parameters to pass to GitHub when fetching repositories
+
   - kind: github/repo
     from: "users/another-user"
     to: /backups/friend
     credentials: !Token "your_github_token"
+
   - kind: github/repo
     from: "orgs/my-org"
     to: /backups/work
     filter: '!repo.fork && repo.name contains "awesome"'
+
   - kind: github/release
     from: "orgs/my-org"
     to: /backups/releases
     filter: '!release.prerelease && !asset.source-code'
+
+  # You can also backup single repositories directly if you wish
+  - kind: github/repo
+    from: "repos/my-org/repo"
+    to: /backups/work
+
+  # This is particularly useful for backing up release artifacts for
+  # specific projects.
+  - kind: github/release
+    from: "repos/my-org/repo"
+    to: /backups/releases
+    filter: '!release.prerelease'
 ```
 
 ### OpenTelemetry Reporting

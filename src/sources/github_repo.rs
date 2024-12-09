@@ -5,7 +5,11 @@ use tokio_stream::Stream;
 use crate::{
     entities::GitRepo,
     errors::{self},
-    helpers::{github::GitHubArtifactKind, github::GitHubRepo, GitHubClient},
+    helpers::{
+        github::GitHubRepo,
+        github::{GitHubArtifactKind, GitHubRepoSourceKind},
+        GitHubClient,
+    },
     policy::BackupPolicy,
     BackupSource,
 };
@@ -22,31 +26,39 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
     }
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
-        let target = policy.from.as_str().trim_matches('/');
+        let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
+
         match target {
-            "" => Err(errors::user(
-                "The target field is required for GitHub repository backups.",
-                "Please provide a target field in the policy using the format 'users/<username>' or 'orgs/<orgname>'.",
+            GitHubRepoSourceKind::Org(_) if self.artifact_kind == GitHubArtifactKind::Star => return Err(errors::user(
+              "You cannot use an organization as the source for a starred repository backup.",
+              "Either use `from: user` or `from: users/<name>` when using a github/stars source kind.",
             )),
-
-            t if t.chars().filter(|c| *c == '/').count() > 1 => Err(errors::user(
-                &format!("The target field '{target}' contains too many segments."),
-                "Please provide a target field in the policy using the format 'users/<username>' or 'orgs/<orgname>'.",
+            GitHubRepoSourceKind::Repo(_) if self.artifact_kind == GitHubArtifactKind::Star => return Err(errors::user(
+              "You cannot use a repository as the source for a starred repository backup.",
+              "Either use `from: user` or `from: users/<name>` when using a github/stars source kind.",
             )),
-
-            t if t == "user" => Ok(()),
-            t if t.starts_with("users/") => Ok(()),
-
-            t if t.starts_with("orgs/") && self.artifact_kind == GitHubArtifactKind::Star => Err(errors::user(
-                &format!("The target field '{target}' specifies an org which is not support for kind 'github/star'."),
-                "Please specify either 'users/<username>' as your target when using 'github/star' as kind.",
+            GitHubRepoSourceKind::User(u) if u.is_empty() => Err(errors::user(
+                &format!(
+                    "Your 'from' target '{}' is not a valid GitHub username.",
+                    policy.from.as_str()
+                ),
+                "Make sure you provide a valid GitHub username in the 'from' field of your policy.",
             )),
-            t if t.starts_with("orgs/") => Ok(()),
-
-            _ => Err(errors::user(
-                &format!("The target field '{target}' does not include a valid user or org specifier."),
-                "Please specify either 'user', 'users/<username>' or 'orgs/<orgname>' as your target.",
+            GitHubRepoSourceKind::Org(org) if org.is_empty() => Err(errors::user(
+                &format!(
+                    "Your 'from' target '{}' is not a valid GitHub organization name.",
+                    policy.from.as_str()
+                ),
+                "Make sure you provide a valid GitHub organization name in the 'from' field of your policy.",
             )),
+            GitHubRepoSourceKind::Repo(repo) if repo.is_empty() => Err(errors::user(
+                &format!(
+                    "Your 'from' target '{}' is not a fully qualified GitHub repository name.",
+                    policy.from.as_str()
+                ),
+                "Make sure you provide a fully qualified GitHub repository name in the 'from' field of your policy.",
+            )),
+            _ => Ok(()),
         }
     }
 
@@ -55,24 +67,35 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<GitRepo, errors::Error>> + 'a {
+        let target: GitHubRepoSourceKind = policy.from.as_str().parse().unwrap();
         let url = format!(
-            "{}/{}/{}?{}",
+            "{}/{}?{}",
             policy
                 .properties
                 .get("api_url")
                 .unwrap_or(&"https://api.github.com".to_string())
                 .trim_end_matches('/'),
-            &policy.from.trim_matches('/'),
-            self.artifact_kind.api_endpoint(),
+            target.api_endpoint(self.artifact_kind),
             policy.properties.get("query").unwrap_or(&"".to_string())
-        );
+        )
+        .trim_end_matches('?')
+        .to_string();
+
+        tracing_batteries::prelude::debug!("Calling {} to fetch repos", &url);
 
         async_stream::try_stream! {
-          for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
-            let repo = repo?;
+          if matches!(target, GitHubRepoSourceKind::Repo(_)) {
+            let repo = self.client.get::<GitHubRepo>(url, &policy.credentials, cancel).await?;
             yield GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
                 .with_credentials(policy.credentials.clone())
                 .with_metadata_source(&repo);
+          } else {
+            for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
+              let repo = repo?;
+              yield GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
+                  .with_credentials(policy.credentials.clone())
+                  .with_metadata_source(&repo);
+            }
           }
         }
     }
