@@ -64,6 +64,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(feature = "pure_tests", ignore)]
     fn deserialize_example_config() {
         let args = Args::parse_from([
             "github-backup",
