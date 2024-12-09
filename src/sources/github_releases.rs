@@ -6,7 +6,7 @@ use crate::{
     entities::{Credentials, HttpFile},
     errors::{self},
     helpers::{
-        github::{GitHubArtifactKind, GitHubRelease, GitHubRepo},
+        github::{GitHubArtifactKind, GitHubRelease, GitHubRepo, GitHubRepoSourceKind},
         GitHubClient,
     },
     policy::BackupPolicy,
@@ -25,29 +25,103 @@ impl GitHubReleasesSource {
     }
 }
 
+impl GitHubReleasesSource {
+    fn load_releases<'a>(
+        &'a self,
+        policy: &'a BackupPolicy,
+        repo: &'a GitHubRepo,
+        cancel: &'a AtomicBool,
+    ) -> impl Stream<Item = Result<HttpFile, crate::Error>> + 'a {
+        async_stream::stream! {
+          if !repo.has_downloads {
+            return;
+          }
+
+          let releases_url = format!("{}/releases", repo.url);
+
+          for await release in self.client.get_paginated::<GitHubRelease>(releases_url, &policy.credentials, cancel) {
+            if let Err(e) = release {
+              yield Err(e);
+              continue;
+            }
+
+            let release: GitHubRelease = release.unwrap();
+
+            if let Some(tarball_url) = &release.tarball_url {
+              yield Ok(HttpFile::new(format!("{}/{}/source.tar.gz", &repo.full_name, &release.tag_name), tarball_url)
+                  .with_metadata_source(repo)
+                  .with_metadata_source(&release)
+                  .with_metadata("asset.source-code", true)
+                  .with_credentials(match &policy.credentials {
+                    Credentials::Token(token) => Credentials::UsernamePassword {
+                      username: token.clone(),
+                      password: "".to_string(),
+                    },
+                    creds => creds.clone(),
+                  })
+                  .with_last_modified(release.published_at));
+            }
+
+            for asset in release.assets.iter() {
+              if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return;
+              }
+
+              if asset.state != "uploaded" {
+                continue;
+              }
+
+              let asset_url = format!("{}/releases/assets/{}", repo.url, asset.id);
+
+              yield Ok(HttpFile::new(format!("{}/{}/{}", &repo.full_name, &release.tag_name, &asset.name), asset_url)
+                  .with_content_type(Some("application/octet-stream".to_string()))
+                  .with_credentials(match &policy.credentials {
+                    Credentials::Token(token) => Credentials::UsernamePassword {
+                      username: token.clone(),
+                      password: "".to_string(),
+                    },
+                    creds => creds.clone(),
+                  })
+                  .with_last_modified(Some(asset.updated_at))
+                  .with_metadata_source(repo)
+                  .with_metadata_source(&release)
+                  .with_metadata_source(asset));
+            }
+          }
+        }
+    }
+}
+
 impl BackupSource<HttpFile> for GitHubReleasesSource {
     fn kind(&self) -> &str {
         GitHubArtifactKind::Release.as_str()
     }
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
-        let target = policy.from.as_str().trim_matches('/');
+        let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
+
         match target {
-          "" => Err(errors::user(
-              "The target field is required for GitHub repository backups.",
-              "Please provide a target field in the policy using the format 'users/<username>' or 'orgs/<orgname>'.",
+          GitHubRepoSourceKind::User(u) if u.is_empty() => Err(errors::user(
+              &format!(
+                  "Your 'from' target '{}' is not a valid GitHub username.",
+                  policy.from.as_str()
+              ),
+              "Make sure you provide a valid GitHub username in the 'from' field of your policy.",
           )),
-
-          t if t.chars().filter(|c| *c == '/').count() > 1 => Err(errors::user(
-              &format!("The target field '{target}' contains too many segments."),
-              "Please provide a target field in the policy using the format 'users/<username>' or 'orgs/<orgname>'.",
+          GitHubRepoSourceKind::Org(org) if org.is_empty() => Err(errors::user(
+              &format!(
+                  "Your 'from' target '{}' is not a valid GitHub organization name.",
+                  policy.from.as_str()
+              ),
+              "Make sure you provide a valid GitHub organization name in the 'from' field of your policy.",
           )),
-
-          t if !t.starts_with("users/") && !t.starts_with("orgs/") => Err(errors::user(
-              &format!("The target field '{target}' does not include a valid user or org specifier."),
-              "Please specify either 'users/<username>' or 'orgs/<orgname>' as your target.",
+          GitHubRepoSourceKind::Repo(repo) if repo.is_empty() => Err(errors::user(
+              &format!(
+                  "Your 'from' target '{}' is not a fully qualified GitHub repository name.",
+                  policy.from.as_str()
+              ),
+              "Make sure you provide a fully qualified GitHub repository name in the 'from' field of your policy.",
           )),
-
           _ => Ok(()),
       }
     }
@@ -57,80 +131,38 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<HttpFile, crate::Error>> + 'a {
+        let target: GitHubRepoSourceKind = policy.from.as_str().parse().unwrap();
         let url = format!(
-            "{}/{}/{}?{}",
+            "{}/{}?{}",
             policy
                 .properties
                 .get("api_url")
                 .unwrap_or(&"https://api.github.com".to_string())
                 .trim_end_matches('/'),
-            &policy.from.trim_matches('/'),
-            GitHubArtifactKind::Release.api_endpoint(),
+            target.api_endpoint(GitHubArtifactKind::Release),
             policy.properties.get("query").unwrap_or(&"".to_string())
-        );
+        )
+        .trim_end_matches('?')
+        .to_string();
 
         async_stream::stream! {
-          for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
-            if let Err(e) = repo {
-              yield Err(e);
-              continue;
+          if matches!(target, GitHubRepoSourceKind::Repo(_)) {
+            let repo: GitHubRepo = self.client.get(url, &policy.credentials, cancel).await?;
+
+            for await file in self.load_releases(policy, &repo, cancel) {
+              yield file;
             }
-
-            let repo: GitHubRepo = repo.unwrap();
-
-            if !repo.has_downloads {
-              continue;
-            }
-
-            let releases_url = format!("{}/releases", repo.url);
-
-            for await release in self.client.get_paginated::<GitHubRelease>(releases_url, &policy.credentials, cancel) {
-              if let Err(e) = release {
+          } else {
+            for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
+              if let Err(e) = repo {
                 yield Err(e);
                 continue;
               }
 
-              let release: GitHubRelease = release.unwrap();
+              let repo: GitHubRepo = repo.unwrap();
 
-              if let Some(tarball_url) = &release.tarball_url {
-                yield Ok(HttpFile::new(format!("{}/{}/source.tar.gz", &repo.full_name, &release.tag_name), tarball_url)
-                    .with_metadata_source(&repo)
-                    .with_metadata_source(&release)
-                    .with_metadata("asset.source-code", true)
-                    .with_credentials(match &policy.credentials {
-                      Credentials::Token(token) => Credentials::UsernamePassword {
-                        username: token.clone(),
-                        password: "".to_string(),
-                      },
-                      creds => creds.clone(),
-                    })
-                    .with_last_modified(release.published_at));
-              }
-
-              for asset in release.assets.iter() {
-                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-                  return;
-                }
-
-                if asset.state != "uploaded" {
-                  continue;
-                }
-
-                let asset_url = format!("{}/releases/assets/{}", repo.url, asset.id);
-
-                yield Ok(HttpFile::new(format!("{}/{}/{}", &repo.full_name, &release.tag_name, &asset.name), asset_url)
-                    .with_content_type(Some("application/octet-stream".to_string()))
-                    .with_credentials(match &policy.credentials {
-                      Credentials::Token(token) => Credentials::UsernamePassword {
-                        username: token.clone(),
-                        password: "".to_string(),
-                      },
-                      creds => creds.clone(),
-                    })
-                    .with_last_modified(Some(asset.updated_at))
-                    .with_metadata_source(&repo)
-                    .with_metadata_source(&release)
-                    .with_metadata_source(asset));
+              for await file in self.load_releases(policy, &repo, cancel) {
+                yield file;
               }
             }
           }

@@ -571,8 +571,53 @@ impl MetadataSource for GitHubReleaseAsset {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum GitHubRepoSourceKind {
+    CurrentUser,
+    User(String),
+    Org(String),
+    Repo(String),
+}
+
+impl GitHubRepoSourceKind {
+    pub fn api_endpoint(&self, artifact_kind: GitHubArtifactKind) -> String {
+        match self {
+            GitHubRepoSourceKind::CurrentUser => format!("user/{}", artifact_kind.api_endpoint()),
+            GitHubRepoSourceKind::User(u) => {
+                format!("users/{}/{}", u, artifact_kind.api_endpoint())
+            }
+            GitHubRepoSourceKind::Org(o) => format!("orgs/{}/{}", o, artifact_kind.api_endpoint()),
+            GitHubRepoSourceKind::Repo(r) => format!("repos/{}", r),
+        }
+    }
+}
+
+impl std::str::FromStr for GitHubRepoSourceKind {
+    type Err = crate::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let num_of_slashes = s.chars().filter(|c| *c == '/').count();
+
+        match s {
+            "user" => Ok(GitHubRepoSourceKind::CurrentUser),
+            s if s.starts_with("users/") && num_of_slashes == 1 => {
+                Ok(GitHubRepoSourceKind::User(s[6..].to_string()))
+            }
+            s if s.starts_with("orgs/") && num_of_slashes == 1 => {
+                Ok(GitHubRepoSourceKind::Org(s[5..].to_string()))
+            }
+            s if s.starts_with("repos/") && num_of_slashes == 2 => {
+                Ok(GitHubRepoSourceKind::Repo(s[6..].to_string()))
+            }
+            _ => Err(errors::user(
+              &format!("The 'from' declaration '{}' was not valid for a GitHub repository source.", s),
+              "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', or 'repos/<owner>/<name>'")),
+        }
+    }
+}
+
 #[allow(dead_code)]
-#[derive(PartialEq, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
 pub enum GitHubArtifactKind {
     #[serde(rename = "github/repo")]
     Repo,
@@ -733,5 +778,18 @@ mod tests {
         assert_eq!(kind, expected_kind);
         assert_eq!(kind.as_str(), kind_str);
         assert_eq!(kind.api_endpoint(), url);
+    }
+
+    #[rstest]
+    #[case("user", GitHubRepoSourceKind::CurrentUser)]
+    #[case("users/notheotherben", GitHubRepoSourceKind::User("notheotherben".into()))]
+    #[case("orgs/sierrasoftworks", GitHubRepoSourceKind::Org("sierrasoftworks".into()))]
+    #[case("repos/sierrasoftworks/github-backup", GitHubRepoSourceKind::Repo("sierrasoftworks/github-backup".into()))]
+    fn test_deserialize_gh_repo_source_kind(
+        #[case] kind_str: &str,
+        #[case] expected_kind: GitHubRepoSourceKind,
+    ) {
+        let kind: GitHubRepoSourceKind = kind_str.parse().unwrap();
+        assert_eq!(kind, expected_kind);
     }
 }
