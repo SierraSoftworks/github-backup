@@ -270,12 +270,12 @@ impl GitEngine {
             self.update_config(repo, |cfg| {
                 cfg.set_raw_value(
                     &gix::config::tree::gitoxide::Committer::NAME_FALLBACK,
-                    "no name configured during clone",
+                    "github-backup",
                 )
                 .expect("works - statically known");
                 cfg.set_raw_value(
                     &gix::config::tree::gitoxide::Committer::EMAIL_FALLBACK,
-                    "noEmailAvailable@example.com",
+                    "github-backup@sierrasoftworks.github.io",
                 )
                 .expect("works - statically known");
 
