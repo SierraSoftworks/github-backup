@@ -178,7 +178,7 @@ mod tests {
             async_stream::stream! {
               let repos: Vec<crate::helpers::github::GitHubRepo> = load_test_file("github.repos.0.json").unwrap();
               for repo in repos {
-                yield Ok(GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str())
+                yield Ok(GitRepo::new(repo.full_name.as_str(), repo.clone_url.as_str(), None)
                     .with_metadata_source(&repo));
               }
             }
