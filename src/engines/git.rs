@@ -94,6 +94,9 @@ impl GitEngine {
             "Make sure that your internet connectivity is working correctly, and that your local git configuration is able to clone this repo.",
             e))?;
 
+        trace!("Configure fallback committer information");
+        self.ensure_committer(&repository)?;
+
         trace!("Configuring core.bare for Git repository");
         self.update_config(&repository, |c| {
             c.set_raw_value(&gix::config::tree::Core::BARE, "true").map_err(|e| errors::system_with_internal(
@@ -131,6 +134,8 @@ impl GitEngine {
                 e,
             )
         })?;
+
+        self.ensure_committer(&repository)?;
 
         let original_head = repository.head_id().ok();
 
@@ -257,6 +262,27 @@ impl GitEngine {
                     _ => Ok(None),
                 });
             }
+        }
+    }
+
+    fn ensure_committer(&self, repo: &gix::Repository) -> Result<(), errors::Error> {
+        if repo.committer().is_none() {
+            self.update_config(repo, |cfg| {
+                cfg.set_raw_value(
+                    &gix::config::tree::gitoxide::Committer::NAME_FALLBACK,
+                    "no name configured during clone",
+                )
+                .expect("works - statically known");
+                cfg.set_raw_value(
+                    &gix::config::tree::gitoxide::Committer::EMAIL_FALLBACK,
+                    "noEmailAvailable@example.com",
+                )
+                .expect("works - statically known");
+
+                Ok(())
+            })
+        } else {
+            Ok(())
         }
     }
 
