@@ -46,9 +46,9 @@ impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
 
         match operator {
             Token::And(..) if left.is_truthy() => self.visit_expr(right),
-            Token::And(..) => false.into(),
+            Token::And(..) => left,
             Token::Or(..) if !left.is_truthy() => self.visit_expr(right),
-            Token::Or(..) => true.into(),
+            Token::Or(..) => left,
             token => unreachable!("Encountered an unexpected logical operator '{token}'"),
         }
     }

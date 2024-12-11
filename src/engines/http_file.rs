@@ -61,7 +61,7 @@ impl HttpFileEngine {
 
 #[async_trait::async_trait]
 impl BackupEngine<HttpFile> for HttpFileEngine {
-    #[tracing::instrument(skip(self, cancel, target))]
+    #[tracing::instrument(skip(self, entity, cancel, target), entity=%entity)]
     async fn backup<P: AsRef<Path> + Send>(
         &self,
         entity: &HttpFile,
