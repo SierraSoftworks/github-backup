@@ -25,8 +25,7 @@
     "@vuepress/plugin-google-analytics": "2.0.0-rc.63",
     "@vuepress/plugin-register-components": "2.0.0-rc.54",
     "@vuepress/theme-default": "2.0.0-rc.65",
-    "vuepress": "2.0.0-rc.18",
-    "markdown-it": "^14.1.0"
+    "vuepress": "2.0.0-rc.18"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.28.1"
