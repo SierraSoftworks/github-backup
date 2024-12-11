@@ -101,7 +101,7 @@ impl PartialOrd for FilterValue {
             (FilterValue::Number(a), FilterValue::Number(b)) => a < b,
             (FilterValue::String(a), FilterValue::String(b)) => a < b,
             (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
-                a.len() < b.len() && a.iter().zip(b.iter()).all(|(a, b)| a < b)
+                a.len() <= b.len() && a.iter().zip(b.iter()).all(|(a, b)| a < b)
             }
             _ => false,
         }
@@ -127,7 +127,7 @@ impl PartialOrd for FilterValue {
             (FilterValue::Number(a), FilterValue::Number(b)) => a > b,
             (FilterValue::String(a), FilterValue::String(b)) => a > b,
             (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
-                a.len() > b.len() && a.iter().zip(b.iter()).all(|(a, b)| a > b)
+                a.len() >= b.len() && a.iter().zip(b.iter()).all(|(a, b)| a > b)
             }
             _ => false,
         }

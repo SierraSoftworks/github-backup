@@ -21,7 +21,7 @@ pub struct GitEngine;
 #[async_trait::async_trait]
 impl BackupEngine<GitRepo> for GitEngine {
     #[allow(clippy::blocks_in_conditions)]
-    #[tracing::instrument(skip(self, target), res, err)]
+    #[tracing::instrument(skip(self, target, entity), res, err, entity=%entity)]
     async fn backup<P: AsRef<Path> + Send>(
         &self,
         entity: &GitRepo,
