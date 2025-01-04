@@ -3,6 +3,7 @@ use std::{fmt::Display, path::Path, sync::atomic::AtomicBool};
 use gix::{
     credentials::helper::Action,
     progress::Discard,
+    protocol::transport::client::Transport,
     remote::{fetch::Tags, Connection},
     sec::identity::Account,
 };
@@ -235,7 +236,10 @@ impl GitEngine {
         Ok(BackupState::Updated(Some(format!("{}", head_id.to_hex()))))
     }
 
-    fn authenticate_connection<T>(connection: &mut Connection<'_, '_, T>, creds: &Credentials) {
+    fn authenticate_connection<T: Transport>(
+        connection: &mut Connection<'_, '_, T>,
+        creds: &Credentials,
+    ) {
         match creds {
             Credentials::None => {}
             creds => {
