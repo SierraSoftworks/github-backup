@@ -15,7 +15,7 @@ gix = { version = "0.69.1", features = [
   "blocking-http-transport-reqwest-rust-tls",
 ] }
 human-errors = "0.1.5"
-log = "0.4.22"
+log = "0.4.25"
 parse_link_header = "0.4.0"
 pin-project = "1.1.8"
 reqwest = { version = "0.12.9", default-features = false, features = [
