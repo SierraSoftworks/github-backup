@@ -343,21 +343,22 @@ impl Display for GitEngine {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
 
-    #[tokio::test]
     #[cfg_attr(feature = "pure_tests", ignore)]
-    async fn test_backup() {
+    #[rstest]
+    #[case("SierraSoftworks/grey", "https://github.com/sierrasoftworks/grey.git")]
+    #[case("neovim/neovim", "https://github.com/neovim/neovim.git")]
+    #[tokio::test]
+    async fn test_backup(#[case] name: &str, #[case] url: &str) {
         let temp_dir = tempfile::tempdir().expect("a temporary directory");
 
         let agent = GitEngine;
         let cancel = AtomicBool::new(false);
 
-        let repo = GitRepo::new(
-            "SierraSoftworks/grey",
-            "https://github.com/sierrasoftworks/grey.git",
-            None,
-        );
+        let repo = GitRepo::new(name, url, None);
 
         let state1 = agent
             .backup(&repo, temp_dir.path(), &cancel)
