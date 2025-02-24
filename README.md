@@ -42,9 +42,7 @@ backups:
   - kind: github/repo
     from: user # The user associated with the provided credentials
     to: /backups/personal
-    credentials: !UsernamePassword:
-      username: "<your username>"
-      password: "<your personal access token>"
+    credentials: !UsernamePassword { username: "<your username>",  password: "<your personal access token>" }
     properties:
       query: "affiliation=owner" # Additional query parameters to pass to GitHub when fetching repositories
 
