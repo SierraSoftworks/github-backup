@@ -25,7 +25,7 @@ reqwest = { version = "0.12.9", default-features = false, features = [
   "json",
   "rustls-tls",
 ] }
-rstest = "0.24.0"
+rstest = "0.25.0"
 serde = { version = "1.0.218", features = ["derive", "alloc"] }
 serde_json = "1.0.139"
 serde_yaml = "0.9.34"
@@ -42,7 +42,7 @@ unicase = "2.8.1"
 
 [dev-dependencies]
 tempfile = "3.17.1"
-rstest = "0.24.0"
+rstest = "0.25.0"
 
 [features]
 default = []
