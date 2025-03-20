@@ -10,7 +10,7 @@ pub struct TracedStream<T: Stream> {
 }
 
 pub trait StreamExt: Stream + Sized {
-    fn trace(self, span: tracing::Span) -> TracedStream<Self> {
+    fn trace(self, span: Span) -> TracedStream<Self> {
         TracedStream { stream: self, span }
     }
 }

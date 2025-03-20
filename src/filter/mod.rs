@@ -24,8 +24,8 @@ impl Filter {
         let filter_ptr = NonNull::from(&filter);
         let pinned = Box::into_pin(filter);
 
-        let tokens = crate::filter::lexer::Scanner::new(unsafe { filter_ptr.as_ref() });
-        let ast = crate::filter::parser::Parser::parse(tokens.into_iter())?;
+        let tokens = lexer::Scanner::new(unsafe { filter_ptr.as_ref() });
+        let ast = parser::Parser::parse(tokens.into_iter())?;
         Ok(Self {
             filter: pinned,
             ast,
@@ -71,6 +71,13 @@ impl<'de> serde::Deserialize<'de> for Filter {
                 formatter.write_str("a valid filter expression")
             }
 
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Filter::new(v).map_err(serde::de::Error::custom)
+            }
+
             fn visit_none<E>(self) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
@@ -83,13 +90,6 @@ impl<'de> serde::Deserialize<'de> for Filter {
                 D: serde::Deserializer<'de>,
             {
                 deserializer.deserialize_str(self)
-            }
-
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                Filter::new(v).map_err(serde::de::Error::custom)
             }
         }
 

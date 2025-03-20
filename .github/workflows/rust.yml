@@ -84,7 +84,7 @@ jobs:
 
           # Linux builds
           - arch: amd64
-            run_on: ubuntu-latest
+            run_on: ubuntu-24.04
             os: linux
             target: x86_64-unknown-linux-gnu
             test: true

@@ -94,6 +94,27 @@ impl PartialEq for FilterValue {
 }
 
 impl PartialOrd for FilterValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (FilterValue::Null, FilterValue::Null) => Some(Ordering::Equal),
+            (FilterValue::Bool(a), FilterValue::Bool(b)) => a.partial_cmp(b),
+            (FilterValue::Number(a), FilterValue::Number(b)) => a.partial_cmp(b),
+            (FilterValue::String(a), FilterValue::String(b)) => a.partial_cmp(b),
+            (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
+                if a.len() != b.len() {
+                    a.len().partial_cmp(&b.len())
+                } else {
+                    a.iter()
+                        .zip(b.iter())
+                        .map(|(x, y)| x.partial_cmp(y))
+                        .find(|&cmp| cmp != Some(Ordering::Equal))
+                        .unwrap_or(Some(Ordering::Equal))
+                }
+            }
+            _ => None, // Return None for non-comparable types
+        }
+    }
+
     fn lt(&self, other: &Self) -> bool {
         match (self, other) {
             (FilterValue::Null, FilterValue::Null) => true,
@@ -143,27 +164,6 @@ impl PartialOrd for FilterValue {
                 a.len() >= b.len() && a.iter().zip(b.iter()).all(|(a, b)| a >= b)
             }
             _ => false,
-        }
-    }
-
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
-            (FilterValue::Null, FilterValue::Null) => Some(Ordering::Equal),
-            (FilterValue::Bool(a), FilterValue::Bool(b)) => a.partial_cmp(b),
-            (FilterValue::Number(a), FilterValue::Number(b)) => a.partial_cmp(b),
-            (FilterValue::String(a), FilterValue::String(b)) => a.partial_cmp(b),
-            (FilterValue::Tuple(a), FilterValue::Tuple(b)) => {
-                if a.len() != b.len() {
-                    a.len().partial_cmp(&b.len())
-                } else {
-                    a.iter()
-                        .zip(b.iter())
-                        .map(|(x, y)| x.partial_cmp(y))
-                        .find(|&cmp| cmp != Some(Ordering::Equal))
-                        .unwrap_or(Some(Ordering::Equal))
-                }
-            }
-            _ => None, // Return None for non-comparable types
         }
     }
 }

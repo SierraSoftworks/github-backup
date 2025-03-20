@@ -70,10 +70,10 @@ async fn run(args: Args) -> Result<(), Error> {
             .and_then(|s| s.find_next_occurrence(&chrono::Utc::now(), false).ok());
 
         {
-            let _span = tracing::info_span!("backup.all").entered();
+            let _span = info_span!("backup.all").entered();
 
             for policy in config.backups.iter() {
-                let _policy_span = tracing::info_span!("backup.policy", policy = %policy).entered();
+                let _policy_span = info_span!("backup.policy", policy = %policy).entered();
 
                 match policy.kind.as_str() {
                     k if k == GitHubArtifactKind::Repo.as_str() => {
@@ -130,7 +130,7 @@ impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
         info!(" - {} ({})", entity, state);
     }
 
-    fn on_error(&self, error: crate::Error) {
+    fn on_error(&self, error: Error) {
         warn!("Error: {}", error);
     }
 }

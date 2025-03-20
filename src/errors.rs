@@ -1,10 +1,8 @@
 human_errors::error_shim!(Error);
 
-use std::convert;
-
 use reqwest::StatusCode;
 
-impl convert::From<reqwest::Error> for Error {
+impl From<reqwest::Error> for Error {
     fn from(err: reqwest::Error) -> Self {
         if err.is_connect() {
             user_with_internal(
@@ -35,7 +33,7 @@ impl convert::From<reqwest::Error> for Error {
     }
 }
 
-impl convert::From<reqwest::Response> for Error {
+impl From<reqwest::Response> for Error {
     fn from(resp: reqwest::Response) -> Self {
         match resp.status() {
             StatusCode::NOT_FOUND => user(
@@ -55,7 +53,7 @@ impl convert::From<reqwest::Response> for Error {
     }
 }
 
-impl convert::From<reqwest::header::InvalidHeaderValue> for Error {
+impl From<reqwest::header::InvalidHeaderValue> for Error {
     fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
         system_with_internal(
             "Could not parse header value due to an internal error.",

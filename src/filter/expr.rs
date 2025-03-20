@@ -49,7 +49,7 @@ impl Debug for Expr<'_> {
 }
 
 struct ExprPrinter<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
-impl<'a, 'b> ExprVisitor<std::fmt::Result> for ExprPrinter<'a, 'b> {
+impl ExprVisitor<std::fmt::Result> for ExprPrinter<'_, '_> {
     fn visit_literal(&mut self, value: &FilterValue) -> std::fmt::Result {
         write!(self.0, "{}", value)
     }

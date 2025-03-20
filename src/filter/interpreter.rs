@@ -14,7 +14,7 @@ impl<'a, T: Filterable> FilterContext<'a, T> {
     }
 }
 
-impl<'a, T: Filterable> ExprVisitor<FilterValue> for FilterContext<'a, T> {
+impl<T: Filterable> ExprVisitor<FilterValue> for FilterContext<'_, T> {
     fn visit_literal(&mut self, value: &FilterValue) -> FilterValue {
         value.clone()
     }
