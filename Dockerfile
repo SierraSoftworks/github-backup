@@ -2,7 +2,7 @@
 # It will then package that binary into the image, and use that as the entrypoint.
 # This means that running `docker build` is not a repeatable way to build the same
 # image, but the benefit is much faster cross-platform builds; a net win.
-FROM debian:bookworm-slim
+FROM ubuntu:24.04
 
 LABEL org.opencontainers.image.source=https://github.com/SierraSoftworks/github-backup
 LABEL org.opencontainers.image.description="Backup your GitHub repositories and releases automatically"
