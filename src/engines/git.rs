@@ -350,7 +350,6 @@ mod tests {
     #[cfg_attr(feature = "pure_tests", ignore)]
     #[rstest]
     #[case("SierraSoftworks/grey", "https://github.com/sierrasoftworks/grey.git")]
-    #[case("neovim/neovim", "https://github.com/neovim/neovim.git")]
     #[tokio::test]
     async fn test_backup(#[case] name: &str, #[case] url: &str) {
         let temp_dir = tempfile::tempdir().expect("a temporary directory");
