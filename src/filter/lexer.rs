@@ -159,81 +159,81 @@ impl<'a> Iterator for Scanner<'a> {
                     ))));
                 }
                 '&' => {
-                    if self.match_char('&') {
-                        return Some(Ok(Token::And(Loc::new(
+                    return if self.match_char('&') {
+                        Some(Ok(Token::And(Loc::new(
                             self.line,
                             1 + idx - self.line_start,
-                        ))));
+                        ))))
                     } else {
-                        return Some(Err(errors::user(
-                          &format!("Filter included an orphaned '&' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
-                          "Ensure that you are using the '&&' operator to implement a logical AND within your filter."
-                        )));
+                        Some(Err(errors::user(
+                            &format!("Filter included an orphaned '&' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
+                            "Ensure that you are using the '&&' operator to implement a logical AND within your filter."
+                        )))
                     }
                 }
                 '|' => {
-                    if self.match_char('|') {
-                        return Some(Ok(Token::Or(Loc::new(
+                    return if self.match_char('|') {
+                        Some(Ok(Token::Or(Loc::new(
                             self.line,
                             1 + idx - self.line_start,
-                        ))));
+                        ))))
                     } else {
-                        return Some(Err(errors::user(
-                          &format!("Filter included an orphaned '|' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
-                          "Ensure that you are using the '||' operator to implement a logical OR within your filter."
-                        )));
+                        Some(Err(errors::user(
+                            &format!("Filter included an orphaned '|' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
+                            "Ensure that you are using the '||' operator to implement a logical OR within your filter."
+                        )))
                     }
                 }
                 '=' => {
-                    if self.match_char('=') {
-                        return Some(Ok(Token::Equals(Loc::new(
+                    return if self.match_char('=') {
+                        Some(Ok(Token::Equals(Loc::new(
                             self.line,
                             1 + idx - self.line_start,
-                        ))));
+                        ))))
                     } else {
-                        return Some(Err(errors::user(
-                          &format!("Filter included an orphaned '=' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
-                          "Ensure that you are using the '==' operator to implement a logical equality within your filter."
-                        )));
+                        Some(Err(errors::user(
+                            &format!("Filter included an orphaned '=' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
+                            "Ensure that you are using the '==' operator to implement a logical equality within your filter."
+                        )))
                     }
                 }
                 '!' => {
-                    if self.match_char('=') {
-                        return Some(Ok(Token::NotEquals(Loc::new(
+                    return if self.match_char('=') {
+                        Some(Ok(Token::NotEquals(Loc::new(
                             self.line,
                             1 + idx - self.line_start,
-                        ))));
+                        ))))
                     } else {
-                        return Some(Ok(Token::Not(Loc::new(
+                        Some(Ok(Token::Not(Loc::new(
                             self.line,
                             1 + idx - self.line_start,
-                        ))));
+                        ))))
                     }
                 }
                 '>' => {
-                    if self.match_char('=') {
-                        return Some(Ok(Token::GreaterEqual(Loc::new(
+                    return if self.match_char('=') {
+                        Some(Ok(Token::GreaterEqual(Loc::new(
                             self.line,
                             1 + idx - self.line_start,
-                        ))));
+                        ))))
                     } else {
-                        return Some(Ok(Token::GreaterThan(Loc::new(
+                        Some(Ok(Token::GreaterThan(Loc::new(
                             self.line,
                             idx - self.line_start,
-                        ))));
+                        ))))
                     }
                 }
                 '<' => {
-                    if self.match_char('=') {
-                        return Some(Ok(Token::SmallerEqual(Loc::new(
+                    return if self.match_char('=') {
+                        Some(Ok(Token::SmallerEqual(Loc::new(
                             self.line,
                             1 + idx - self.line_start,
-                        ))));
+                        ))))
                     } else {
-                        return Some(Ok(Token::SmallerThan(Loc::new(
+                        Some(Ok(Token::SmallerThan(Loc::new(
                             self.line,
                             idx - self.line_start,
-                        ))));
+                        ))))
                     }
                 }
                 '"' => {

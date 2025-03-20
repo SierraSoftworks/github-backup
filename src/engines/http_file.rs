@@ -157,7 +157,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
                 tokio::fs::remove_file(&temp_path)
                     .await
                     .unwrap_or_else(|e| {
-                        tracing::error!(
+                        error!(
                             "Failed to remove temporary backup file '{}': {}",
                             temp_path.display(),
                             e
@@ -175,7 +175,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
                     tokio::fs::remove_file(&temp_path)
                         .await
                         .unwrap_or_else(|e| {
-                            tracing::error!(
+                            error!(
                                 "Failed to remove temporary backup file '{}': {}",
                                 temp_path.display(),
                                 e

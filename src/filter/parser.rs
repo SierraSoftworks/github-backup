@@ -67,7 +67,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
             self.tokens.peek(),
             Some(Ok(Token::Equals(..)) | Ok(Token::NotEquals(..)))
         ) {
-            let token = self.tokens.next().unwrap().unwrap();
+            let token = self.tokens.next().unwrap()?;
             let right = self.comparison()?;
             expr = Expr::Binary(Box::new(expr), token, Box::new(right));
         }
@@ -89,7 +89,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
                 | Some(Ok(Token::SmallerThan(..)))
                 | Some(Ok(Token::SmallerEqual(..)))
         ) {
-            let token = self.tokens.next().unwrap().unwrap();
+            let token = self.tokens.next().unwrap()?;
             let right = self.unary()?;
             expr = Expr::Binary(Box::new(expr), token, Box::new(right));
         }
@@ -99,7 +99,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
 
     fn unary(&mut self) -> Result<Expr<'a>, Error> {
         if matches!(self.tokens.peek(), Some(Ok(Token::Not(..)))) {
-            let token = self.tokens.next().unwrap().unwrap();
+            let token = self.tokens.next().unwrap()?;
             let right = self.unary()?;
             Ok(Expr::Unary(token, Box::new(right)))
         } else {
@@ -110,7 +110,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
     fn primary(&mut self) -> Result<Expr<'a>, Error> {
         match self.tokens.peek() {
             Some(Ok(Token::LeftParen(..))) => {
-                let start = self.tokens.next().unwrap().unwrap();
+                let start = self.tokens.next().unwrap()?;
                 let expr = self.or()?;
                 if let Some(Ok(Token::RightParen(..))) = self.tokens.next() {
                     Ok(expr)
@@ -122,7 +122,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
                 }
             }
             Some(Ok(Token::LeftBracket(..))) => {
-              let start = self.tokens.next().unwrap().unwrap();
+              let start = self.tokens.next().unwrap()?;
               let mut items = Vec::new();
               while !matches!(self.tokens.peek(), Some(Ok(Token::RightBracket(..)))) {
                   items.push(self.literal()?);
@@ -162,13 +162,13 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
         match self.tokens.next() {
             Some(Ok(Token::True(..))) => Ok(true.into()),
             Some(Ok(Token::False(..))) => Ok(false.into()),
-            Some(Ok(Token::Number(loc, n))) => Ok(super::FilterValue::Number(n.parse().map_err(|e| errors::user_with_internal(
+            Some(Ok(Token::Number(loc, n))) => Ok(FilterValue::Number(n.parse().map_err(|e| errors::user_with_internal(
               &format!("Failed to parse the number '{n}' which you provided at {}.", loc),
               "Please make sure that the number is well formatted. It should be in the form 123, or 123.45.",
               e,
             ))?)),
             Some(Ok(Token::String(.., s))) => Ok(s.replace("\\\"", "\"").replace("\\\\", "\\").into()),
-            Some(Ok(Token::Null(..))) => Ok(super::FilterValue::Null),
+            Some(Ok(Token::Null(..))) => Ok(FilterValue::Null),
             Some(Ok(token)) => Err(errors::user(
                 &format!("While parsing your filter, we found an unexpected '{}' at {}.", token, token.location()),
                 "Make sure that you have written a valid filter query.",
