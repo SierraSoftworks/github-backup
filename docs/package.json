@@ -29,6 +29,6 @@
     "vuepress": "2.0.0-rc.20"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.36.0"
+    "@rollup/rollup-linux-x64-gnu": "^4.37.0"
   }
 }
