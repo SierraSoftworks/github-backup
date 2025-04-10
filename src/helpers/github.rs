@@ -931,26 +931,6 @@ mod tests {
         assert_eq!(repo.full_name.to_lowercase(), target.to_lowercase());
     }
 
-    #[rstest]
-    #[case("users/cedi")]
-    #[tokio::test]
-    #[cfg_attr(feature = "pure_tests", ignore)]
-    async fn get_gist(#[case] target: &str) {
-        let client = GitHubClient::default();
-        let creds = get_test_credentials();
-
-        let repo = client
-            .get(
-                format!("https://api.github.com/repos/{target}"),
-                &creds,
-                &CANCEL,
-            )
-            .await;
-        let repo: GitHubRepo = repo.expect("Failed to fetch repo");
-
-        assert_eq!(repo.full_name.to_lowercase(), target.to_lowercase());
-    }
-
     fn get_test_credentials() -> Credentials {
         std::env::var("GITHUB_TOKEN")
             .map(|t| Credentials::UsernamePassword {
@@ -964,7 +944,7 @@ mod tests {
     #[case("github/repo", GitHubArtifactKind::Repo, "repos")]
     #[case("github/star", GitHubArtifactKind::Star, "starred")]
     #[case("github/release", GitHubArtifactKind::Release, "repos")]
-    #[case("github/gist", GitHubArtifactKind::Gist, "gist")]
+    #[case("github/gist", GitHubArtifactKind::Gist, "gists")]
     fn test_deserialize_gh_repo_kind(
         #[case] kind_str: &str,
         #[case] expected_kind: GitHubArtifactKind,
