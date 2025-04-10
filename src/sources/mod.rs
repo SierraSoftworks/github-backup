@@ -1,8 +1,10 @@
 mod github_releases;
 mod github_repo;
+mod github_gist;
 
 pub use github_releases::GitHubReleasesSource;
 pub use github_repo::GitHubRepoSource;
+pub use github_gist::GitHubGistSource;
 use tokio_stream::Stream;
 
 use crate::{BackupEntity, BackupPolicy};

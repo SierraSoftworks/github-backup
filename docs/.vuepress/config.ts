@@ -57,7 +57,8 @@ export default defineUserConfig({
         text: "Reference",
         children: [
           '/reference/repo.md',
-          '/reference/release.md'
+          '/reference/release.md',
+          '/reference/gist.md'
         ]
       },
       {
@@ -81,7 +82,8 @@ export default defineUserConfig({
           text: "Reference",
           children: [
             '/reference/repo.md',
-            '/reference/release.md'
+            '/reference/release.md',
+            '/reference/gist.md'
           ]
         },
         {
