@@ -735,12 +735,12 @@ impl std::str::FromStr for GitHubRepoSourceKind {
             s if s.starts_with("repos/") && num_of_slashes == 2 => {
                 Ok(GitHubRepoSourceKind::Repo(s[6..].to_string()))
             }
-            s if s.starts_with("gist/") && num_of_slashes == 1 => {
-                Ok(GitHubRepoSourceKind::Gist(s[5..].to_string()))
+            s if s.starts_with("gists/") && num_of_slashes == 1 => {
+                Ok(GitHubRepoSourceKind::Gist(s[6..].to_string()))
             }
             _ => Err(errors::user(
               &format!("The 'from' declaration '{}' was not valid for a GitHub repository source.", s),
-              "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', 'repos/<owner>/<name>', or 'gist/starred'")),
+              "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', 'repos/<owner>/<name>', or 'gists/starred'")),
         }
     }
 }
