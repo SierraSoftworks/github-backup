@@ -116,7 +116,7 @@ mod tests {
                 name: "John Doe".to_string(),
                 age: 30,
                 alive: true,
-                tags: vec!["red"],
+                tags: vec!["red", "black"],
             }
         }
     }
@@ -156,8 +156,8 @@ mod tests {
     #[case("age < 31", true)]
     #[case("age >= 30", true)]
     #[case("age <= 30", true)]
-    #[case("tags == [\"red\"]", true)]
-    #[case("tags != [\"red\"]", false)]
+    #[case("tags == [\"red\",\"black\"]", true)]
+    #[case("tags != [\"red\",\"black\"]", false)]
     #[case("tags == [\"blue\"]", false)]
     #[case("tags contains \"red\"", true)]
     #[case("tags contains \"blue\"", false)]

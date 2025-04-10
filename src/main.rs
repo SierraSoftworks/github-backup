@@ -56,6 +56,10 @@ async fn run(args: Args) -> Result<(), Error> {
         .with_dry_run(args.dry_run)
         .with_concurrency_limit(args.concurrency);
 
+    let github_gist = pairing::Pairing::new(sources::GitHubGistSource::gist(), engines::GitEngine)
+        .with_dry_run(args.dry_run)
+        .with_concurrency_limit(args.concurrency);
+
     let github_release = pairing::Pairing::new(
         sources::GitHubReleasesSource::default(),
         engines::HttpFileEngine::new(),
@@ -91,6 +95,12 @@ async fn run(args: Args) -> Result<(), Error> {
                     k if k == GitHubArtifactKind::Release.as_str() => {
                         info!("Backing up release artifacts for {}", &policy);
                         github_release
+                            .run(policy, &LoggingPairingHandler, &CANCEL)
+                            .await;
+                    }
+                    k if k == GitHubArtifactKind::Gist.as_str() => {
+                        info!("Backing up gist artifacts for {}", &policy);
+                        github_gist
                             .run(policy, &LoggingPairingHandler, &CANCEL)
                             .await;
                     }

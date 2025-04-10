@@ -84,6 +84,17 @@ backups:
     from: "repos/my-org/repo"
     to: /backups/releases
     filter: '!release.prerelease'
+
+  # Backup all GitHub Gists for your authenticated user
+  - kind: github/gist
+    from: "user"
+    to: /backups/gists
+    credentials: !Token "your_github_token"
+
+  # Backup public GitHub Gist of another user
+  - kind: github/gist
+    from: "users/another-user"
+    to: /backups/gists
 ```
 
 <ClientOnly>

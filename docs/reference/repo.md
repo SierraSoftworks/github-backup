@@ -53,8 +53,25 @@ are accessed using the `repo.<field>` syntax, for example `repo.fork` to determi
 is a fork.
 
 ::: tip
-These fields are also available when using [`github/release`](./release.md) backups.
+These fields are also available when using [`github/release`](./release.md) or [`github/gist`](./gist.md) backups.
 :::
+
+
+| Field                  | Type       | Description (_Example_)                                                                            |
+|------------------------|------------|----------------------------------------------------------------------------------------------------|
+| `repo.name`            | `string`   | The name of the repository (_Hello-World_)                                                         |
+| `repo.fullname`        | `string`   | The full-name of the repository (_octocat/Hello-World_)                                            |
+| `repo.private`         | `boolean`  | Whether the repository is private                                                                  |
+| `repo.public`          | `boolean`  | Whether the repository is public                                                                   |
+| `repo.fork`            | `boolean`  | Whether the repository is a fork                                                                   |
+| `repo.size`            | `integer`  | The size of the repository, in kilobytes (_1024_).                                                 |
+| `repo.archived`        | `boolean`  | Whether the repository is archived                                                                 |
+| `repo.disabled`        | `boolean`  | Returns whether or not this repository disabled                                                    |
+| `repo.default_branch`  | `string`   | The default branch of the repository (_main_)                                                      |
+| `repo.empty`           | `boolean`  | Whether the repository is empty (When a repository is initially created, `repo.empty` is `true`)   |
+| `repo.template`        | `boolean`  | Whether this repository acts as a template that can be used to generate new repositories           |
+| `repo.forks`           | `integer`  | The number of times this repository is forked                                                      |
+| `repo.stargazers`      | `integer`  | The number of people starred this repository                                                       |
 
 ```json
 {
