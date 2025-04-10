@@ -6,10 +6,7 @@ use std::{
 use reqwest::{header::LINK, Method, StatusCode, Url};
 use tokio_stream::Stream;
 
-use crate::{
-    entities::{Credentials, MetadataSource},
-    errors::{self, ResponseError},
-};
+use crate::{entities::{Credentials, MetadataSource}, errors::{self, ResponseError}, FilterValue};
 
 #[derive(Clone)]
 pub struct GitHubClient {
@@ -571,23 +568,152 @@ impl MetadataSource for GitHubReleaseAsset {
     }
 }
 
+/// A GitHub gist object as returned by the GitHub API.
+///
+/// This object is used to represent a GitHub gist and its associated metadata.
+/// In its raw JSON form, it looks something like the following:
+///
+/// ```json
+/// {
+///   "url": "https://api.github.com/gists/58722b4c6488ceefe0207629acad53bc",
+///   "forks_url": "https://api.github.com/gists/58722b4c6488ceefe0207629acad53bc/forks",
+///   "commits_url": "https://api.github.com/gists/58722b4c6488ceefe0207629acad53bc/commits",
+///   "id": "58722b4c6488ceefe0207629acad53bc",
+///   "node_id": "G_kwDOAB3LV9oAIDU4NzIyYjRjNjQ4OGNlZWZlMDIwNzYyOWFjYWQ1M2Jj",
+///   "git_pull_url": "https://gist.github.com/58722b4c6488ceefe0207629acad53bc.git",
+///   "git_push_url": "https://gist.github.com/58722b4c6488ceefe0207629acad53bc.git",
+///   "html_url": "https://gist.github.com/cedi/58722b4c6488ceefe0207629acad53bc",
+///   "files": {
+///     "Lifecycle management system for an HPC cluster.md": {
+///       "filename": "Lifecycle management system for an HPC cluster.md",
+///       "type": "text/markdown",
+///       "language": "Markdown",
+///       "raw_url": "https://gist.githubusercontent.com/cedi/58722b4c6488ceefe0207629acad53bc/raw/625e2cb5b7bcf8fc7dd31b74d3ace11b011c67c0/Lifecycle%20management%20system%20for%20an%20HPC%20cluster.md",
+///       "size": 23984
+///     }
+///   },
+///   "public": false,
+///   "created_at": "2025-04-05T11:31:01Z",
+///   "updated_at": "2025-04-06T18:34:00Z",
+///   "description": "",
+///   "comments": 0,
+///   "user": null,
+///   "comments_enabled": true,
+///   "comments_url": "https://api.github.com/gists/58722b4c6488ceefe0207629acad53bc/comments",
+///   "owner": {
+///     "login": "cedi",
+///     "id": 1952599,
+///     "node_id": "MDQ6VXNlcjE5NTI1OTk=",
+///     "avatar_url": "https://avatars.githubusercontent.com/u/1952599?v=4",
+///     "gravatar_id": "",
+///     "url": "https://api.github.com/users/cedi",
+///     "html_url": "https://github.com/cedi",
+///     "followers_url": "https://api.github.com/users/cedi/followers",
+///     "following_url": "https://api.github.com/users/cedi/following{/other_user}",
+///     "gists_url": "https://api.github.com/users/cedi/gists{/gist_id}",
+///     "starred_url": "https://api.github.com/users/cedi/starred{/owner}{/repo}",
+///     "subscriptions_url": "https://api.github.com/users/cedi/subscriptions",
+///     "organizations_url": "https://api.github.com/users/cedi/orgs",
+///     "repos_url": "https://api.github.com/users/cedi/repos",
+///     "events_url": "https://api.github.com/users/cedi/events{/privacy}",
+///     "received_events_url": "https://api.github.com/users/cedi/received_events",
+///     "type": "User",
+///     "user_view_type": "public",
+///     "site_admin": false
+///   },
+///   "truncated": false
+/// }
+/// ```
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+pub struct GitHubGist {
+    pub id: String,
+    pub node_id: String,
+    pub owner: GitHubUser,
+    pub description: String,
+    pub public: bool,
+
+    pub url: String,
+    pub forks_url: String,
+    pub commits_url: String,
+    pub git_pull_url: String,
+    pub git_push_url: String,
+    pub html_url: String,
+    pub files: std::collections::HashMap<String, GistFile>,
+    pub comments: u64,
+    pub user: Option<serde_json::Value>, // `null` in the example
+    pub comments_enabled: bool,
+    pub comments_url: String,
+    pub truncated: bool,
+
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl MetadataSource for GitHubGist {
+    fn inject_metadata(&self, metadata: &mut crate::entities::Metadata) {
+        metadata.insert("gist.public", self.public);
+        metadata.insert("gist.private", !self.public);
+        metadata.insert("gist.comments_enabled", self.comments_enabled);
+        metadata.insert("gist.comments", self.comments);
+        metadata.insert("gist.files", self.files.iter().count() as u32);
+        metadata.insert(
+            "gist.file_names",
+            self.files
+                .keys()
+                .map(|k| FilterValue::from(k.as_str()))
+                .collect::<Vec<FilterValue>>(),
+        );
+        metadata.insert(
+            "gist.languages",
+            self.files
+                .values()
+                .filter_map(|file| file.language.as_deref()) // gets &str from Option<String>
+                .map(FilterValue::from)
+                .collect::<Vec<FilterValue>>(),
+        );
+
+        metadata.insert(
+            "gist.type",
+            self.files
+                .values()
+                .map(|file| FilterValue::from(file.type_.as_str()))
+                .collect::<Vec<FilterValue>>(),
+        );
+    }
+}
+
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+pub struct GistFile {
+    pub filename: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub language: Option<String>,
+    pub raw_url: String,
+    pub size: u64,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum GitHubRepoSourceKind {
     CurrentUser,
     User(String),
     Org(String),
     Repo(String),
+    Gist(String),
 }
 
 impl GitHubRepoSourceKind {
     pub fn api_endpoint(&self, artifact_kind: GitHubArtifactKind) -> String {
         match self {
-            GitHubRepoSourceKind::CurrentUser => format!("user/{}", artifact_kind.api_endpoint()),
-            GitHubRepoSourceKind::User(u) => {
-                format!("users/{}/{}", u, artifact_kind.api_endpoint())
+            GitHubRepoSourceKind::CurrentUser => match artifact_kind {
+                GitHubArtifactKind::Gist => artifact_kind.api_endpoint().to_string(),
+                _ => format!("user/{}", artifact_kind.api_endpoint()),
             }
+            GitHubRepoSourceKind::User(u) => format!("users/{}/{}", u, artifact_kind.api_endpoint()),
             GitHubRepoSourceKind::Org(o) => format!("orgs/{}/{}", o, artifact_kind.api_endpoint()),
             GitHubRepoSourceKind::Repo(r) => format!("repos/{}", r),
+            GitHubRepoSourceKind::Gist(g) => format!("gists/{}", g),
         }
     }
 }
@@ -609,9 +735,12 @@ impl std::str::FromStr for GitHubRepoSourceKind {
             s if s.starts_with("repos/") && num_of_slashes == 2 => {
                 Ok(GitHubRepoSourceKind::Repo(s[6..].to_string()))
             }
+            s if s.starts_with("gist/") && num_of_slashes == 1 => {
+                Ok(GitHubRepoSourceKind::Gist(s[5..].to_string()))
+            }
             _ => Err(errors::user(
               &format!("The 'from' declaration '{}' was not valid for a GitHub repository source.", s),
-              "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', or 'repos/<owner>/<name>'")),
+              "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', 'repos/<owner>/<name>', or 'gist/starred'")),
         }
     }
 }
@@ -625,6 +754,8 @@ pub enum GitHubArtifactKind {
     Star,
     #[serde(rename = "github/release")]
     Release,
+    #[serde(rename = "github/gist")]
+    Gist,
 }
 
 impl GitHubArtifactKind {
@@ -633,6 +764,7 @@ impl GitHubArtifactKind {
             GitHubArtifactKind::Repo => "github/repo",
             GitHubArtifactKind::Star => "github/star",
             GitHubArtifactKind::Release => "github/release",
+            GitHubArtifactKind::Gist => "github/gist",
         }
     }
 
@@ -641,6 +773,7 @@ impl GitHubArtifactKind {
             GitHubArtifactKind::Repo => "repos",
             GitHubArtifactKind::Star => "starred",
             GitHubArtifactKind::Release => "repos",
+            GitHubArtifactKind::Gist => "gists",
         }
     }
 }
@@ -683,6 +816,22 @@ mod tests {
             assert_eq!(metadata.get("repo.archived"), repo.archived.into());
             assert_eq!(metadata.get("repo.disabled"), repo.disabled.into());
             assert_eq!(metadata.get("repo.empty"), (repo.size == 0).into());
+        }
+    }
+
+    #[rstest]
+    #[case("github.gists.0.json", 4)]
+    fn test_deserialize_gist(#[case] file: &str, #[case] repo_count: usize) {
+        let gists: Vec<GitHubGist> = load_test_file(file).expect("Failed to load test file");
+        assert_eq!(gists.len(), repo_count);
+
+        for gist in gists {
+            let mut metadata = crate::entities::Metadata::default();
+            gist.inject_metadata(&mut metadata);
+
+            assert_eq!(metadata.get("gist.public"), gist.public.into());
+            assert_eq!(metadata.get("gist.comments_enabled"), gist.comments_enabled.into());
+            assert_eq!(metadata.get("gist.comments"), gist.comments.into());
         }
     }
 
@@ -736,10 +885,57 @@ mod tests {
     }
 
     #[rstest]
+    #[case("users/cedi")]
+    #[tokio::test]
+    #[cfg_attr(feature = "pure_tests", ignore)]
+    async fn fetch_gist(#[case] target: &str) {
+        use tokio_stream::StreamExt;
+
+        let client = GitHubClient::default();
+        let creds = get_test_credentials();
+
+        let stream = client.get_paginated(
+            format!("https://api.github.com/{target}/gists"),
+            &creds,
+            &CANCEL,
+        );
+        tokio::pin!(stream);
+
+        let mut count = 0;
+        while let Some(gist) = stream.next().await {
+            let gist: GitHubGist = gist.expect("Failed to fetch gist");
+            assert!(!gist.id.is_empty());
+            count += 1;
+        }
+
+        assert!(count > 0, "at least one gist should be returned");
+    }
+
+    #[rstest]
     #[case("sierrasoftworks/github-backup")]
     #[tokio::test]
     #[cfg_attr(feature = "pure_tests", ignore)]
     async fn get_repo(#[case] target: &str) {
+        let client = GitHubClient::default();
+        let creds = get_test_credentials();
+
+        let repo = client
+            .get(
+                format!("https://api.github.com/repos/{target}"),
+                &creds,
+                &CANCEL,
+            )
+            .await;
+        let repo: GitHubRepo = repo.expect("Failed to fetch repo");
+
+        assert_eq!(repo.full_name.to_lowercase(), target.to_lowercase());
+    }
+
+    #[rstest]
+    #[case("users/cedi")]
+    #[tokio::test]
+    #[cfg_attr(feature = "pure_tests", ignore)]
+    async fn get_gist(#[case] target: &str) {
         let client = GitHubClient::default();
         let creds = get_test_credentials();
 
@@ -768,6 +964,7 @@ mod tests {
     #[case("github/repo", GitHubArtifactKind::Repo, "repos")]
     #[case("github/star", GitHubArtifactKind::Star, "starred")]
     #[case("github/release", GitHubArtifactKind::Release, "repos")]
+    #[case("github/gist", GitHubArtifactKind::Gist, "gist")]
     fn test_deserialize_gh_repo_kind(
         #[case] kind_str: &str,
         #[case] expected_kind: GitHubArtifactKind,
