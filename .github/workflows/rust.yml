@@ -65,6 +65,9 @@ jobs:
           toolchain: stable
           components: llvm-tools-preview
 
+      - name: Setup Cache
+        uses: Swatinem/rust-cache@v2
+
       - name: cargo install grcov
         uses: SierraSoftworks/setup-grcov@v1
         with:
