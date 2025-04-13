@@ -90,7 +90,7 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
 
         async_stream::try_stream! {
           if matches!(target, GitHubRepoSourceKind::Repo(_)) {
-            let repo = self.client.get::<GitHubRepo>(url, &policy.credentials, cancel).await?;
+            let repo: GitHubRepo = self.client.get(&url, &policy.credentials, cancel).await?;
             yield GitRepo::new(
               repo.full_name.as_str(),
               repo.clone_url.as_str(),
@@ -98,8 +98,8 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
                 .with_credentials(policy.credentials.clone())
                 .with_metadata_source(&repo);
           } else {
-            for await repo in self.client.get_paginated::<GitHubRepo>(url, &policy.credentials, cancel) {
-              let repo = repo?;
+            for await repo in self.client.get_paginated(&url, &policy.credentials, cancel) {
+              let repo: GitHubRepo = repo?;
               yield GitRepo::new(
                 repo.full_name.as_str(),
                 repo.clone_url.as_str(),
@@ -142,9 +142,9 @@ mod tests {
 
     use rstest::rstest;
 
-    use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
-
     use super::GitHubRepoSource;
+    use crate::helpers::GitHubClient;
+    use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -246,6 +246,43 @@ mod tests {
         while let Some(repo) = stream.next().await {
             println!("{}", repo.expect("Failed to load repo"));
         }
+    }
+
+    #[rstest]
+    #[case("github.repos.0.json", 31)]
+    #[tokio::test]
+    async fn get_repos_mocked(#[case] filename: &str, #[case] expected_entries: usize) {
+        use tokio_stream::StreamExt;
+
+        let source = GitHubRepoSource::with_client(
+            GitHubClient::default()
+                .mock("/users/octocat/repos", |b| b.with_body_from_file(filename)),
+            GitHubArtifactKind::Repo,
+        );
+
+        let policy: BackupPolicy = serde_yaml::from_str(
+            r#"
+          kind: github/repo
+          from: users/octocat
+          to: /tmp
+        "#,
+        )
+        .unwrap();
+
+        let stream = source.load(&policy, &CANCEL);
+        tokio::pin!(stream);
+
+        let mut count = 0;
+        while let Some(repo) = stream.next().await {
+            println!("{}", repo.expect("Failed to load repo"));
+            count += 1;
+        }
+
+        assert_eq!(
+            count, expected_entries,
+            "Expected {} entries, got {}",
+            expected_entries, count
+        );
     }
 
     #[rstest]

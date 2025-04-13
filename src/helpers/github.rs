@@ -1,9 +1,8 @@
+use reqwest::{header::LINK, Method, StatusCode, Url};
 use std::{
     fmt::Display,
     sync::{atomic::AtomicBool, Arc},
 };
-
-use reqwest::{header::LINK, Method, StatusCode, Url};
 use tokio_stream::Stream;
 
 use crate::{
@@ -14,13 +13,16 @@ use crate::{
 #[derive(Clone)]
 pub struct GitHubClient {
     client: Arc<reqwest::Client>,
+
+    #[cfg(test)]
+    mock_replies: std::collections::HashMap<String, MockResponse>,
 }
 
 impl GitHubClient {
     #[allow(dead_code)]
-    pub async fn get<T: serde::de::DeserializeOwned>(
+    pub async fn get<U: AsRef<str>, T: serde::de::DeserializeOwned>(
         &self,
-        url: String,
+        url: U,
         creds: &Credentials,
         cancel: &AtomicBool,
     ) -> Result<T, errors::Error> {
@@ -30,7 +32,7 @@ impl GitHubClient {
             errors::system_with_internal(
                 &format!(
                     "Unable to parse GitHub's response for '{}' due to invalid JSON.",
-                    &url
+                    url.as_ref()
                 ),
                 "Please report this issue to us on GitHub.",
                 e,
@@ -38,14 +40,14 @@ impl GitHubClient {
         })
     }
 
-    pub fn get_paginated<'a, T: serde::de::DeserializeOwned + 'a>(
+    pub fn get_paginated<'a, U: AsRef<str> + 'a, T: serde::de::DeserializeOwned + 'a>(
         &'a self,
-        page_url: String,
+        page_url: U,
         creds: &'a Credentials,
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<T, errors::Error>> + 'a {
         async_stream::try_stream! {
-          let mut page_url = Some(page_url);
+          let mut page_url = Some(page_url.as_ref().to_string());
 
           while let Some(url) = page_url {
               if cancel.load(std::sync::atomic::Ordering::Relaxed) {
@@ -60,7 +62,7 @@ impl GitHubClient {
                   let link_header = link_header.to_str().map_err(|e| errors::system_with_internal(
                       "Unable to parse GitHub's Link header due to invalid characters, which will result in pagination failing to work correctly.",
                       "Please report this issue to us on GitHub.",
-                      e))?;
+                      human_errors::detailed_message(&format!("{:?}", e))))?;
 
                   let links = parse_link_header::parse_with_rel(link_header).map_err(|e| errors::system_with_internal(
                       "Unable to parse GitHub's Link header, which will result in pagination failing to work correctly.",
@@ -68,7 +70,7 @@ impl GitHubClient {
                       e))?;
 
                   if let Some(next_link) = links.get("next") {
-                      page_url = Some(next_link.raw_uri.clone());
+                      page_url = Some(next_link.raw_uri.to_string());
                   } else {
                       page_url = None;
                   }
@@ -93,10 +95,10 @@ impl GitHubClient {
         }
     }
 
-    async fn call<B>(
+    async fn call<U: AsRef<str>, B>(
         &self,
         method: Method,
-        url: &str,
+        url: U,
         creds: &Credentials,
         builder: B,
         _cancel: &AtomicBool,
@@ -104,13 +106,27 @@ impl GitHubClient {
     where
         B: FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
     {
-        let parsed_url: Url = url.parse().map_err(|e| {
+        let parsed_url: Url = url.as_ref().parse().map_err(|e| {
             errors::user_with_internal(
-                &format!("Unable to parse GitHub URL '{}' as a valid URL.", &url),
+                &format!(
+                    "Unable to parse GitHub URL '{}' as a valid URL.",
+                    url.as_ref()
+                ),
                 "Make sure that you have configured your GitHub API correctly.",
                 e,
             )
         })?;
+
+        #[cfg(test)]
+        if let Some(response) = self.mock_replies.get(parsed_url.path()) {
+            return Ok(response.into());
+        } else if !self.mock_replies.is_empty() {
+            panic!(
+                "No mock response found for '{}'. Available mocks: {:?}",
+                parsed_url.path(),
+                self.mock_replies.keys()
+            );
+        }
 
         let mut req = self
             .client
@@ -150,12 +166,22 @@ impl GitHubClient {
             ))
         }
     }
+
+    #[cfg(test)]
+    pub fn mock<B: FnOnce(MockResponse) -> MockResponse>(mut self, path: &str, builder: B) -> Self {
+        self.mock_replies
+            .insert(path.to_string(), builder(MockResponse::new(StatusCode::OK)));
+        self
+    }
 }
 
 impl Default for GitHubClient {
     fn default() -> Self {
         Self {
             client: Arc::new(reqwest::Client::new()),
+
+            #[cfg(test)]
+            mock_replies: std::collections::HashMap::new(),
         }
     }
 }
@@ -596,22 +622,20 @@ impl std::str::FromStr for GitHubRepoSourceKind {
     type Err = crate::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let num_of_slashes = s.chars().filter(|c| *c == '/').count();
-
-        match s {
-            "user" => Ok(GitHubRepoSourceKind::CurrentUser),
-            s if s.starts_with("users/") && num_of_slashes == 1 => {
-                Ok(GitHubRepoSourceKind::User(s[6..].to_string()))
+        match s.split('/').collect::<Vec<&str>>().as_slice() {
+            ["user"] => Ok(GitHubRepoSourceKind::CurrentUser),
+            ["users", user] if !user.is_empty() => {
+                Ok(GitHubRepoSourceKind::User(user.to_string()))
             }
-            s if s.starts_with("orgs/") && num_of_slashes == 1 => {
-                Ok(GitHubRepoSourceKind::Org(s[5..].to_string()))
+            ["orgs", org] if !org.is_empty() => {
+                Ok(GitHubRepoSourceKind::Org(org.to_string()))
             }
-            s if s.starts_with("repos/") && num_of_slashes == 2 => {
-                Ok(GitHubRepoSourceKind::Repo(s[6..].to_string()))
+            ["repos", owner, repo] if !repo.is_empty() => {
+                Ok(GitHubRepoSourceKind::Repo(format!("{owner}/{repo}")))
             }
             _ => Err(errors::user(
-              &format!("The 'from' declaration '{}' was not valid for a GitHub repository source.", s),
-              "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', or 'repos/<owner>/<name>'")),
+                &format!("The 'from' declaration '{}' was not valid for a GitHub repository source.", s),
+                "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', or 'repos/<owner>/<name>'"))
         }
     }
 }
@@ -646,13 +670,76 @@ impl GitHubArtifactKind {
 }
 
 #[cfg(test)]
+#[derive(Clone)]
+pub struct MockResponse {
+    pub status: StatusCode,
+    pub headers: std::collections::HashMap<String, String>,
+    pub body: Option<String>,
+}
+
+#[cfg(test)]
+impl MockResponse {
+    pub fn new(status: StatusCode) -> Self {
+        Self {
+            status,
+            headers: std::collections::HashMap::new(),
+            body: None,
+        }
+    }
+
+    pub fn with_status_code<S: Into<StatusCode>>(mut self, status: S) -> Self {
+        self.status = status.into();
+        self
+    }
+
+    pub fn with_header<K: Into<String>, V: Into<String>>(mut self, key: K, value: V) -> Self {
+        self.headers.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn with_body<B: Into<String>>(mut self, body: B) -> Self {
+        self.body = Some(body.into());
+        self
+    }
+
+    pub fn with_body_from_file(mut self, name: &str) -> Self {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("data")
+            .join(name);
+
+        let json = std::fs::read_to_string(path).expect("Failed to read test file");
+
+        self.body = Some(json);
+        self
+    }
+}
+
+#[cfg(test)]
+impl From<&MockResponse> for reqwest::Response {
+    fn from(mock: &MockResponse) -> reqwest::Response {
+        let mut builder = http::Response::builder().status(mock.status);
+
+        for (key, value) in mock.headers.iter() {
+            builder = builder.header(key, value);
+        }
+
+        if let Some(body) = mock.body.as_ref() {
+            builder.body(body.clone()).unwrap().into()
+        } else {
+            builder.body("").unwrap().into()
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
+    use super::*;
     use rstest::rstest;
     use serde::de::DeserializeOwned;
-
-    use super::*;
+    use tokio_stream::StreamExt;
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -664,6 +751,29 @@ mod tests {
         let json = std::fs::read_to_string(path)?;
         let value = serde_json::from_str(&json)?;
         Ok(value)
+    }
+
+    #[tokio::test]
+    async fn test_mock_mode() {
+        let client = GitHubClient::default().mock("/users/notheotherben/repos", |b| {
+            b.with_body_from_file("github.repos.0.json")
+        });
+
+        let stream = client.get_paginated(
+            "https://api.github.com/users/notheotherben/repos",
+            &Credentials::None,
+            &CANCEL,
+        );
+        tokio::pin!(stream);
+
+        let mut count = 0;
+        while let Some(repo) = stream.next().await {
+            let repo: GitHubRepo = repo.expect("Failed to fetch repo");
+            assert!(!repo.name.is_empty());
+            count += 1;
+        }
+
+        assert!(count > 0, "at least one repo should be returned");
     }
 
     #[rstest]
