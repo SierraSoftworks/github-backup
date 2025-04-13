@@ -60,7 +60,7 @@ impl GitHubClient {
                   let link_header = link_header.to_str().map_err(|e| errors::system_with_internal(
                       "Unable to parse GitHub's Link header due to invalid characters, which will result in pagination failing to work correctly.",
                       "Please report this issue to us on GitHub.",
-                      e))?;
+                      human_errors::detailed_message(&format!("{:?}", e))))?;
 
                   let links = parse_link_header::parse_with_rel(link_header).map_err(|e| errors::system_with_internal(
                       "Unable to parse GitHub's Link header, which will result in pagination failing to work correctly.",
