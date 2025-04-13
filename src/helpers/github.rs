@@ -1,8 +1,8 @@
+use reqwest::{header::LINK, Method, Response, StatusCode, Url};
 use std::{
     fmt::Display,
     sync::{atomic::AtomicBool, Arc},
 };
-use reqwest::{header::LINK, Method, Response, StatusCode, Url};
 use tokio_stream::Stream;
 
 use crate::{
@@ -108,7 +108,10 @@ impl GitHubClient {
     {
         let parsed_url: Url = url.as_ref().parse().map_err(|e| {
             errors::user_with_internal(
-                &format!("Unable to parse GitHub URL '{}' as a valid URL.", url.as_ref()),
+                &format!(
+                    "Unable to parse GitHub URL '{}' as a valid URL.",
+                    url.as_ref()
+                ),
                 "Make sure that you have configured your GitHub API correctly.",
                 e,
             )
@@ -118,7 +121,11 @@ impl GitHubClient {
         if let Some(response) = self.mock_replies.get(parsed_url.path()) {
             return Ok(response.into());
         } else if !self.mock_replies.is_empty() {
-            panic!("No mock response found for '{}'. Available mocks: {:?}", parsed_url.path(), self.mock_replies.keys());
+            panic!(
+                "No mock response found for '{}'. Available mocks: {:?}",
+                parsed_url.path(),
+                self.mock_replies.keys()
+            );
         }
 
         let mut req = self
@@ -162,7 +169,8 @@ impl GitHubClient {
 
     #[cfg(test)]
     pub fn mock<B: FnOnce(MockResponse) -> MockResponse>(mut self, path: &str, builder: B) -> Self {
-        self.mock_replies.insert(path.to_string(), builder(MockResponse::new(StatusCode::OK)));
+        self.mock_replies
+            .insert(path.to_string(), builder(MockResponse::new(StatusCode::OK)));
         self
     }
 }
@@ -710,8 +718,7 @@ impl MockResponse {
 #[cfg(test)]
 impl From<&MockResponse> for Response {
     fn from(mock: &MockResponse) -> Response {
-        let mut builder = http::Response::builder()
-            .status(mock.status);
+        let mut builder = http::Response::builder().status(mock.status);
 
         for (key, value) in mock.headers.iter() {
             builder = builder.header(key, value);
@@ -729,10 +736,10 @@ impl From<&MockResponse> for Response {
 mod tests {
     use std::path::PathBuf;
 
+    use super::*;
     use rstest::rstest;
     use serde::de::DeserializeOwned;
     use tokio_stream::StreamExt;
-    use super::*;
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -748,8 +755,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_mode() {
-        let client = GitHubClient::default()
-            .mock("/users/notheotherben/repos", |b| b.with_body_from_file("github.repos.0.json"));
+        let client = GitHubClient::default().mock("/users/notheotherben/repos", |b| {
+            b.with_body_from_file("github.repos.0.json")
+        });
 
         let stream = client.get_paginated(
             "https://api.github.com/users/notheotherben/repos",

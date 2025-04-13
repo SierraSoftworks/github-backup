@@ -142,9 +142,9 @@ mod tests {
 
     use rstest::rstest;
 
-    use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
-    use crate::helpers::GitHubClient;
     use super::GitHubRepoSource;
+    use crate::helpers::GitHubClient;
+    use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -248,7 +248,6 @@ mod tests {
         }
     }
 
-
     #[rstest]
     #[case("github.repos.0.json", 31)]
     #[tokio::test]
@@ -258,15 +257,17 @@ mod tests {
         let source = GitHubRepoSource::with_client(
             GitHubClient::default()
                 .mock("/users/octocat/repos", |b| b.with_body_from_file(filename)),
-            GitHubArtifactKind::Repo);
+            GitHubArtifactKind::Repo,
+        );
 
-        let policy: BackupPolicy = serde_yaml::from_str(r#"
+        let policy: BackupPolicy = serde_yaml::from_str(
+            r#"
           kind: github/repo
           from: users/octocat
           to: /tmp
-        "#
+        "#,
         )
-            .unwrap();
+        .unwrap();
 
         let stream = source.load(&policy, &CANCEL);
         tokio::pin!(stream);
@@ -277,7 +278,11 @@ mod tests {
             count += 1;
         }
 
-        assert_eq!(count, expected_entries, "Expected {} entries, got {}", expected_entries, count);
+        assert_eq!(
+            count, expected_entries,
+            "Expected {} entries, got {}",
+            expected_entries, count
+        );
     }
 
     #[rstest]

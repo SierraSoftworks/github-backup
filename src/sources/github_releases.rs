@@ -176,9 +176,9 @@ mod tests {
 
     use rstest::rstest;
 
-    use crate::{BackupPolicy, BackupSource};
-    use crate::helpers::GitHubClient;
     use super::GitHubReleasesSource;
+    use crate::helpers::GitHubClient;
+    use crate::{BackupPolicy, BackupSource};
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -252,17 +252,24 @@ mod tests {
     async fn get_releases_mocked(#[case] filename: &str, #[case] expected_entries: usize) {
         use tokio_stream::StreamExt;
 
-        let source = GitHubReleasesSource::with_client(GitHubClient::default()
-            .mock("/users/octocat/repos", |b| b.with_body_from_file("github.repos.0.json"))
-            .mock("/repos/octocat/repo/releases", |b| b.with_body_from_file(filename)));
+        let source = GitHubReleasesSource::with_client(
+            GitHubClient::default()
+                .mock("/users/octocat/repos", |b| {
+                    b.with_body_from_file("github.repos.0.json")
+                })
+                .mock("/repos/octocat/repo/releases", |b| {
+                    b.with_body_from_file(filename)
+                }),
+        );
 
-        let policy: BackupPolicy = serde_yaml::from_str(r#"
+        let policy: BackupPolicy = serde_yaml::from_str(
+            r#"
           kind: github/release
           from: users/octocat
           to: /tmp
-        "#
+        "#,
         )
-            .unwrap();
+        .unwrap();
 
         let stream = source.load(&policy, &CANCEL);
         tokio::pin!(stream);
@@ -273,6 +280,10 @@ mod tests {
             count += 1;
         }
 
-        assert_eq!(count, expected_entries, "Expected {} entries, got {}", expected_entries, count);
+        assert_eq!(
+            count, expected_entries,
+            "Expected {} entries, got {}",
+            expected_entries, count
+        );
     }
 }
