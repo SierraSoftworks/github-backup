@@ -596,22 +596,20 @@ impl std::str::FromStr for GitHubRepoSourceKind {
     type Err = crate::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let num_of_slashes = s.chars().filter(|c| *c == '/').count();
-
-        match s {
-            "user" => Ok(GitHubRepoSourceKind::CurrentUser),
-            s if s.starts_with("users/") && num_of_slashes == 1 => {
-                Ok(GitHubRepoSourceKind::User(s[6..].to_string()))
+        match s.split('/').collect::<Vec<&str>>().as_slice() {
+            ["user"] => Ok(GitHubRepoSourceKind::CurrentUser),
+            ["users", user] if !user.is_empty() => {
+                Ok(GitHubRepoSourceKind::User(user.to_string()))
             }
-            s if s.starts_with("orgs/") && num_of_slashes == 1 => {
-                Ok(GitHubRepoSourceKind::Org(s[5..].to_string()))
+            ["orgs", org] if !org.is_empty() => {
+                Ok(GitHubRepoSourceKind::Org(org.to_string()))
             }
-            s if s.starts_with("repos/") && num_of_slashes == 2 => {
-                Ok(GitHubRepoSourceKind::Repo(s[6..].to_string()))
+            ["repos", owner, repo] if !repo.is_empty() => {
+                Ok(GitHubRepoSourceKind::Repo(format!("{owner}/{repo}")))
             }
             _ => Err(errors::user(
-              &format!("The 'from' declaration '{}' was not valid for a GitHub repository source.", s),
-              "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', or 'repos/<owner>/<name>'")),
+                &format!("The 'from' declaration '{}' was not valid for a GitHub repository source.", s),
+                "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', or 'repos/<owner>/<name>'"))
         }
     }
 }
