@@ -734,7 +734,7 @@ pub enum GitHubRepoSourceKind {
     Org(String),
     Repo(String),
     GistStar,
-    Gist(String)
+    Gist(String),
 }
 
 impl GitHubRepoSourceKind {

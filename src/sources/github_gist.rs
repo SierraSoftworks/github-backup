@@ -74,7 +74,6 @@ impl BackupSource<GitRepo> for GitHubGistSource {
             .get("refspecs")
             .map(|r| r.split(',').map(|r| r.to_string()).collect::<Vec<String>>());
 
-
         async_stream::try_stream! {
           if matches!(target, GitHubRepoSourceKind::Gist(_)) {
             let gist: GitHubGist = self.client.get(&url, &policy.credentials, cancel).await?;
