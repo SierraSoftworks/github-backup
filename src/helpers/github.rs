@@ -1,4 +1,4 @@
-use reqwest::{header::LINK, Method, Response, StatusCode, Url};
+use reqwest::{header::LINK, Method, StatusCode, Url};
 use std::{
     fmt::Display,
     sync::{atomic::AtomicBool, Arc},
@@ -716,8 +716,8 @@ impl MockResponse {
 }
 
 #[cfg(test)]
-impl From<&MockResponse> for Response {
-    fn from(mock: &MockResponse) -> Response {
+impl From<&MockResponse> for reqwest::Response {
+    fn from(mock: &MockResponse) -> reqwest::Response {
         let mut builder = http::Response::builder().status(mock.status);
 
         for (key, value) in mock.headers.iter() {
