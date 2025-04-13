@@ -42,7 +42,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          components: clippy,fmt
+          components: clippy
 
       - name: cargo fmt
         run: cargo fmt --all --check
