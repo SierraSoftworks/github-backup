@@ -21,11 +21,11 @@ mod sources;
 mod telemetry;
 
 use crate::helpers::github::GitHubArtifactKind;
+use crate::pairing::SummaryStatistics;
 pub use entities::BackupEntity;
 pub use filter::{Filter, FilterValue, Filterable};
 pub use policy::BackupPolicy;
 pub use sources::BackupSource;
-use crate::pairing::SummaryStatistics;
 
 static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -129,7 +129,9 @@ pub struct LoggingPairingHandler;
 impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
     fn on_complete(&self, entity: E, state: BackupState) {
         match &state {
-            state@BackupState::Unchanged(_)|state@BackupState::Skipped => debug!(" - {} ({})", entity, state),
+            state @ BackupState::Unchanged(_) | state @ BackupState::Skipped => {
+                debug!(" - {} ({})", entity, state)
+            }
             _ => info!(" - {} ({})", entity, state),
         }
     }
@@ -139,7 +141,10 @@ impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
     }
 
     fn on_summary(&self, summary: SummaryStatistics) {
-        info!("Backup completed after {}s: {summary}", summary.duration().as_secs());
+        info!(
+            "Backup completed after {}s: {summary}",
+            summary.duration().as_secs()
+        );
     }
 }
 

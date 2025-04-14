@@ -1,6 +1,6 @@
-use std::{marker::PhantomData, sync::atomic::AtomicBool};
-use std::fmt::{Display, Formatter};
 use crate::telemetry::StreamExt;
+use std::fmt::{Display, Formatter};
+use std::{marker::PhantomData, sync::atomic::AtomicBool};
 use tokio::task::JoinSet;
 use tokio_stream::{Stream, StreamExt as _};
 use tracing_batteries::prelude::*;
@@ -63,11 +63,11 @@ impl<
                 Ok((entity, state)) => {
                     stats.record_state(&state);
                     handler.on_complete(entity, state)
-                },
+                }
                 Err(e) => {
                     stats.record_error();
                     handler.on_error(e)
-                },
+                }
             }
         }
 
