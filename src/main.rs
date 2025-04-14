@@ -21,6 +21,7 @@ mod sources;
 mod telemetry;
 
 use crate::helpers::github::GitHubArtifactKind;
+use crate::pairing::SummaryStatistics;
 pub use entities::BackupEntity;
 pub use filter::{Filter, FilterValue, Filterable};
 pub use policy::BackupPolicy;
@@ -127,11 +128,23 @@ pub struct LoggingPairingHandler;
 
 impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
     fn on_complete(&self, entity: E, state: BackupState) {
-        info!(" - {} ({})", entity, state);
+        match &state {
+            state @ BackupState::Unchanged(_) | state @ BackupState::Skipped => {
+                debug!(" - {} ({})", entity, state)
+            }
+            _ => info!(" - {} ({})", entity, state),
+        }
     }
 
     fn on_error(&self, error: Error) {
         warn!("Error: {}", error);
+    }
+
+    fn on_summary(&self, summary: SummaryStatistics) {
+        info!(
+            "Backup completed after {}s: {summary}",
+            summary.duration().as_secs()
+        );
     }
 }
 
@@ -139,7 +152,7 @@ impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
 async fn main() {
     ctrlc::set_handler(|| {
         CANCEL.store(true, std::sync::atomic::Ordering::Relaxed);
-        info!("Received SIGINT, shutting down...");
+        warn!("Received SIGINT, shutting down...");
     })
     .unwrap_or_default();
 

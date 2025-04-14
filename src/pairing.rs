@@ -1,6 +1,6 @@
-use std::{marker::PhantomData, sync::atomic::AtomicBool};
-
 use crate::telemetry::StreamExt;
+use std::fmt::{Display, Formatter};
+use std::{marker::PhantomData, sync::atomic::AtomicBool};
 use tokio::task::JoinSet;
 use tokio_stream::{Stream, StreamExt as _};
 use tracing_batteries::prelude::*;
@@ -57,12 +57,22 @@ impl<
     ) {
         let stream = self.run_all_backups(policy, cancel);
         tokio::pin!(stream);
+        let mut stats = SummaryStatistics::new();
         while let Some(result) = stream.next().await {
             match result {
-                Ok((entity, state)) => handler.on_complete(entity, state),
-                Err(e) => handler.on_error(e),
+                Ok((entity, state)) => {
+                    stats.record_state(&state);
+                    handler.on_complete(entity, state)
+                }
+                Err(e) => {
+                    stats.record_error();
+                    handler.on_error(e)
+                }
             }
         }
+
+        stats.finish();
+        handler.on_summary(stats);
     }
 
     pub fn run_all_backups<'a>(
@@ -130,9 +140,67 @@ impl<
     }
 }
 
+pub struct SummaryStatistics {
+    start_time: std::time::Instant,
+    end_time: Option<std::time::Instant>,
+
+    pub updated: usize,
+    pub skipped: usize,
+    pub unchanged: usize,
+    pub new: usize,
+    pub error: usize,
+}
+
+impl SummaryStatistics {
+    fn new() -> Self {
+        Self {
+            start_time: std::time::Instant::now(),
+            end_time: None,
+
+            updated: 0,
+            skipped: 0,
+            unchanged: 0,
+            new: 0,
+            error: 0,
+        }
+    }
+
+    fn record_state(&mut self, state: &BackupState) {
+        match state {
+            BackupState::New(_) => self.new += 1,
+            BackupState::Unchanged(_) => self.unchanged += 1,
+            BackupState::Updated(_) => self.updated += 1,
+            BackupState::Skipped => self.skipped += 1,
+        }
+    }
+
+    fn record_error(&mut self) {
+        self.error += 1;
+    }
+
+    fn finish(&mut self) {
+        self.end_time = Some(std::time::Instant::now());
+    }
+
+    pub fn duration(&self) -> std::time::Duration {
+        self.end_time.unwrap_or(self.start_time) - self.start_time
+    }
+}
+
+impl Display for SummaryStatistics {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "New: {}, Unchanged: {}, Updated: {}, Skipped: {}, Error(s): {}",
+            self.new, self.unchanged, self.updated, self.skipped, self.error
+        )
+    }
+}
+
 pub trait PairingHandler<E: BackupEntity> {
     fn on_complete(&self, entity: E, state: BackupState);
     fn on_error(&self, error: crate::Error);
+    fn on_summary(&self, _stats: SummaryStatistics) {}
 }
 
 #[cfg(test)]
