@@ -126,8 +126,10 @@ mod tests {
 
     #[rstest]
     #[case("user", true)]
+    #[case("user/", false)]
     #[case("users/notheotherben", true)]
     #[case("gists/d4caf959fb7824a9855c", true)]
+    #[case("gists/", false)]
     #[case("starred", true)]
     fn validation_gist(#[case] from: &str, #[case] success: bool) {
         let source = GitHubGistSource::default();

@@ -132,6 +132,7 @@ mod tests {
 
     #[rstest]
     #[case("user", true)]
+    #[case("user/", false)]
     #[case("users/notheotherben", true)]
     #[case("orgs/sierrasoftworks", true)]
     #[case("notheotherben", false)]
