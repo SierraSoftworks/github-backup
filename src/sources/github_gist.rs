@@ -121,9 +121,9 @@ mod tests {
 
     use rstest::rstest;
 
-    use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
-    use crate::helpers::GitHubClient;
     use super::GitHubGistSource;
+    use crate::helpers::GitHubClient;
+    use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -173,10 +173,15 @@ mod tests {
         let source = GitHubGistSource::with_client(
             GitHubClient::default()
                 .mock("/gists", |b| b.with_body_from_file("github.gists.0.json"))
-                .mock("/users/notheotherben/gists", |b| b.with_body_from_file("github.gists.0.json"))
-                .mock("/gists/starred", |b| b.with_body_from_file("github.gists.0.json"))
-                .mock("/gists/aa5a315d61ae9438b18d", |b| b.with_body_from_file("github.gists.1.json")),
-
+                .mock("/users/notheotherben/gists", |b| {
+                    b.with_body_from_file("github.gists.0.json")
+                })
+                .mock("/gists/starred", |b| {
+                    b.with_body_from_file("github.gists.0.json")
+                })
+                .mock("/gists/aa5a315d61ae9438b18d", |b| {
+                    b.with_body_from_file("github.gists.1.json")
+                }),
             GitHubArtifactKind::Gist,
         );
 

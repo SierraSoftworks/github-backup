@@ -206,7 +206,11 @@ mod tests {
     #[case("users/octocat", "github.repos.0.json", 31)]
     #[case("starred", "github.repos.1.json", 2)]
     #[tokio::test]
-    async fn get_repos_mocked(#[case] target: &str, #[case] filename: &str, #[case] expected_entries: usize) {
+    async fn get_repos_mocked(
+        #[case] target: &str,
+        #[case] filename: &str,
+        #[case] expected_entries: usize,
+    ) {
         use tokio_stream::StreamExt;
 
         let source = GitHubRepoSource::with_client(
@@ -224,7 +228,7 @@ mod tests {
         "#,
             target
         ))
-            .unwrap();
+        .unwrap();
 
         let stream = source.load(&policy, &CANCEL);
         tokio::pin!(stream);
