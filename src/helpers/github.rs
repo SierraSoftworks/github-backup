@@ -741,7 +741,7 @@ impl GitHubRepoSourceKind {
     pub fn api_endpoint(&self, artifact_kind: GitHubArtifactKind) -> String {
         match self {
             GitHubRepoSourceKind::CurrentUser => match artifact_kind {
-                GitHubArtifactKind::Gist => format!("{}", artifact_kind.api_endpoint()),
+                GitHubArtifactKind::Gist => artifact_kind.api_endpoint().to_string(),
                 _ => format!("user/{}", artifact_kind.api_endpoint()),
             },
             GitHubRepoSourceKind::User(u) => {
