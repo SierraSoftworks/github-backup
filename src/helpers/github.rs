@@ -1100,6 +1100,7 @@ mod tests {
         GitHubArtifactKind::Gist,
         "gists/starred"
     )]
+    #[case(GitHubRepoSourceKind::Repo("octocat".to_string()), GitHubArtifactKind::Repo, "repos/octocat")]
     fn test_source_kind_api_url(
         #[case] source_kind: GitHubRepoSourceKind,
         #[case] artifact_kind: GitHubArtifactKind,
