@@ -85,16 +85,28 @@ backups:
     to: /backups/releases
     filter: '!release.prerelease'
 
+  # Backup all repositories starred by the currently authenticated user
+  - kind: github/repo
+    from: "starred"
+    to: /backups/starred/repos
+    credentials: !Token "your_github_pat"
+
   # Backup all GitHub Gists for your authenticated user
   - kind: github/gist
     from: "user"
-    to: /backups/gists
+    to: /backups/gists/user
     credentials: !Token "your_github_token"
+
+  # Backup all Gists starred by the currently authenticated user
+  - kind: github/gist
+    from: "starred"
+    to: /backups/starred/gists
+    credentials: !Token "your_github_pat"
 
   # Backup public GitHub Gist of another user
   - kind: github/gist
     from: "users/another-user"
-    to: /backups/gists
+    to: /backups/gists/another-user
 ```
 
 <ClientOnly>
