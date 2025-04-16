@@ -740,7 +740,13 @@ pub enum GitHubRepoSourceKind {
 impl GitHubRepoSourceKind {
     pub fn api_endpoint(&self, artifact_kind: GitHubArtifactKind) -> String {
         match self {
-            GitHubRepoSourceKind::CurrentUser => format!("user/{}", artifact_kind.api_endpoint()),
+            GitHubRepoSourceKind::CurrentUser => {
+                match artifact_kind {
+                    GitHubArtifactKind::Gist => format!("{}", artifact_kind.api_endpoint()),
+                    _ => format!("user/{}", artifact_kind.api_endpoint())
+                }
+
+            }
             GitHubRepoSourceKind::User(u) => {
                 format!("users/{}/{}", u, artifact_kind.api_endpoint())
             }

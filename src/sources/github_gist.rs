@@ -122,7 +122,7 @@ mod tests {
     use rstest::rstest;
 
     use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
-
+    use crate::helpers::GitHubClient;
     use super::GitHubGistSource;
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
@@ -164,30 +164,31 @@ mod tests {
     #[case("user")]
     #[case("users/notheotherben")]
     #[case("gists/starred")]
-    #[case("gists/d4caf959fb7824a9855c")]
-    #[ignore] // ignore temporarily until GitHub API wrapper/mock is implemented
+    #[case("gists/aa5a315d61ae9438b18d")]
     #[tokio::test]
     #[cfg_attr(feature = "pure_tests", ignore)]
     async fn get_gist_repos(#[case] target: &str) {
         use tokio_stream::StreamExt;
 
-        let source = GitHubGistSource::gist();
+        let source = GitHubGistSource::with_client(
+            GitHubClient::default()
+                .mock("/gists", |b| b.with_body_from_file("github.gists.0.json"))
+                .mock("/users/notheotherben/gists", |b| b.with_body_from_file("github.gists.0.json"))
+                .mock("/gists/starred", |b| b.with_body_from_file("github.gists.0.json"))
+                .mock("/gists/aa5a315d61ae9438b18d", |b| b.with_body_from_file("github.gists.1.json")),
+
+            GitHubArtifactKind::Gist,
+        );
 
         let policy: BackupPolicy = serde_yaml::from_str(&format!(
             r#"
           kind: github/gist
           from: {}
           to: /tmp
-          credentials: {}
         "#,
-            target,
-            std::env::var("GITHUB_TOKEN")
-                .map(|t| format!("!Token {t}"))
-                .unwrap_or_else(|_| "!None".to_string())
+            target
         ))
         .unwrap();
-
-        println!("Using credentials: {}", policy.credentials);
 
         let stream = source.load(&policy, &CANCEL);
         tokio::pin!(stream);
