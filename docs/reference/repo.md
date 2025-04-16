@@ -1,6 +1,6 @@
 # GitHub Repos
 The primary use case for `github-backup` is to backup GitHub repositories,
-this is done using the `github/repo` or `github/star` backup types in your
+this is done using the `github/repo` backup type in your
 configuration file with an appropriate `from` directive to define the source
 of the repositories you wish to backup.
 
@@ -40,10 +40,11 @@ backups:
     from: "repos/<owner>/<repo>"
     to: /backups/github
 
-    # Backup all of the repositories starred by a specific user
-  - kind: github/star
-    from: "users/<username>"
-    to: /backups/github
+    # Backup all of the repositories starred by the currently authenticated user
+  - kind: github/repo
+    from: "starred"
+    to: /backups/github/starred
+    credentials: !Token "your_github_pat"
 ```
 
 ## Filter Fields

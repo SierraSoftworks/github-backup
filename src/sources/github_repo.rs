@@ -14,15 +14,14 @@ use crate::{
     BackupSource,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GitHubRepoSource {
     client: GitHubClient,
-    artifact_kind: GitHubArtifactKind,
 }
 
 impl BackupSource<GitRepo> for GitHubRepoSource {
     fn kind(&self) -> &str {
-        self.artifact_kind.as_str()
+        GitHubArtifactKind::Repo.as_str()
     }
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
@@ -67,7 +66,7 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
                 .get("api_url")
                 .unwrap_or(&"https://api.github.com".to_string())
                 .trim_end_matches('/'),
-            target.api_endpoint(self.artifact_kind),
+            target.api_endpoint(GitHubArtifactKind::Repo),
             policy.properties.get("query").unwrap_or(&"".to_string())
         )
         .trim_end_matches('?')
@@ -106,18 +105,8 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
 
 impl GitHubRepoSource {
     #[allow(dead_code)]
-    pub fn with_client(client: GitHubClient, kind: GitHubArtifactKind) -> Self {
-        GitHubRepoSource {
-            client,
-            artifact_kind: kind,
-        }
-    }
-
-    pub fn repo() -> Self {
-        GitHubRepoSource {
-            client: GitHubClient::default(),
-            artifact_kind: GitHubArtifactKind::Repo,
-        }
+    pub fn with_client(client: GitHubClient) -> Self {
+        GitHubRepoSource { client }
     }
 }
 
@@ -136,7 +125,7 @@ mod tests {
     #[test]
     fn check_name_repo() {
         assert_eq!(
-            GitHubRepoSource::repo().kind(),
+            GitHubRepoSource::default().kind(),
             GitHubArtifactKind::Repo.as_str()
         );
     }
@@ -150,7 +139,7 @@ mod tests {
     #[case("users/notheotherben/repos", false)]
     #[case("starred", true)]
     fn validation_repo(#[case] from: &str, #[case] success: bool) {
-        let source = GitHubRepoSource::repo();
+        let source = GitHubRepoSource::default();
 
         let policy = serde_yaml::from_str(&format!(
             r#"
@@ -176,7 +165,7 @@ mod tests {
     async fn get_repos(#[case] target: &str) {
         use tokio_stream::StreamExt;
 
-        let source = GitHubRepoSource::repo();
+        let source = GitHubRepoSource::default();
 
         let policy: BackupPolicy = serde_yaml::from_str(&format!(
             r#"
@@ -217,7 +206,6 @@ mod tests {
             GitHubClient::default()
                 .mock("/users/octocat/repos", |b| b.with_body_from_file(filename))
                 .mock("/user/starred", |b| b.with_body_from_file(filename)),
-            GitHubArtifactKind::Repo,
         );
 
         let policy: BackupPolicy = serde_yaml::from_str(&format!(

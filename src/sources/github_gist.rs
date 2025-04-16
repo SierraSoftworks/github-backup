@@ -14,15 +14,14 @@ use crate::{
     BackupSource,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GitHubGistSource {
     client: GitHubClient,
-    artifact_kind: GitHubArtifactKind,
 }
 
 impl BackupSource<GitRepo> for GitHubGistSource {
     fn kind(&self) -> &str {
-        self.artifact_kind.as_str()
+        GitHubArtifactKind::Gist.as_str()
     }
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
@@ -61,7 +60,7 @@ impl BackupSource<GitRepo> for GitHubGistSource {
                 .get("api_url")
                 .unwrap_or(&"https://api.github.com".to_string())
                 .trim_end_matches('/'),
-            target.api_endpoint(self.artifact_kind),
+            target.api_endpoint(GitHubArtifactKind::Gist),
             policy.properties.get("query").unwrap_or(&"".to_string())
         )
         .trim_end_matches('?')
@@ -100,18 +99,8 @@ impl BackupSource<GitRepo> for GitHubGistSource {
 
 impl GitHubGistSource {
     #[allow(dead_code)]
-    pub fn with_client(client: GitHubClient, kind: GitHubArtifactKind) -> Self {
-        GitHubGistSource {
-            client,
-            artifact_kind: kind,
-        }
-    }
-
-    pub fn gist() -> Self {
-        GitHubGistSource {
-            client: GitHubClient::default(),
-            artifact_kind: GitHubArtifactKind::Gist,
-        }
+    pub fn with_client(client: GitHubClient) -> Self {
+        GitHubGistSource { client }
     }
 }
 
@@ -130,7 +119,7 @@ mod tests {
     #[test]
     fn check_name_gist() {
         assert_eq!(
-            GitHubGistSource::gist().kind(),
+            GitHubGistSource::default().kind(),
             GitHubArtifactKind::Gist.as_str()
         );
     }
@@ -141,7 +130,7 @@ mod tests {
     #[case("gists/d4caf959fb7824a9855c", true)]
     #[case("starred", true)]
     fn validation_gist(#[case] from: &str, #[case] success: bool) {
-        let source = GitHubGistSource::gist();
+        let source = GitHubGistSource::default();
 
         let policy = serde_yaml::from_str(&format!(
             r#"
@@ -182,7 +171,6 @@ mod tests {
                 .mock("/gists/aa5a315d61ae9438b18d", |b| {
                     b.with_body_from_file("github.gists.1.json")
                 }),
-            GitHubArtifactKind::Gist,
         );
 
         let policy: BackupPolicy = serde_yaml::from_str(&format!(

@@ -136,10 +136,11 @@ backups:
     from: "repos/<owner>/<repo>"
     to: /backups/github
 
-    # Backup all of the repositories starred by a specific user
-  - kind: github/star
-    from: "users/<username>"
-    to: /backups/github
+    # Backup all of the repositories starred by the currently authenticated user
+  - kind: github/repo
+    from: "starred"
+    to: /backups/github/starred
+    credentials: !Token "your_github_pat"
     
     # Backup all GitHub Gist accessible to the user associated with the provided credentials
   - kind: github/gist

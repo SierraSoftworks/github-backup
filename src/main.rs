@@ -48,13 +48,15 @@ pub struct Args {
 async fn run(args: Args) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
-    let github_repo = pairing::Pairing::new(sources::GitHubRepoSource::repo(), engines::GitEngine)
-        .with_dry_run(args.dry_run)
-        .with_concurrency_limit(args.concurrency);
+    let github_repo =
+        pairing::Pairing::new(sources::GitHubRepoSource::default(), engines::GitEngine)
+            .with_dry_run(args.dry_run)
+            .with_concurrency_limit(args.concurrency);
 
-    let github_gist = pairing::Pairing::new(sources::GitHubGistSource::gist(), engines::GitEngine)
-        .with_dry_run(args.dry_run)
-        .with_concurrency_limit(args.concurrency);
+    let github_gist =
+        pairing::Pairing::new(sources::GitHubGistSource::default(), engines::GitEngine)
+            .with_dry_run(args.dry_run)
+            .with_concurrency_limit(args.concurrency);
 
     let github_release = pairing::Pairing::new(
         sources::GitHubReleasesSource::default(),
