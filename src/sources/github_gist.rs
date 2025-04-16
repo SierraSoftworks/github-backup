@@ -152,27 +152,26 @@ mod tests {
     }
 
     #[rstest]
-    #[case("user")]
-    #[case("users/notheotherben")]
-    #[case("starred")]
-    #[case("gists/aa5a315d61ae9438b18d")]
+    #[case("user", "/gists", "github.gists.0.json", 2)]
+    #[case("users/octocat", "/users/octocat/gists", "github.gists.0.json", 2)]
+    #[case("starred", "/gists/starred", "github.gists.0.json", 2)]
+    #[case(
+        "gists/aa5a315d61ae9438b18d",
+        "/gists/aa5a315d61ae9438b18d",
+        "github.gists.1.json",
+        1
+    )]
     #[tokio::test]
-    #[cfg_attr(feature = "pure_tests", ignore)]
-    async fn get_gist_repos(#[case] target: &str) {
+    async fn get_gist_repos(
+        #[case] target: &str,
+        #[case] api_endpoint: &str,
+        #[case] filename: &str,
+        #[case] expected_entries: usize,
+    ) {
         use tokio_stream::StreamExt;
 
         let source = GitHubGistSource::with_client(
-            GitHubClient::default()
-                .mock("/gists", |b| b.with_body_from_file("github.gists.0.json"))
-                .mock("/users/notheotherben/gists", |b| {
-                    b.with_body_from_file("github.gists.0.json")
-                })
-                .mock("/gists/starred", |b| {
-                    b.with_body_from_file("github.gists.0.json")
-                })
-                .mock("/gists/aa5a315d61ae9438b18d", |b| {
-                    b.with_body_from_file("github.gists.1.json")
-                }),
+            GitHubClient::default().mock(api_endpoint, |b| b.with_body_from_file(filename)),
         );
 
         let policy: BackupPolicy = serde_yaml::from_str(&format!(
@@ -188,15 +187,21 @@ mod tests {
         let stream = source.load(&policy, &CANCEL);
         tokio::pin!(stream);
 
-        while let Some(repo) = stream.next().await {
-            match repo {
-                Ok(r) => {
-                    println!("{}", r)
-                }
+        let mut count = 0;
+        while let Some(gist) = stream.next().await {
+            match gist {
+                Ok(r) => {}
                 Err(e) => {
                     panic!("{}", e)
                 }
             }
+            count += 1;
         }
+
+        assert_eq!(
+            count, expected_entries,
+            "Expected {} entries, got {}",
+            expected_entries, count
+        );
     }
 }

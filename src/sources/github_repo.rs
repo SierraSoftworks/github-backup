@@ -193,20 +193,19 @@ mod tests {
     }
 
     #[rstest]
-    #[case("users/octocat", "github.repos.0.json", 31)]
-    #[case("starred", "github.repos.1.json", 2)]
+    #[case("users/octocat", "/users/octocat/repos", "github.repos.0.json", 31)]
+    #[case("starred", "/user/starred", "github.repos.1.json", 2)]
     #[tokio::test]
     async fn get_repos_mocked(
         #[case] target: &str,
+        #[case] api_endpoint: &str,
         #[case] filename: &str,
         #[case] expected_entries: usize,
     ) {
         use tokio_stream::StreamExt;
 
         let source = GitHubRepoSource::with_client(
-            GitHubClient::default()
-                .mock("/users/octocat/repos", |b| b.with_body_from_file(filename))
-                .mock("/user/starred", |b| b.with_body_from_file(filename)),
+            GitHubClient::default().mock(api_endpoint, |b| b.with_body_from_file(filename)),
         );
 
         let policy: BackupPolicy = serde_yaml::from_str(&format!(

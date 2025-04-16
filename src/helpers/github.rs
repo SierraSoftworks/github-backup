@@ -941,7 +941,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case("github.gists.0.json", 1)]
+    #[case("github.gists.0.json", 2)]
     fn test_deserialize_gist(#[case] file: &str, #[case] repo_count: usize) {
         let gists: Vec<GitHubGist> = load_test_file(file).expect("Failed to load test file");
         assert_eq!(gists.len(), repo_count);
