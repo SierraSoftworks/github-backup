@@ -49,13 +49,15 @@ pub struct Args {
 async fn run(args: Args) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
-    let github_repo = pairing::Pairing::new(sources::GitHubRepoSource::repo(), engines::GitEngine)
-        .with_dry_run(args.dry_run)
-        .with_concurrency_limit(args.concurrency);
+    let github_repo =
+        pairing::Pairing::new(sources::GitHubRepoSource::default(), engines::GitEngine)
+            .with_dry_run(args.dry_run)
+            .with_concurrency_limit(args.concurrency);
 
-    let github_star = pairing::Pairing::new(sources::GitHubRepoSource::star(), engines::GitEngine)
-        .with_dry_run(args.dry_run)
-        .with_concurrency_limit(args.concurrency);
+    let github_gist =
+        pairing::Pairing::new(sources::GitHubGistSource::default(), engines::GitEngine)
+            .with_dry_run(args.dry_run)
+            .with_concurrency_limit(args.concurrency);
 
     let github_release = pairing::Pairing::new(
         sources::GitHubReleasesSource::default(),
@@ -83,15 +85,15 @@ async fn run(args: Args) -> Result<(), Error> {
                             .run(policy, &LoggingPairingHandler, &CANCEL)
                             .await;
                     }
-                    k if k == GitHubArtifactKind::Star.as_str() => {
-                        info!("Backing up starred repositories for {}", &policy);
-                        github_star
-                            .run(policy, &LoggingPairingHandler, &CANCEL)
-                            .await;
-                    }
                     k if k == GitHubArtifactKind::Release.as_str() => {
                         info!("Backing up release artifacts for {}", &policy);
                         github_release
+                            .run(policy, &LoggingPairingHandler, &CANCEL)
+                            .await;
+                    }
+                    k if k == GitHubArtifactKind::Gist.as_str() => {
+                        info!("Backing up gist artifacts for {}", &policy);
+                        github_gist
                             .run(policy, &LoggingPairingHandler, &CANCEL)
                             .await;
                     }

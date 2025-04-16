@@ -72,6 +72,29 @@ backups:
     from: "repos/my-org/repo"
     to: /backups/releases
     filter: '!release.prerelease'
+
+  # Backup all repositories starred by the currently authenticated user
+  - kind: github/repo
+    from: "starred"
+    to: /backups/starred/repos
+    credentials: !Token "your_github_pat"
+
+  # Backup all GitHub Gists for your authenticated user
+  - kind: github/gist
+    from: "user"
+    to: /backups/gists/user
+    credentials: !Token "your_github_token"
+
+  # Backup all Gists starred by the currently authenticated user
+  - kind: github/gist
+    from: "starred"
+    to: /backups/starred/gists
+    credentials: !Token "your_github_pat"
+
+  # Backup public GitHub Gist of another user
+  - kind: github/gist
+    from: "users/another-user"
+    to: /backups/gists/another-user
 ```
 
 ### OpenTelemetry Reporting
@@ -103,34 +126,47 @@ several operators and properties which can be used to control this process.
 
 For `kind: github/repo` and `kind: github/star`
 
-| Field                 | Type      | Description (_Example_)                                                                           |
-| --------------------- | --------- | ------------------------------------------------------------------------------------------------- |
-| `repo.name`           | `string`  | The name of the repository (_Hello-World_)                                                        |
-| `repo.fullname`       | `string`  | The full-name of the repository (_octocat/Hello-World_)                                           |
-| `repo.private`        | `boolean` | Whether the repository is private                                                                 |
-| `repo.public`         | `boolean` | Whether the repository is public                                                                  |
-| `repo.fork`           | `boolean` | Whether the repository is a fork                                                                  |
-| `repo.size`           | `integer` | The size of the repository, in kilobytes (_1024_).                                                |
-| `repo.archived`       | `boolean` | Whether the repository is archived                                                                |
-| `repo.disabled`       | `boolean` | Returns whether or not this repository disabled                                                   |
-| `repo.default_branch` | `string`  | The default branch of the repository (_main_)                                                     |
-| `repo.empty`          | `boolean` | Whether the repository is empty (When a repository is initially created, `repo.empty` is `true`)  |
-| `repo.template`       | `boolean` | Whether this repository acts as a template that can be used to generate new repositories          |
-| `repo.forks`          | `integer` | The number of times this repository is forked                                                     |
-| `repo.stargazers`     | `integer` | The number of people starred this repository                                                      |
+| Field                  | Type       | Description (_Example_)                                                                            |
+|------------------------|------------|----------------------------------------------------------------------------------------------------|
+| `repo.name`            | `string`   | The name of the repository (_Hello-World_)                                                         |
+| `repo.fullname`        | `string`   | The full-name of the repository (_octocat/Hello-World_)                                            |
+| `repo.private`         | `boolean`  | Whether the repository is private                                                                  |
+| `repo.public`          | `boolean`  | Whether the repository is public                                                                   |
+| `repo.fork`            | `boolean`  | Whether the repository is a fork                                                                   |
+| `repo.size`            | `integer`  | The size of the repository, in kilobytes (_1024_).                                                 |
+| `repo.archived`        | `boolean`  | Whether the repository is archived                                                                 |
+| `repo.disabled`        | `boolean`  | Returns whether or not this repository disabled                                                    |
+| `repo.default_branch`  | `string`   | The default branch of the repository (_main_)                                                      |
+| `repo.empty`           | `boolean`  | Whether the repository is empty (When a repository is initially created, `repo.empty` is `true`)   |
+| `repo.template`        | `boolean`  | Whether this repository acts as a template that can be used to generate new repositories           |
+| `repo.forks`           | `integer`  | The number of times this repository is forked                                                      |
+| `repo.stargazers`      | `integer`  | The number of people starred this repository                                                       |
 
 For `kind: github/release`
 
-| Field                | Type      | Description (_Example_)                                           |
-| -------------------- | --------- | ----------------------------------------------------------------- |
-| `release.tag`        | `string`  | The name of the tag (_v1.0.0_)                                    |
-| `release.name`       | `string`  | The name of the release (_v1.0.0_)                                |
-| `release.draft`      | `boolean` | Whether the release is a draft (unpublished) release              |
-| `release.prerelease` | `boolean` | Whether to identify the release as a prerelease or a full release |
-| `release.published`  | `boolean` | Whether the release is a published (not a draft) release          |
-| `asset.name`         | `string`  | The file name of the asset (_github-backup-darwin-arm64_)         |
-| `asset.size`         | `integer` | The size of the asset, in kilobytes. (_1024_)                     |
-| `asset.downloaded`   | `boolean` | If the asset was downloaded at least once from the GitHub Release |
+| Field                 | Type       | Description (_Example_)                                            |
+|-----------------------|------------|--------------------------------------------------------------------|
+| `release.tag`         | `string`   | The name of the tag (_v1.0.0_)                                     |
+| `release.name`        | `string`   | The name of the release (_v1.0.0_)                                 |
+| `release.draft`       | `boolean`  | Whether the release is a draft (unpublished) release               |
+| `release.prerelease`  | `boolean`  | Whether to identify the release as a prerelease or a full release  |
+| `release.published`   | `boolean`  | Whether the release is a published (not a draft) release           |
+| `asset.name`          | `string`   | The file name of the asset (_github-backup-darwin-arm64_)          |
+| `asset.size`          | `integer`  | The size of the asset, in kilobytes. (_1024_)                      |
+| `asset.downloaded`    | `boolean`  | If the asset was downloaded at least once from the GitHub Release  |
+
+For `kind: github/gist`
+
+| Field                   | Type      | Description                                    |
+|-------------------------|-----------|------------------------------------------------|
+| `gist.public`           | `boolean` | Whether the gist is public                     |
+| `gist.private`          | `boolean` | Whether the gist is private                    |
+| `gist.comments_enabled` | `boolean` | Whether comments are enabled for the gist      |
+| `gist.comments`         | `integer` | Number of comments on the gist                 |
+| `gist.files`            | `integer` | Number of files in the gist                    |
+| `gist.file_names`       | `array`   | List of file names in the gist                 |
+| `gist.languages`        | `array`   | List of programming languages used in the gist |
+| `gist.type`             | `string`  | Type of content in the gist                    |
 
 ### Examples
 

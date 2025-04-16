@@ -43,6 +43,19 @@ When backing up release artifacts, you may use the following fields in your filt
 expressions. These fields are accessed using the `release.<field>` syntax, for example
 `release.prerelease` to determine if a release is a pre-release.
 
+For `kind: github/release`
+
+| Field                 | Type       | Description (_Example_)                                            |
+|-----------------------|------------|--------------------------------------------------------------------|
+| `release.tag`         | `string`   | The name of the tag (_v1.0.0_)                                     |
+| `release.name`        | `string`   | The name of the release (_v1.0.0_)                                 |
+| `release.draft`       | `boolean`  | Whether the release is a draft (unpublished) release               |
+| `release.prerelease`  | `boolean`  | Whether to identify the release as a prerelease or a full release  |
+| `release.published`   | `boolean`  | Whether the release is a published (not a draft) release           |
+| `asset.name`          | `string`   | The file name of the asset (_github-backup-darwin-arm64_)          |
+| `asset.size`          | `integer`  | The size of the asset, in kilobytes. (_1024_)                      |
+| `asset.downloaded`    | `boolean`  | If the asset was downloaded at least once from the GitHub Release  |
+
 ```json
 {
   // Describes the repository from which releases are being sourced

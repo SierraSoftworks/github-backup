@@ -26,8 +26,8 @@ backups:
     filter: repo.public && !release.prerelease && !artifact.source-code
 
   # Backup all repositories that the user `notheotherben` has starred
-  - kind: github/star
-    from: users/notheotherben
+  - kind: github/repo
+    from: starred
     to: /backup/github
 
   - kind: github/repo
