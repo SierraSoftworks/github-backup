@@ -103,11 +103,11 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
         match target {
             GitHubRepoSourceKind::Starred => Err(errors::user(
                 &format!(
-                    "Your 'from' target '{}' is not valid for 'kind' '{}'.",
+                    "You cannot use 'from: {}' for backups of 'kind: {}' as it is not currently supported.",
                     policy.from.as_str(),
                     policy.kind.as_str()
                 ),
-                "You cannot use starred to backup releases.",
+                "Try using 'from: user' or one of the other supported sources (users/<user>, orgs/<org>, repos/<repo>, etc).",
             )),
             _ => Ok(()),
         }
