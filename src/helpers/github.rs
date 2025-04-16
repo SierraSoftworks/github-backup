@@ -732,8 +732,8 @@ pub enum GitHubRepoSourceKind {
     CurrentUser,
     User(String),
     Org(String),
+    Starred,
     Repo(String),
-    GistStar,
     Gist(String),
 }
 
@@ -745,7 +745,6 @@ impl GitHubRepoSourceKind {
                     GitHubArtifactKind::Gist => format!("{}", artifact_kind.api_endpoint()),
                     _ => format!("user/{}", artifact_kind.api_endpoint())
                 }
-
             }
             GitHubRepoSourceKind::User(u) => {
                 format!("users/{}/{}", u, artifact_kind.api_endpoint())
@@ -753,7 +752,12 @@ impl GitHubRepoSourceKind {
             GitHubRepoSourceKind::Org(o) => format!("orgs/{}/{}", o, artifact_kind.api_endpoint()),
             GitHubRepoSourceKind::Repo(r) => format!("repos/{}", r),
             GitHubRepoSourceKind::Gist(g) => format!("gists/{}", g),
-            GitHubRepoSourceKind::GistStar => "gists/starred".to_string(),
+            GitHubRepoSourceKind::Starred => {
+                match artifact_kind {
+                    GitHubArtifactKind::Gist => "gists/starred".to_string(),
+                    _ => "user/starred".to_string()
+                }
+            },
         }
     }
 }
@@ -764,6 +768,7 @@ impl std::str::FromStr for GitHubRepoSourceKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split('/').collect::<Vec<&str>>().as_slice() {
             ["user"] => Ok(GitHubRepoSourceKind::CurrentUser),
+            ["starred"] => Ok(GitHubRepoSourceKind::Starred),
             ["users", user] if !user.is_empty() => {
                 Ok(GitHubRepoSourceKind::User(user.to_string()))
             }
@@ -773,10 +778,7 @@ impl std::str::FromStr for GitHubRepoSourceKind {
             ["repos", owner, repo] if !repo.is_empty() => {
                 Ok(GitHubRepoSourceKind::Repo(format!("{owner}/{repo}")))
             }
-            ["gists", gist] if !gist.is_empty() && *gist == "starred" => {
-                Ok(GitHubRepoSourceKind::GistStar)
-            }
-            ["gists", gist] if !gist.is_empty() && *gist != "starred" => {
+            ["gists", gist] if !gist.is_empty() => {
                 Ok(GitHubRepoSourceKind::Gist(gist.to_string()))
             }
             _ => Err(errors::user(
@@ -791,8 +793,6 @@ impl std::str::FromStr for GitHubRepoSourceKind {
 pub enum GitHubArtifactKind {
     #[serde(rename = "github/repo")]
     Repo,
-    #[serde(rename = "github/star")]
-    Star,
     #[serde(rename = "github/release")]
     Release,
     #[serde(rename = "github/gist")]
@@ -803,7 +803,6 @@ impl GitHubArtifactKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             GitHubArtifactKind::Repo => "github/repo",
-            GitHubArtifactKind::Star => "github/star",
             GitHubArtifactKind::Release => "github/release",
             GitHubArtifactKind::Gist => "github/gist",
         }
@@ -812,7 +811,6 @@ impl GitHubArtifactKind {
     pub fn api_endpoint(&self) -> &'static str {
         match self {
             GitHubArtifactKind::Repo => "repos",
-            GitHubArtifactKind::Star => "starred",
             GitHubArtifactKind::Release => "repos",
             GitHubArtifactKind::Gist => "gists",
         }
@@ -1072,7 +1070,6 @@ mod tests {
 
     #[rstest]
     #[case("github/repo", GitHubArtifactKind::Repo, "repos")]
-    #[case("github/star", GitHubArtifactKind::Star, "starred")]
     #[case("github/release", GitHubArtifactKind::Release, "repos")]
     #[case("github/gist", GitHubArtifactKind::Gist, "gists")]
     fn test_deserialize_gh_repo_kind(
@@ -1093,7 +1090,7 @@ mod tests {
     #[case("orgs/sierrasoftworks", GitHubRepoSourceKind::Org("sierrasoftworks".into()))]
     #[case("repos/sierrasoftworks/github-backup", GitHubRepoSourceKind::Repo("sierrasoftworks/github-backup".into()))]
     #[case("gists/abcd", GitHubRepoSourceKind::Gist("abcd".into()))]
-    #[case("gists/starred", GitHubRepoSourceKind::GistStar)]
+    #[case("starred", GitHubRepoSourceKind::Starred)]
     fn test_deserialize_gh_repo_source_kind(
         #[case] kind_str: &str,
         #[case] expected_kind: GitHubRepoSourceKind,

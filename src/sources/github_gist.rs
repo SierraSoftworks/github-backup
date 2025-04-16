@@ -139,7 +139,7 @@ mod tests {
     #[case("user", true)]
     #[case("users/notheotherben", true)]
     #[case("gists/d4caf959fb7824a9855c", true)]
-    #[case("gists/starred", true)]
+    #[case("starred", true)]
     fn validation_gist(#[case] from: &str, #[case] success: bool) {
         let source = GitHubGistSource::gist();
 
@@ -163,7 +163,7 @@ mod tests {
     #[rstest]
     #[case("user")]
     #[case("users/notheotherben")]
-    #[case("gists/starred")]
+    #[case("starred")]
     #[case("gists/aa5a315d61ae9438b18d")]
     #[tokio::test]
     #[cfg_attr(feature = "pure_tests", ignore)]

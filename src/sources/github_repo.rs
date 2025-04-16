@@ -29,14 +29,6 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
         let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
 
         match target {
-            GitHubRepoSourceKind::Org(_) if self.artifact_kind == GitHubArtifactKind::Star => Err(errors::user(
-              "You cannot use an organization as the source for a starred repository backup.",
-              "Either use `from: user` or `from: users/<name>` when using a github/stars source kind.",
-            )),
-            GitHubRepoSourceKind::Repo(_) if self.artifact_kind == GitHubArtifactKind::Star => Err(errors::user(
-              "You cannot use a repository as the source for a starred repository backup.",
-              "Either use `from: user` or `from: users/<name>` when using a github/stars source kind.",
-            )),
             GitHubRepoSourceKind::User(u) if u.is_empty() => Err(errors::user(
                 &format!(
                     "Your 'from' target '{}' is not a valid GitHub username.",
@@ -127,13 +119,6 @@ impl GitHubRepoSource {
             artifact_kind: GitHubArtifactKind::Repo,
         }
     }
-
-    pub fn star() -> Self {
-        GitHubRepoSource {
-            client: GitHubClient::default(),
-            artifact_kind: GitHubArtifactKind::Star,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -156,14 +141,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn check_name_star() {
-        assert_eq!(
-            GitHubRepoSource::star().kind(),
-            GitHubArtifactKind::Star.as_str()
-        );
-    }
-
     #[rstest]
     #[case("user", true)]
     #[case("users/notheotherben", true)]
@@ -171,36 +148,13 @@ mod tests {
     #[case("notheotherben", false)]
     #[case("sierrasoftworks/github-backup", false)]
     #[case("users/notheotherben/repos", false)]
+    #[case("starred", true)]
     fn validation_repo(#[case] from: &str, #[case] success: bool) {
         let source = GitHubRepoSource::repo();
 
         let policy = serde_yaml::from_str(&format!(
             r#"
             kind: github/repo
-            from: {}
-            to: /tmp
-            "#,
-            from
-        ))
-        .expect("parse policy");
-
-        if success {
-            source.validate(&policy).expect("validation to succeed");
-        } else {
-            source.validate(&policy).expect_err("validation to fail");
-        }
-    }
-
-    #[rstest]
-    #[case("user", true)]
-    #[case("users/notheotherben", true)]
-    #[case("orgs/sierrasoftworks", false)]
-    fn validation_stars(#[case] from: &str, #[case] success: bool) {
-        let source = GitHubRepoSource::star();
-
-        let policy = serde_yaml::from_str(&format!(
-            r#"
-            kind: github/star
             from: {}
             to: /tmp
             "#,
@@ -249,25 +203,28 @@ mod tests {
     }
 
     #[rstest]
-    #[case("github.repos.0.json", 31)]
+    #[case("users/octocat", "github.repos.0.json", 31)]
+    #[case("starred", "github.repos.1.json", 2)]
     #[tokio::test]
-    async fn get_repos_mocked(#[case] filename: &str, #[case] expected_entries: usize) {
+    async fn get_repos_mocked(#[case] target: &str, #[case] filename: &str, #[case] expected_entries: usize) {
         use tokio_stream::StreamExt;
 
         let source = GitHubRepoSource::with_client(
             GitHubClient::default()
-                .mock("/users/octocat/repos", |b| b.with_body_from_file(filename)),
+                .mock("/users/octocat/repos", |b| b.with_body_from_file(filename))
+                .mock("/user/starred", |b| b.with_body_from_file(filename)),
             GitHubArtifactKind::Repo,
         );
 
-        let policy: BackupPolicy = serde_yaml::from_str(
+        let policy: BackupPolicy = serde_yaml::from_str(&format!(
             r#"
           kind: github/repo
-          from: users/octocat
+          from: {}
           to: /tmp
         "#,
-        )
-        .unwrap();
+            target
+        ))
+            .unwrap();
 
         let stream = source.load(&policy, &CANCEL);
         tokio::pin!(stream);
@@ -283,38 +240,5 @@ mod tests {
             "Expected {} entries, got {}",
             expected_entries, count
         );
-    }
-
-    #[rstest]
-    #[case("users/notheotherben")]
-    #[tokio::test]
-    #[cfg_attr(feature = "pure_tests", ignore)]
-    async fn get_stars(#[case] target: &str) {
-        use tokio_stream::StreamExt;
-
-        let source = GitHubRepoSource::star();
-
-        let policy: BackupPolicy = serde_yaml::from_str(&format!(
-            r#"
-          kind: github/star
-          from: {}
-          to: /tmp
-          credentials: {}
-        "#,
-            target,
-            std::env::var("GITHUB_TOKEN")
-                .map(|t| format!("!Token {t}"))
-                .unwrap_or_else(|_| "!None".to_string())
-        ))
-        .unwrap();
-
-        println!("Using credentials: {}", policy.credentials);
-
-        let stream = source.load(&policy, &CANCEL);
-        tokio::pin!(stream);
-
-        while let Some(repo) = stream.next().await {
-            println!("{}", repo.expect("Failed to load repo"));
-        }
     }
 }
