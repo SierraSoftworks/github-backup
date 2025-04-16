@@ -1081,6 +1081,34 @@ mod tests {
     }
 
     #[rstest]
+    #[case(
+        GitHubRepoSourceKind::CurrentUser,
+        GitHubArtifactKind::Repo,
+        "user/repos"
+    )]
+    #[case(GitHubRepoSourceKind::CurrentUser, GitHubArtifactKind::Gist, "gists")]
+    #[case(GitHubRepoSourceKind::User("octocat".to_string()), GitHubArtifactKind::Repo, "users/octocat/repos")]
+    #[case(GitHubRepoSourceKind::User("octocat".to_string()), GitHubArtifactKind::Gist, "users/octocat/gists")]
+    #[case(GitHubRepoSourceKind::Org("octocat".to_string()), GitHubArtifactKind::Repo, "orgs/octocat/repos")]
+    #[case(
+        GitHubRepoSourceKind::Starred,
+        GitHubArtifactKind::Repo,
+        "user/starred"
+    )]
+    #[case(
+        GitHubRepoSourceKind::Starred,
+        GitHubArtifactKind::Gist,
+        "gists/starred"
+    )]
+    fn test_source_kind_api_url(
+        #[case] source_kind: GitHubRepoSourceKind,
+        #[case] artifact_kind: GitHubArtifactKind,
+        #[case] expected_api_url: &str,
+    ) {
+        assert_eq!(source_kind.api_endpoint(artifact_kind), expected_api_url);
+    }
+
+    #[rstest]
     #[case("user", GitHubRepoSourceKind::CurrentUser)]
     #[case("users/notheotherben", GitHubRepoSourceKind::User("notheotherben".into()))]
     #[case("orgs/sierrasoftworks", GitHubRepoSourceKind::Org("sierrasoftworks".into()))]
