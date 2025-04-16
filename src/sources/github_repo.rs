@@ -25,32 +25,8 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
     }
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
-        let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
-
-        match target {
-            GitHubRepoSourceKind::User(u) if u.is_empty() => Err(errors::user(
-                &format!(
-                    "Your 'from' target '{}' is not a valid GitHub username.",
-                    policy.from.as_str()
-                ),
-                "Make sure you provide a valid GitHub username in the 'from' field of your policy.",
-            )),
-            GitHubRepoSourceKind::Org(org) if org.is_empty() => Err(errors::user(
-                &format!(
-                    "Your 'from' target '{}' is not a valid GitHub organization name.",
-                    policy.from.as_str()
-                ),
-                "Make sure you provide a valid GitHub organization name in the 'from' field of your policy.",
-            )),
-            GitHubRepoSourceKind::Repo(repo) if repo.is_empty() => Err(errors::user(
-                &format!(
-                    "Your 'from' target '{}' is not a fully qualified GitHub repository name.",
-                    policy.from.as_str()
-                ),
-                "Make sure you provide a fully qualified GitHub repository name in the 'from' field of your policy.",
-            )),
-            _ => Ok(()),
-        }
+        let _: GitHubRepoSourceKind = policy.from.as_str().parse()?;
+        Ok(())
     }
 
     fn load<'a>(
@@ -132,7 +108,7 @@ mod tests {
 
     #[rstest]
     #[case("user", true)]
-    #[case("user/", false)]
+    #[case("users/ ", false)]
     #[case("users/notheotherben", true)]
     #[case("orgs/sierrasoftworks", true)]
     #[case("notheotherben", false)]

@@ -25,25 +25,9 @@ impl BackupSource<GitRepo> for GitHubGistSource {
     }
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
-        let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
+        let _: GitHubRepoSourceKind = policy.from.as_str().parse()?;
 
-        match target {
-            GitHubRepoSourceKind::User(u) if u.is_empty() => Err(errors::user(
-                &format!(
-                    "Your 'from' target '{}' is not a valid GitHub username.",
-                    policy.from.as_str()
-                ),
-                "Make sure you provide a valid GitHub username in the 'from' field of your policy.",
-            )),
-            GitHubRepoSourceKind::Gist(gist) if gist.is_empty() => Err(errors::user(
-                &format!(
-                    "Your 'from' target '{}' is not a fully qualified GitHub gist name.",
-                    policy.from.as_str()
-                ),
-                "Make sure you provide a fully qualified GitHub gist name in the 'from' field of your policy.",
-            )),
-            _ => Ok(()),
-        }
+        Ok(())
     }
 
     fn load<'a>(
@@ -190,7 +174,7 @@ mod tests {
         let mut count = 0;
         while let Some(gist) = stream.next().await {
             match gist {
-                Ok(r) => {}
+                Ok(_) => {}
                 Err(e) => {
                     panic!("{}", e)
                 }

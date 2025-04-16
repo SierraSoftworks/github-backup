@@ -101,27 +101,6 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
         let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
 
         match target {
-          GitHubRepoSourceKind::User(u) if u.is_empty() => Err(errors::user(
-              &format!(
-                  "Your 'from' target '{}' is not a valid GitHub username.",
-                  policy.from.as_str()
-              ),
-              "Make sure you provide a valid GitHub username in the 'from' field of your policy.",
-          )),
-          GitHubRepoSourceKind::Org(org) if org.is_empty() => Err(errors::user(
-              &format!(
-                  "Your 'from' target '{}' is not a valid GitHub organization name.",
-                  policy.from.as_str()
-              ),
-              "Make sure you provide a valid GitHub organization name in the 'from' field of your policy.",
-          )),
-          GitHubRepoSourceKind::Repo(repo) if repo.is_empty() => Err(errors::user(
-              &format!(
-                  "Your 'from' target '{}' is not a fully qualified GitHub repository name.",
-                  policy.from.as_str()
-              ),
-              "Make sure you provide a fully qualified GitHub repository name in the 'from' field of your policy.",
-          )),
             GitHubRepoSourceKind::Starred => Err(errors::user(
                 &format!(
                     "Your 'from' target '{}' is not valid for 'kind' '{}'.",
@@ -130,8 +109,8 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
                 ),
                 "You cannot use starred to backup releases.",
             )),
-          _ => Ok(()),
-      }
+            _ => Ok(()),
+        }
     }
 
     fn load<'a>(
