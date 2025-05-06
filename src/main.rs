@@ -5,6 +5,7 @@ use pairing::PairingHandler;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tracing_batteries::prelude::*;
+use tracing_batteries::{OpenTelemetry, Session};
 
 #[macro_use]
 mod macros;
@@ -160,7 +161,8 @@ async fn main() {
 
     let args = Args::parse();
 
-    let session = telemetry::setup();
+    let session = Session::new("github-backup", version!())
+        .with_battery(OpenTelemetry::new(""));
 
     let result = run(args).await;
 
