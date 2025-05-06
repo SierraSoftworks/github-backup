@@ -161,8 +161,7 @@ async fn main() {
 
     let args = Args::parse();
 
-    let session = Session::new("github-backup", version!())
-        .with_battery(OpenTelemetry::new(""));
+    let session = Session::new("github-backup", version!()).with_battery(OpenTelemetry::new(""));
 
     let result = run(args).await;
 
