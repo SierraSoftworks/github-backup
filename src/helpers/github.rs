@@ -846,6 +846,12 @@ impl MockResponse {
         self
     }
 
+    pub fn with_json_body<T: serde::Serialize>(mut self, body: &T) -> Self {
+        let json = serde_json::to_string(body).expect("Failed to serialize JSON");
+        self.body = Some(json);
+        self
+    }
+
     pub fn with_body_from_file(mut self, name: &str) -> Self {
         let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
@@ -881,11 +887,49 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
-    use rstest::rstest;
+    use rstest::{fixture, rstest};
     use serde::de::DeserializeOwned;
     use tokio_stream::StreamExt;
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
+
+    #[cfg(feature = "pure_tests")]
+    #[fixture]
+    fn client() -> GitHubClient {
+        GitHubClient::default()
+            .mock("/users/notheotherben/repos", |b| {
+                b.with_body_from_file("github.repos.0.json")
+            })
+            .mock("/orgs/sierrasoftworks/repos", |b| {
+                b.with_body_from_file("github.repos.0.json")
+            })
+            .mock("/repos/sierrasoftworks/github-backup", |b| {
+                b.with_body_from_file("github.repo.0.json")
+            })
+    }
+
+    #[cfg(not(feature = "pure_tests"))]
+    #[fixture]
+    fn client() -> GitHubClient {
+        GitHubClient::default()
+    }
+
+    #[cfg(feature = "pure_tests")]
+    #[fixture]
+    fn credentials() -> Credentials {
+        Credentials::None
+    }
+
+    #[cfg(not(feature = "pure_tests"))]
+    #[fixture]
+    fn credentials() -> Credentials {
+        std::env::var("GITHUB_TOKEN")
+            .map(|t| Credentials::UsernamePassword {
+                username: t,
+                password: String::new(),
+            })
+            .unwrap_or(Credentials::None)
+    }
 
     fn load_test_file<T: DeserializeOwned>(name: &str) -> Result<T, Box<dyn std::error::Error>> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -984,16 +1028,12 @@ mod tests {
     #[case("users/notheotherben")]
     #[case("orgs/sierrasoftworks")]
     #[tokio::test]
-    #[cfg_attr(feature = "pure_tests", ignore)]
-    async fn fetch_repos(#[case] target: &str) {
+    async fn fetch_repos(#[case] target: &str, client: GitHubClient, credentials: Credentials) {
         use tokio_stream::StreamExt;
-
-        let client = GitHubClient::default();
-        let creds = get_test_credentials();
 
         let stream = client.get_paginated(
             format!("https://api.github.com/{target}/repos"),
-            &creds,
+            &credentials,
             &CANCEL,
         );
         tokio::pin!(stream);
@@ -1038,30 +1078,21 @@ mod tests {
     #[rstest]
     #[case("sierrasoftworks/github-backup")]
     #[tokio::test]
-    #[cfg_attr(feature = "pure_tests", ignore)]
-    async fn get_repo(#[case] target: &str) {
-        let client = GitHubClient::default();
-        let creds = get_test_credentials();
-
+    async fn get_repo(#[case] target: &str, client: GitHubClient, credentials: Credentials) {
         let repo = client
             .get(
                 format!("https://api.github.com/repos/{target}"),
-                &creds,
+                &credentials,
                 &CANCEL,
             )
             .await;
         let repo: GitHubRepo = repo.expect("Failed to fetch repo");
 
+        #[cfg(not(feature = "pure_tests"))]
         assert_eq!(repo.full_name.to_lowercase(), target.to_lowercase());
-    }
-
-    fn get_test_credentials() -> Credentials {
-        std::env::var("GITHUB_TOKEN")
-            .map(|t| Credentials::UsernamePassword {
-                username: t,
-                password: String::new(),
-            })
-            .unwrap_or(Credentials::None)
+        
+        #[cfg(feature = "pure_tests")]
+        assert!(!repo.name.is_empty());
     }
 
     #[rstest]
