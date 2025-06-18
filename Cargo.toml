@@ -8,7 +8,7 @@ async-stream = "0.3.6"
 async-trait = "0.1.88"
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.40", features = ["derive", "string"] }
-croner = "2.1.0"
+croner = "2.2.0"
 ctrlc = "3.4.7"
 futures = "0.3.31"
 gix = { version = "0.72.1", features = [
