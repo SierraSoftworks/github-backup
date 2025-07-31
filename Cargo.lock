@@ -3304,9 +3304,9 @@ checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
 
 [[package]]
 name = "sentry"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "507ac2be9bf2da56c831da57faf1dadd81f434bd282935cdb06193d0c94e8811"
+checksum = "989425268ab5c011e06400187eed6c298272f8ef913e49fcadc3fda788b45030"
 dependencies = [
  "httpdate",
  "reqwest",
@@ -3320,9 +3320,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8402c142005ee560ae361c73ebece13a299ec3e9cce5b8654479ea9aac8dc8df"
+checksum = "a5c675bdf6118764a8e265c3395c311b4d905d12866c92df52870c0223d2ffc1"
 dependencies = [
  "actix-http",
  "actix-web",
@@ -3333,21 +3333,22 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00e9bd2cadaeda3af41e9fa5d14645127d6f6a4aec73da3ae38e477ecafd3682"
+checksum = "deaa38b94e70820ff3f1f9db3c8b0aef053b667be130f618e615e0ff2492cbcc"
 dependencies = [
  "rand 0.9.0",
  "sentry-types",
  "serde",
  "serde_json",
+ "url",
 ]
 
 [[package]]
 name = "sentry-log"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a693f27e3f63ae085cf7c176b5c44038af27c8a0170d01db30ccf776c2d40ce3"
+checksum = "670f08baf70058926b0fa60c8f10218524ef0cb1a1634b0388a4123bdec6288c"
 dependencies = [
  "log",
  "sentry-core",
@@ -3355,9 +3356,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a08e7154abe2cd557f26fd70038452810748aefdf39bc973f674421224b147c1"
+checksum = "e477f4d4db08ddb4ab553717a8d3a511bc9e81dde0c808c680feacbb8105c412"
 dependencies = [
  "debugid",
  "hex",
@@ -3912,7 +3913,7 @@ dependencies = [
 [[package]]
 name = "tracing-batteries"
 version = "0.1.0"
-source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#26e6746957736688620fe1fb6e5162cfcd9c5147"
+source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#51f76f6cfd8c1e16460ba8ec46dd566c6ff53926"
 dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
