@@ -22,7 +22,11 @@ export default defineUserConfig({
 
   head: [
     ['meta', { name: "description", content: "Automatically backup your GitHub repositories and releases, just in case." }],
-    ['link', { rel: 'icon', href: '/favicon.ico' }]
+    ['link', { rel: 'icon', href: '/favicon.ico' }],
+    ["script", {
+        defer: "",
+        src: "https://analytics.sierrasoftworks.com/script.js",
+    }],
   ],
 
   bundler: viteBundler(),
