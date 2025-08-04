@@ -5,7 +5,7 @@ use pairing::PairingHandler;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tracing_batteries::prelude::*;
-use tracing_batteries::{OpenTelemetry, Session};
+use tracing_batteries::{Medama, OpenTelemetry, Session};
 
 #[macro_use]
 mod macros;
@@ -161,7 +161,9 @@ async fn main() {
 
     let args = Args::parse();
 
-    let session = Session::new("github-backup", version!()).with_battery(OpenTelemetry::new(""));
+    let session = Session::new("github-backup", version!())
+        .with_battery(OpenTelemetry::new(""))
+        .with_battery(Medama::new("https://analytics.sierrasoftworks.com"));
 
     let result = run(args).await;
 

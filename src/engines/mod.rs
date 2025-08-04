@@ -9,7 +9,7 @@ use std::fmt::Display;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BackupState {
     Skipped,
     New(Option<String>),

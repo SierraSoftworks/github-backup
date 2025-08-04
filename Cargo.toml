@@ -10,12 +10,10 @@ chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.42", features = ["derive", "string"] }
 croner = "2.2.0"
 ctrlc = "3.4.7"
-futures = "0.3.31"
 gix = { version = "0.72.1", features = [
   "blocking-http-transport-reqwest-rust-tls",
 ] }
 human-errors = "0.1.5"
-log = "0.4.27"
 parse_link_header = "0.4.0"
 pin-project = "1.1.10"
 reqwest = { version = "0.12.9", default-features = false, features = [
@@ -37,7 +35,8 @@ tokio = { version = "1.47.1", features = [
   "fs",
 ] }
 tokio-stream = "0.1.17"
-tracing-batteries = { git = "https://github.com/sierrasoftworks/tracing-batteries-rs.git" }
+tracing = "0.1.41"
+tracing-batteries = { git = "https://github.com/sierrasoftworks/tracing-batteries-rs.git", features = ["medama", "opentelemetry", "sentry"] }
 unicase = "2.8.1"
 
 [dev-dependencies]
