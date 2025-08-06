@@ -40,7 +40,7 @@ jobs:
     name: Deploy to Azure Static Web Apps
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: docs
           path: dist
