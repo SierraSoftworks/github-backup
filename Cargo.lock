@@ -3951,7 +3951,7 @@ dependencies = [
 [[package]]
 name = "tracing-batteries"
 version = "0.1.0"
-source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#856da8ca40d7a778154dd2e31efd394cd91bbd03"
+source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#3e8282558c42fa1cb8efc5f8c7adba625f436da1"
 dependencies = [
  "chrono",
  "iana-time-zone",
