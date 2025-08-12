@@ -135,6 +135,9 @@ jobs:
             builder: cargo
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
       - name: Get Rust Stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -144,9 +147,6 @@ jobs:
 
       - name: Setup Cache
         uses: Swatinem/rust-cache@v2
-
-      - name: Check out code
-        uses: actions/checkout@v5
 
       - name: Fetch Versioned Cargo.toml
         uses: actions/download-artifact@v5
