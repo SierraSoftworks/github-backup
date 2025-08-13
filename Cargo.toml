@@ -16,7 +16,7 @@ gix = { version = "0.72.1", features = [
 human-errors = "0.1.5"
 parse_link_header = "0.4.0"
 pin-project = "1.1.10"
-reqwest = { version = "0.12.9", default-features = false, features = [
+reqwest = { version = "0.12.23", default-features = false, features = [
   "brotli",
   "charset",
   "http2",
