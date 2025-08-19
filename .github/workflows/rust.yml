@@ -164,7 +164,7 @@ jobs:
         run: ${{ matrix.builder }} build --release --target ${{ matrix.target }}
 
       - name: Upload GitHub Release Artifacts
-        uses: SierraSoftworks/gh-releases@v1.0.7
+        uses: SierraSoftworks/gh-releases@v1.0.8
         if: github.event_name == 'release'
         with:
           files: "target/${{ matrix.target }}/release/github-backup${{ matrix.extension }} | github-backup-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}"
