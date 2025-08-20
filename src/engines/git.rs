@@ -251,14 +251,17 @@ impl GitEngine {
                             Credentials::None => Account {
                                 username: "".into(),
                                 password: "".into(),
+                                oauth_refresh_token: None,
                             },
                             Credentials::Token(token) => Account {
                                 username: token.clone(),
                                 password: "".into(),
+                                oauth_refresh_token: None,
                             },
                             Credentials::UsernamePassword { username, password } => Account {
                                 username: username.clone(),
                                 password: password.clone(),
+                                oauth_refresh_token: None,
                             },
                         },
                         next: ctx.into(),
