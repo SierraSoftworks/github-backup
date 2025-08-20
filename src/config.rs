@@ -1,4 +1,5 @@
 use serde::{Deserialize, Deserializer};
+use std::str::FromStr;
 
 use crate::{errors, policy::BackupPolicy, Args};
 
@@ -40,8 +41,7 @@ where
 {
     if let Some(s) = Deserialize::deserialize(deserializer)? {
         let s: String = s;
-        return croner::Cron::new(&s)
-            .parse()
+        return croner::Cron::from_str(&s)
             .map_err(serde::de::Error::custom)
             .map(Some);
     }
