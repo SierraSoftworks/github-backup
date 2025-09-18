@@ -2192,9 +2192,9 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.63"
+version = "0.1.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0c919e5debc312ad217002b8048a17b7d83f80703865bbfcfebb0458b0b27d8"
+checksum = "33e57f83510bb73707521ebaffa789ec8caf86f9657cad665b092b581d40e9fb"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
@@ -3967,7 +3967,7 @@ dependencies = [
 [[package]]
 name = "tracing-batteries"
 version = "0.1.0"
-source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#cbbfc1472cb55171c0c448623b9f9aec7b5c2261"
+source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#0b446a02508ebaf273ecde4621b7362f5900caa9"
 dependencies = [
  "chrono",
  "hex",
