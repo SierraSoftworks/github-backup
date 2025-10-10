@@ -3363,9 +3363,9 @@ checksum = "56e6fa9c48d24d85fb3de5ad847117517440f6beceb7798af16b4a87d616b8d0"
 
 [[package]]
 name = "sentry"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20ea0b15e48c3959c2f86f626cacd86d1fe2bd037e7ee98c756bdd8eb0afa0dc"
+checksum = "48b85e25e8a1fc13928885e8bf13abe8a09e15c46993aed05d6405f7755d6e20"
 dependencies = [
  "httpdate",
  "reqwest",
@@ -3379,9 +3379,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bab768b84ec34d8c8d6fedd214824e572110a9319e9e6340ccf629db041701d5"
+checksum = "cc694e6ffc8d5d7fdb2a33923b0358f6ad41c0b428ced034b349b9e2b08260bc"
 dependencies = [
  "actix-http",
  "actix-web",
@@ -3392,9 +3392,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28e2d5d2249386660cbe86945b9d18677a6b4aa45adedced871d39734746eaaa"
+checksum = "d3b6729c8e71ac968edbe9bf2dd4109c162e552b52bacd2b07e24ede1aba84a5"
 dependencies = [
  "rand",
  "sentry-types",
@@ -3405,9 +3405,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce5baa50528d51f988829ddcee0c3053182438874e7887ca2512cc97e9fba765"
+checksum = "912fea629a3fc7bfcb97f7bde31a5c815df8526ba19088dcef3ae32ea1e25418"
 dependencies = [
  "bitflags",
  "log",
@@ -3416,9 +3416,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2f1b8fcfc8f35b8791a0998a42d95d5c6cfe02186e4709fd2adb3b0c261990d"
+checksum = "2c19d1d1967b55659c358886d0f1aa3076488d445f84c7d727d384c675adaec1"
 dependencies = [
  "debugid",
  "hex",
@@ -4017,7 +4017,7 @@ dependencies = [
 [[package]]
 name = "tracing-batteries"
 version = "0.1.0"
-source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#cd267a8cc01300e8f986f840b269f413949a5711"
+source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#a2e9ac10547156e2354fe9ce0b5cfeb05216ad8c"
 dependencies = [
  "chrono",
  "hex",
