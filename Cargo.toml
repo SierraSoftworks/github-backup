@@ -10,7 +10,7 @@ chrono = { version = "0.4.42", features = ["serde"] }
 clap = { version = "4.5.53", features = ["derive", "string"] }
 croner = "3.0.1"
 ctrlc = "3.5.1"
-gix = { version = "0.74.1", features = [
+gix = { version = "0.75.0", features = [
   "blocking-http-transport-reqwest-rust-tls",
 ] }
 human-errors = "0.1.5"
