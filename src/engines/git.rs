@@ -3,7 +3,7 @@ use std::{fmt::Display, path::Path, sync::atomic::AtomicBool};
 use gix::{
     credentials::helper::Action,
     progress::Discard,
-    protocol::transport::client::Transport,
+    protocol::transport::client::blocking_io::Transport,
     remote::{fetch::Tags, Connection},
     sec::identity::Account,
 };
