@@ -259,8 +259,8 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wiremock::{Mock, MockServer, ResponseTemplate};
     use wiremock::matchers::method;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
     async fn test_backup() {
@@ -268,10 +268,10 @@ mod tests {
 
         // Create test data of 1024 bytes
         let test_data = vec![0u8; 1024];
-        
+
         // Start a mock server
         let mock_server = MockServer::start().await;
-        
+
         // Set up the mock endpoint
         Mock::given(method("GET"))
             .respond_with(ResponseTemplate::new(200).set_body_bytes(test_data.clone()))
@@ -307,7 +307,7 @@ mod tests {
         let file_path = temp_dir.path().join(entity.target_path());
         let content = std::fs::read(&file_path).expect("read file");
         assert_eq!(content.len(), 1024);
-        
+
         let sha_path = file_path.with_extension("bin.sha256");
         assert!(sha_path.exists(), "SHA-256 checksum file should exist");
 
@@ -326,10 +326,10 @@ mod tests {
 
         // Create test data of 1024 bytes
         let test_data = vec![0u8; 1024];
-        
+
         // Start a mock server
         let mock_server = MockServer::start().await;
-        
+
         // Set up the mock endpoint
         Mock::given(method("GET"))
             .respond_with(ResponseTemplate::new(200).set_body_bytes(test_data.clone()))
@@ -341,7 +341,7 @@ mod tests {
 
         // Set last_modified to a time in the future to ensure first backup happens
         let last_modified = chrono::Utc::now() + chrono::Duration::days(1);
-        
+
         let entity = HttpFile {
             url: format!("{}/test-file", mock_server.uri()),
             name: "test.bin".to_string(),
