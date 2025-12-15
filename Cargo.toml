@@ -43,6 +43,7 @@ unicase = "2.8.1"
 http = "1.4.0"
 tempfile = "3.23.0"
 rstest = "0.26.1"
+wiremock = "0.6.2"
 
 [features]
 default = []

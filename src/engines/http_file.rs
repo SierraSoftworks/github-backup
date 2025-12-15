@@ -259,17 +259,30 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wiremock::matchers::method;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
-    #[cfg_attr(feature = "pure_tests", ignore)]
     async fn test_backup() {
         let temp_dir = tempfile::tempdir().expect("a temporary directory");
+
+        // Create test data of 1024 bytes
+        let test_data = vec![0u8; 1024];
+
+        // Start a mock server
+        let mock_server = MockServer::start().await;
+
+        // Set up the mock endpoint
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(test_data.clone()))
+            .mount(&mock_server)
+            .await;
 
         let engine = HttpFileEngine::new();
         let cancel = AtomicBool::new(false);
 
         let entity = HttpFile {
-            url: "https://httpbin.org/bytes/1024".to_string(),
+            url: format!("{}/test-file", mock_server.uri()),
             name: "test.bin".to_string(),
             credentials: Credentials::None,
             metadata: Default::default(),
@@ -277,6 +290,7 @@ mod tests {
             content_type: None,
         };
 
+        // First backup should create a new file
         let state = engine
             .backup(&entity, temp_dir.path(), &cancel)
             .await
@@ -289,28 +303,51 @@ mod tests {
             "the file should exist"
         );
 
+        // Verify the file content and SHA-256 were stored correctly
+        let file_path = temp_dir.path().join(entity.target_path());
+        let content = std::fs::read(&file_path).expect("read file");
+        assert_eq!(content.len(), 1024);
+
+        let sha_path = file_path.with_extension("bin.sha256");
+        assert!(sha_path.exists(), "SHA-256 checksum file should exist");
+
+        // Second backup with same content should detect it's unchanged via SHA-256
         let state = engine
             .backup(&entity, temp_dir.path(), &cancel)
             .await
             .expect("backup to succeed");
 
-        assert!(matches!(state, BackupState::Updated(Some(msg)) if msg.starts_with("at sha256:")));
+        assert!(matches!(state, BackupState::Unchanged(Some(msg)) if msg.starts_with("at sha256")));
     }
 
     #[tokio::test]
-    #[cfg_attr(feature = "pure_tests", ignore)]
     async fn test_backup_with_last_modified() {
         let temp_dir = tempfile::tempdir().expect("a temporary directory");
+
+        // Create test data of 1024 bytes
+        let test_data = vec![0u8; 1024];
+
+        // Start a mock server
+        let mock_server = MockServer::start().await;
+
+        // Set up the mock endpoint
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(test_data.clone()))
+            .mount(&mock_server)
+            .await;
 
         let engine = HttpFileEngine::new();
         let cancel = AtomicBool::new(false);
 
+        // Set last_modified to a time in the future to ensure first backup happens
+        let last_modified = chrono::Utc::now() + chrono::Duration::days(1);
+
         let entity = HttpFile {
-            url: "https://httpbin.org/bytes/1024".to_string(),
+            url: format!("{}/test-file", mock_server.uri()),
             name: "test.bin".to_string(),
             credentials: Credentials::None,
             metadata: Default::default(),
-            last_modified: Some(chrono::Utc::now()),
+            last_modified: Some(last_modified),
             content_type: None,
         };
 
@@ -341,8 +378,15 @@ mod tests {
             .expect("modified")
             .into();
 
+        // For the second backup, use an older last_modified time so it short-circuits
+        // based on the file's modification time being newer
+        let entity_old = HttpFile {
+            last_modified: Some(chrono::Utc::now() - chrono::Duration::days(1)),
+            ..entity
+        };
+
         let state = engine
-            .backup(&entity, temp_dir.path(), &cancel)
+            .backup(&entity_old, temp_dir.path(), &cancel)
             .await
             .expect("backup to succeed");
 
