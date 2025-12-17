@@ -3248,7 +3248,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.1",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3731,7 +3731,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.1",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4031,7 +4031,7 @@ dependencies = [
 [[package]]
 name = "tracing-batteries"
 version = "0.1.0"
-source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#59e01cbaa379894287d54feff0797d0191f51c34"
+source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#381dc332ffd4cc0a64fa4c611ab79dcf0d322659"
 dependencies = [
  "chrono",
  "hex",
