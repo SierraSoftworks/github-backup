@@ -41,7 +41,7 @@ unicase = "2.8.1"
 
 [dev-dependencies]
 http = "1.4.0"
-tempfile = "3.23.0"
+tempfile = "3.24.0"
 rstest = "0.26.1"
 wiremock = "0.6.2"
 
