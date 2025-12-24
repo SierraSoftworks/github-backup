@@ -2124,9 +2124,9 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "human-errors"
-version = "0.1.5"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83bca1f8f2cc0ec71b29df67fda94f78b32e800f22f2da118a9eaa3a5bfe612"
+checksum = "47e8c6b083a9331bc18ac6950b890cd0470eff147928b7ea72d2c65a25b51f66"
 
 [[package]]
 name = "human_format"
