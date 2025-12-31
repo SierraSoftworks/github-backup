@@ -62,7 +62,7 @@ macro_rules! entity {
 
 #[cfg(test)]
 mod tests {
-    use crate::{entities::Credentials, FilterValue, Filterable};
+    use crate::{FilterValue, Filterable, entities::Credentials};
 
     entity!(TestEntity(url: U  => String) {
       with_credentials => credentials: Credentials,

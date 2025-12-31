@@ -4,14 +4,13 @@ use tokio_stream::Stream;
 
 use crate::helpers::github::GitHubGist;
 use crate::{
+    BackupSource,
     entities::GitRepo,
-    errors::{self},
     helpers::{
-        github::{GitHubArtifactKind, GitHubRepoSourceKind},
         GitHubClient,
+        github::{GitHubArtifactKind, GitHubRepoSourceKind},
     },
     policy::BackupPolicy,
-    BackupSource,
 };
 
 #[derive(Clone, Default)]
@@ -24,7 +23,7 @@ impl BackupSource<GitRepo> for GitHubGistSource {
         GitHubArtifactKind::Gist.as_str()
     }
 
-    fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
+    fn validate(&self, policy: &BackupPolicy) -> Result<(), human_errors::Error> {
         let _: GitHubRepoSourceKind = policy.from.as_str().parse()?;
 
         Ok(())
@@ -34,7 +33,7 @@ impl BackupSource<GitRepo> for GitHubGistSource {
         &'a self,
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
-    ) -> impl Stream<Item = Result<GitRepo, errors::Error>> + 'a {
+    ) -> impl Stream<Item = Result<GitRepo, human_errors::Error>> + 'a {
         let target: GitHubRepoSourceKind = policy.from.as_str().parse().unwrap();
 
         let url = format!(
@@ -96,7 +95,7 @@ mod tests {
 
     use super::GitHubGistSource;
     use crate::helpers::GitHubClient;
-    use crate::{helpers::github::GitHubArtifactKind, BackupPolicy, BackupSource};
+    use crate::{BackupPolicy, BackupSource, helpers::github::GitHubArtifactKind};
 
     static CANCEL: AtomicBool = AtomicBool::new(false);
 

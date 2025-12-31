@@ -1,64 +1,96 @@
-human_errors::error_shim!(Error);
-
 use reqwest::StatusCode;
 
-impl From<reqwest::Error> for Error {
-    fn from(err: reqwest::Error) -> Self {
-        if err.is_connect() {
-            user_with_internal(
+pub trait HumanizableError {
+    fn to_human_error(self) -> human_errors::Error;
+}
+
+impl HumanizableError for reqwest::Error {
+    fn to_human_error(self) -> human_errors::Error {
+        if self.is_connect() {
+            human_errors::wrap_user(
+                self,
                 "We could not connect to the remote server to make a web request.",
-                "Make sure that your internet connection is working correctly and the service is not blocked by your firewall.",
-                err)
-        } else if err.is_decode() {
-            system_with_internal(
+                &[
+                    "Make sure that your internet connection is working correctly and the service is not blocked by your firewall.",
+                ],
+            )
+        } else if self.is_decode() {
+            human_errors::wrap_system(
+                self,
                 "We could not decode the response from the remote server.",
-                "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
-                err)
-        } else if err.is_redirect() {
-            user_with_internal(
+                &[
+                    "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
+                ],
+            )
+        } else if self.is_redirect() {
+            human_errors::wrap_user(
+                self,
                 "We could not complete a web request to due to a redirect loop.",
-                "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.", 
-                err)
-        } else if err.is_timeout() {
-            system_with_internal(
+                &[
+                    "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
+                ],
+            )
+        } else if self.is_timeout() {
+            human_errors::wrap_system(
+                self,
                 "We timed out making a web request.",
-                "This is likely due to a problem with the remote server or your internet connection, please try again later and report the problem to us on GitHub if the issue persists.", 
-                err)
+                &[
+                    "This is likely due to a problem with the remote server or your internet connection, please try again later and report the problem to us on GitHub if the issue persists.",
+                ],
+            )
         } else {
-            system_with_internal(
+            human_errors::wrap_system(
+                self,
                 "An internal error occurred which we could not recover from.",
-                "Please read the error above and decide if there is something you can do to fix the problem, or report it to us on GitHub.", 
-                err)
+                &[
+                    "Please read the error above and decide if there is something you can do to fix the problem, or report it to us on GitHub.",
+                ],
+            )
         }
     }
 }
 
-impl From<reqwest::Response> for Error {
-    fn from(resp: reqwest::Response) -> Self {
-        match resp.status() {
-            StatusCode::NOT_FOUND => user(
+impl HumanizableError for reqwest::Response {
+    fn to_human_error(self) -> human_errors::Error {
+        match self.status() {
+            StatusCode::NOT_FOUND => human_errors::user(
                 "We received a 404 Not Found response when sending a web request.",
-                "Please check that you're using the correct options and try again. If the problem persists, please open an issue with us on GitHub."),
-            StatusCode::UNAUTHORIZED => user(
-                "We received an 401 Unauthorized response when sending a web request.",
-                "This probably means that you have not configured your access tokens correctly, please check your configuration and try again."),
-            StatusCode::FORBIDDEN => user(
+                &[
+                    "Please check that you're using the correct options and try again. If the problem persists, please open an issue with us on GitHub.",
+                ],
+            ),
+            StatusCode::UNAUTHORIZED => human_errors::user(
+                "We received a 401 Unauthorized response when sending a web request.",
+                &[
+                    "This probably means that you have not configured your access tokens correctly, please check your configuration and try again.",
+                ],
+            ),
+            StatusCode::FORBIDDEN => human_errors::user(
                 "We received a 403 Forbidden response when sending a web request.",
-                "This probably means that you do not have permission to access this resource, please check that you do have permission and try again."),
-            _ => system_with_internal(
-                format!("We received a {} status code when making a web request.", resp.status()).as_str(),
-                "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
-                ResponseError::from(resp))
+                &[
+                    "This probably means that you do not have permission to access this resource, please check that you do have permission and try again.",
+                ],
+            ),
+            status => human_errors::wrap_system(
+                ResponseError::from(self),
+                format!(
+                    "We received a {} status code when making a web request.",
+                    status
+                ),
+                &[
+                    "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
+                ],
+            ),
         }
     }
 }
 
-impl From<reqwest::header::InvalidHeaderValue> for Error {
-    fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
-        system_with_internal(
-            "Could not parse header value due to an internal error.",
-            "Please report this error to us by creating an issue on GitHub.",
-            err,
+impl HumanizableError for reqwest::header::InvalidHeaderValue {
+    fn to_human_error(self) -> human_errors::Error {
+        human_errors::wrap_system(
+            self,
+            "Could not parse header value due to an invalid value.",
+            &["Please check your configuration and try again."],
         )
     }
 }

@@ -1,7 +1,8 @@
+use human_errors::ResultExt;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
-use crate::{errors, policy::BackupPolicy, Args};
+use crate::{Args, policy::BackupPolicy};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -13,24 +14,17 @@ pub struct Config {
 }
 
 impl TryFrom<&Args> for Config {
-    type Error = errors::Error;
+    type Error = human_errors::Error;
 
     fn try_from(value: &Args) -> Result<Self, Self::Error> {
-        let content = std::fs::read_to_string(&value.config).map_err(|e| {
-            errors::user_with_internal(
-                &format!("Failed to read the config file {}.", &value.config),
-                "Make sure that the configuration file exists and can be ready by the process.",
-                e,
-            )
-        })?;
-        let config: Config = serde_yaml::from_str(&content).map_err(|e| {
-            errors::user_with_internal(
-                "Failed to parse your configuration file, as it is not recognized as valid YAML.",
-                "Make sure that your configuration file is formatted correctly.",
-                e,
-            )
-        })?;
-
+        let content = std::fs::read_to_string(&value.config).wrap_err_as_user(
+            format!("Failed to read the config file {}.", &value.config),
+            &["Make sure that the configuration file exists and can be ready by the process."],
+        )?;
+        let config: Config = serde_yaml::from_str(&content).wrap_err_as_user(
+            "Failed to parse your configuration file, as it is not recognized as valid YAML.",
+            &["Make sure that your configuration file is formatted correctly."],
+        )?;
         Ok(config)
     }
 }

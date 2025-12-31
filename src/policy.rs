@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 
-use crate::entities::Credentials;
 use crate::Filter;
+use crate::entities::Credentials;
 
 #[derive(Deserialize)]
 pub struct BackupPolicy {

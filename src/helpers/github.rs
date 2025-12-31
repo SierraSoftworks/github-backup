@@ -1,14 +1,15 @@
-use reqwest::{header::LINK, Method, StatusCode, Url};
+use human_errors::ResultExt;
+use reqwest::{Method, StatusCode, Url, header::LINK};
 use std::{
     fmt::Display,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 use tokio_stream::Stream;
 
 use crate::{
-    entities::{Credentials, MetadataSource},
-    errors::{self, ResponseError},
     FilterValue,
+    entities::{Credentials, MetadataSource},
+    errors::{HumanizableError as _, ResponseError},
 };
 
 #[derive(Clone)]
@@ -26,17 +27,17 @@ impl GitHubClient {
         url: U,
         creds: &Credentials,
         cancel: &AtomicBool,
-    ) -> Result<T, errors::Error> {
+    ) -> Result<T, human_errors::Error> {
         let resp = self.call(Method::GET, &url, creds, |r| r, cancel).await?;
 
         resp.json().await.map_err(|e| {
-            errors::system_with_internal(
-                &format!(
+            human_errors::wrap_system(
+                e,
+                format!(
                     "Unable to parse GitHub's response for '{}' due to invalid JSON.",
                     url.as_ref()
                 ),
-                "Please report this issue to us on GitHub.",
-                e,
+                &["Please report this issue to us on GitHub."],
             )
         })
     }
@@ -46,29 +47,27 @@ impl GitHubClient {
         page_url: U,
         creds: &'a Credentials,
         cancel: &'a AtomicBool,
-    ) -> impl Stream<Item = Result<T, errors::Error>> + 'a {
+    ) -> impl Stream<Item = Result<T, human_errors::Error>> + 'a {
         async_stream::try_stream! {
           let mut page_url = Some(page_url.as_ref().to_string());
 
           while let Some(url) = page_url {
               if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-                  Err(errors::user(
+                  Err(human_errors::user(
                       "The backup operation was cancelled by the user. Only partial data may have been backed up.",
-                      "Allow the backup to complete fully before cancelling again."))?;
+                      &["Allow the backup to complete fully before cancelling again."]))?;
               }
 
               let resp = self.call(Method::GET, &url, creds, |r| r, cancel).await?;
 
               if let Some(link_header) = resp.headers().get(LINK) {
-                  let link_header = link_header.to_str().map_err(|e| errors::system_with_internal(
+                  let link_header = link_header.to_str().wrap_err_as_system(
                       "Unable to parse GitHub's Link header due to invalid characters, which will result in pagination failing to work correctly.",
-                      "Please report this issue to us on GitHub.",
-                      human_errors::detailed_message(&format!("{:?}", e))))?;
+                      &["Please report this issue to us on GitHub."])?;
 
-                  let links = parse_link_header::parse_with_rel(link_header).map_err(|e| errors::system_with_internal(
-                      "Unable to parse GitHub's Link header, which will result in pagination failing to work correctly.",
-                      "Please report this issue to us on GitHub.",
-                      e))?;
+                  let links = parse_link_header::parse_with_rel(link_header).wrap_err_as_system(
+                    "Unable to parse GitHub's Link header, which will result in pagination failing to work correctly.",
+                    &["Please report this issue to us on GitHub."])?;
 
                   if let Some(next_link) = links.get("next") {
                       page_url = Some(next_link.raw_uri.to_string());
@@ -86,10 +85,11 @@ impl GitHubClient {
                   }
                 },
                 Err(err) => {
-                  Err(errors::system_with_internal(
-                      &format!("Unable to parse GitHub response into the expected structure when requesting '{}'.", &url),
-                      "Please report this issue to us on GitHub.",
-                      err))?;
+                  Err(human_errors::wrap_system(
+                    err,
+                    format!("Unable to parse GitHub response into the expected structure when requesting '{}'.", &url),
+                    &["Please report this issue to us on GitHub."],
+                ))?;
                 }
               }
           }
@@ -103,20 +103,17 @@ impl GitHubClient {
         creds: &Credentials,
         builder: B,
         _cancel: &AtomicBool,
-    ) -> Result<reqwest::Response, errors::Error>
+    ) -> Result<reqwest::Response, human_errors::Error>
     where
         B: FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
     {
-        let parsed_url: Url = url.as_ref().parse().map_err(|e| {
-            errors::user_with_internal(
-                &format!(
-                    "Unable to parse GitHub URL '{}' as a valid URL.",
-                    url.as_ref()
-                ),
-                "Make sure that you have configured your GitHub API correctly.",
-                e,
-            )
-        })?;
+        let parsed_url: Url = url.as_ref().parse().wrap_err_as_user(
+            format!(
+                "Unable to parse GitHub URL '{}' as a valid URL.",
+                url.as_ref()
+            ),
+            &["Make sure that you have configured your GitHub API correctly."],
+        )?;
 
         #[cfg(test)]
         if let Some(response) = self.mock_replies.get(parsed_url.path()) {
@@ -146,24 +143,22 @@ impl GitHubClient {
 
         let req = builder(req);
 
-        let resp = req.send().await?;
+        let resp = req.send().await.map_err(|e| e.to_human_error())?;
 
         if resp.status().is_success() {
             Ok(resp)
         } else if resp.status() == StatusCode::UNAUTHORIZED {
-            Err(errors::user(
+            Err(human_errors::user(
                 "The access token you have provided was rejected by the GitHub API.",
-                "Make sure that your GitHub token is valid and has not expired.",
+                &["Make sure that your GitHub token is valid and has not expired."],
             ))
         } else {
             let err = ResponseError::with_body(resp).await;
-            Err(errors::user_with_internal(
-                &format!(
-                    "The GitHub API returned an error response with status code {}.",
-                    err.status_code
-                ),
-                "Please check the error message below and try again.",
+            let status = err.status_code;
+            Err(human_errors::wrap_user(
                 err,
+                format!("The GitHub API returned an error response with status code {status}."),
+                &["Please check the error message below and try again."],
             ))
         }
     }
@@ -765,21 +760,21 @@ impl std::str::FromStr for GitHubRepoSourceKind {
         match s.split('/').collect::<Vec<&str>>().as_slice() {
             ["user"] => Ok(GitHubRepoSourceKind::CurrentUser),
             ["starred"] => Ok(GitHubRepoSourceKind::Starred),
-            ["users", user] if !user.is_empty() => {
-                Ok(GitHubRepoSourceKind::User(user.to_string()))
-            }
-            ["orgs", org] if !org.is_empty() => {
-                Ok(GitHubRepoSourceKind::Org(org.to_string()))
-            }
+            ["users", user] if !user.is_empty() => Ok(GitHubRepoSourceKind::User(user.to_string())),
+            ["orgs", org] if !org.is_empty() => Ok(GitHubRepoSourceKind::Org(org.to_string())),
             ["repos", owner, repo] if !repo.is_empty() => {
                 Ok(GitHubRepoSourceKind::Repo(format!("{owner}/{repo}")))
             }
-            ["gists", gist] if !gist.is_empty() => {
-                Ok(GitHubRepoSourceKind::Gist(gist.to_string()))
-            }
-            _ => Err(errors::user(
-                &format!("The 'from' declaration '{}' was not valid for a GitHub repository source.", s),
-                "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', or 'repos/<owner>/<name>'"))
+            ["gists", gist] if !gist.is_empty() => Ok(GitHubRepoSourceKind::Gist(gist.to_string())),
+            _ => Err(human_errors::user(
+                format!(
+                    "The 'from' declaration '{}' was not valid for a GitHub repository source.",
+                    s
+                ),
+                &[
+                    "Make sure you provide either 'user', 'users/<name>', 'orgs/<name>', or 'repos/<owner>/<name>'",
+                ],
+            )),
         }
     }
 }

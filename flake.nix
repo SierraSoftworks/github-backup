@@ -4,16 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    crane = {
-      url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rust-analyzer-src.follows = "";
-    };
+    crane.url = "github:ipetkov/crane";
 
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -49,7 +40,6 @@
           buildInputs = []
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
-            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
 
           # Additional environment variables can be set directly
@@ -147,6 +137,8 @@
           # Extra inputs can be added here; cargo and rustc are provided by default.
           packages = [
             # pkgs.ripgrep
+            pkgs.rustfmt
+            pkgs.rust-analyzer
             pkgs.nodejs
           ];
         };

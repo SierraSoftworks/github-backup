@@ -1,15 +1,17 @@
 use std::{
     path::Path,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
+use human_errors::ResultExt;
 use sha2::Digest;
 use tokio::io::AsyncWriteExt;
 use tracing_batteries::prelude::*;
 
 use crate::{
+    BackupEntity,
     entities::{Credentials, HttpFile},
-    errors, BackupEntity,
+    errors::HumanizableError,
 };
 
 use super::{BackupEngine, BackupState};
@@ -26,14 +28,11 @@ impl HttpFileEngine {
         }
     }
 
-    fn ensure_directory(&self, path: &Path) -> Result<(), errors::Error> {
-        std::fs::create_dir_all(path).map_err(|e| {
-            errors::user_with_internal(
-                &format!("Unable to create backup directory '{}'", path.display()),
-                "Make sure that you have permission to create the directory.",
-                e,
-            )
-        })
+    fn ensure_directory(&self, path: &Path) -> Result<(), human_errors::Error> {
+        std::fs::create_dir_all(path).wrap_err_as_user(
+            format!("Unable to create backup directory '{}'", path.display()),
+            &["Make sure that you have permission to create the directory."],
+        )
     }
 
     fn get_last_modified(&self, path: &Path) -> Option<chrono::DateTime<chrono::Utc>> {
@@ -73,15 +72,14 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             self.ensure_directory(parent)?;
         }
 
-        if let Some(origin_last_modified) = entity.last_modified {
-            if let Some(target_last_modified) = self.get_last_modified(&target_path) {
-                if target_last_modified >= origin_last_modified {
-                    return Ok(BackupState::Unchanged(Some(format!(
-                        "since {}",
-                        target_last_modified.format("%Y-%m-%dT%H:%M:%S")
-                    ))));
-                }
-            }
+        if let Some(origin_last_modified) = entity.last_modified
+            && let Some(target_last_modified) = self.get_last_modified(&target_path)
+            && target_last_modified >= origin_last_modified
+        {
+            return Ok(BackupState::Unchanged(Some(format!(
+                "since {}",
+                target_last_modified.format("%Y-%m-%dT%H:%M:%S")
+            ))));
         }
 
         let req = self
@@ -107,17 +105,19 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             return Ok(BackupState::Skipped);
         }
 
-        let mut resp = req.send().await?;
+        let mut resp = req.send().await.map_err(|e| e.to_human_error())?;
 
         if !resp.status().is_success() {
-            return Err(errors::user_with_internal(
-                &format!(
-                    "Got an HTTP {} status code when trying to fetch '{}'.",
-                    resp.status(),
+            let status = resp.status();
+            return Err(human_errors::wrap_user(
+                crate::errors::ResponseError::with_body(resp).await,
+                format!(
+                    "Got an HTTP {status} status code when trying to fetch '{}'.",
                     entity.url.as_str(),
                 ),
-                "Make sure that you can access the URL and update your backup configuration if not.",
-                errors::ResponseError::with_body(resp).await
+                &[
+                    "Make sure that you can access the URL and update your backup configuration if not.",
+                ],
             ));
         }
 
@@ -138,20 +138,17 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
 
         let mut file = tokio::fs::File::create(temp_path.as_path())
             .await
-            .map_err(|e| {
-                errors::user_with_internal(
-                &format!(
+            .wrap_err_as_user(
+                format!(
                     "Unable to create temporary backup file '{}'.",
                     temp_path.as_path().display()
                 ),
-                "Make sure that you have permission to write to this file/directory and try again.",
-                e,
-            )
-            })?;
+                &["Make sure that you have permission to write to this file/directory and try again."],
+            )?;
 
         let mut shasum = sha2::Sha256::new();
 
-        while let Some(chunk) = resp.chunk().await? {
+        while let Some(chunk) = resp.chunk().await.map_err(|e| e.to_human_error())? {
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 drop(file);
                 tokio::fs::remove_file(&temp_path)
@@ -181,10 +178,15 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
                                 e
                             );
                         });
-                    return Err(errors::user_with_internal(
-                      &format!("Failed to write to temporary backup file '{}'.", temp_path.display()),
-                      "Make sure that you have permission to write to this file/directory and try again.",
-                      e
+                    return Err(human_errors::wrap_user(
+                        e,
+                        format!(
+                            "Failed to write to temporary backup file '{}'.",
+                            temp_path.display()
+                        ),
+                        &[
+                            "Make sure that you have permission to write to this file/directory and try again.",
+                        ],
                     ));
                 }
             }
@@ -193,23 +195,24 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
         drop(file);
 
         let shasum = shasum.finalize();
-        if let Some(existing_sha256) = self.get_existing_sha256(&target_path).await {
-            if existing_sha256 == format!("{:x}", shasum) {
-                tokio::fs::remove_file(&temp_path).await.map_err(|e| errors::user_with_internal(
-              &format!("Unable to remove temporary backup file '{}' after verifying that it is a duplicate of the existing file.", temp_path.display()),
-              "Make sure that you have write (and delete) permission on the backup directory and try again.",
-              e))?;
-                return Ok(BackupState::Unchanged(Some(format!(
-                    "at sha256@{shasum:x}"
-                ))));
-            }
+        if let Some(existing_sha256) = self.get_existing_sha256(&target_path).await
+            && existing_sha256 == format!("{:x}", shasum)
+        {
+            tokio::fs::remove_file(&temp_path).await.map_err(|e| human_errors::wrap_user(
+                    e,
+              format!("Unable to remove temporary backup file '{}' after verifying that it is a duplicate of the existing file.", temp_path.display()),
+              &["Make sure that you have write (and delete) permission on the backup directory and try again."],
+              ))?;
+            return Ok(BackupState::Unchanged(Some(format!(
+                "at sha256@{shasum:x}"
+            ))));
         }
 
         let state = if target_path.exists() {
-            tokio::fs::remove_file(&target_path).await.map_err(|e| errors::user_with_internal(
-              &format!("Unable to remove original backup file '{}' prior to replacement with new file.", target_path.display()),
-              "Make sure that you have write (and delete) permission on the backup directory and try again.",
-              e))?;
+            tokio::fs::remove_file(&target_path).await.wrap_err_as_user(
+              format!("Unable to remove original backup file '{}' prior to replacement with new file.", target_path.display()),
+              &["Make sure that you have write (and delete) permission on the backup directory and try again."],
+              )?;
             BackupState::Updated(
                 entity
                     .last_modified
@@ -225,10 +228,11 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             )
         };
 
-        tokio::fs::rename(&temp_path, &target_path).await.map_err(|e| errors::user_with_internal(
-          &format!("Unable to move temporary backup file '{}' to final location '{}'.", temp_path.display(), target_path.display()),
-          "Make sure that you have permission to write to this file/directory and try again.",
-          e))?;
+        tokio::fs::rename(&temp_path, &target_path).await.map_err(|e| human_errors::wrap_user(
+            e,
+          format!("Unable to move temporary backup file '{}' to final location '{}'.", temp_path.display(), target_path.display()),
+          &["Make sure that you have permission to write to this file/directory and try again."],
+          ))?;
 
         tokio::fs::write(
             target_path.with_extension(format!(
@@ -241,16 +245,13 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             format!("{:x}", shasum),
         )
         .await
-        .map_err(|e| {
-            errors::user_with_internal(
-                &format!(
-                    "Unable to write SHA-256 checksum file for backup file '{}'.",
-                    target_path.display()
-                ),
-                "Make sure that you have permission to write to this file/directory and try again.",
-                e,
-            )
-        })?;
+        .wrap_err_as_user(
+            format!(
+                "Unable to write SHA-256 checksum file for backup file '{}'.",
+                target_path.display()
+            ),
+            &["Make sure that you have permission to write to this file/directory and try again."],
+        )?;
 
         Ok(state)
     }

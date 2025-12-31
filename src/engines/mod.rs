@@ -24,7 +24,7 @@ pub trait BackupEngine<E: BackupEntity> {
         entity: &E,
         target: P,
         cancel: &AtomicBool,
-    ) -> Result<BackupState, crate::Error>;
+    ) -> Result<BackupState, human_errors::Error>;
 }
 
 impl Display for BackupState {

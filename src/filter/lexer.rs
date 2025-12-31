@@ -1,5 +1,3 @@
-use crate::errors::{self, Error};
-
 use super::{location::Loc, token::Token};
 
 pub struct Scanner<'a> {
@@ -54,7 +52,7 @@ impl<'a> Scanner<'a> {
         length
     }
 
-    fn read_string(&mut self, start: usize) -> Result<Token<'a>, Error> {
+    fn read_string(&mut self, start: usize) -> Result<Token<'a>, human_errors::Error> {
         let start_loc = Loc::new(self.line, 1 + start - self.line_start);
         while let Some((idx, c)) = self.chars.next() {
             match c {
@@ -70,26 +68,28 @@ impl<'a> Scanner<'a> {
             }
         }
 
-        Err(errors::user(
-            &format!("Reached the end of the filter without finding the closing quote for a string starting at {}.", start_loc),
-            "Make sure that you have terminated your string with a '\"' character.",
+        Err(human_errors::user(
+            format!(
+                "Reached the end of the filter without finding the closing quote for a string starting at {}.",
+                start_loc
+            ),
+            &["Make sure that you have terminated your string with a '\"' character."],
         ))
     }
 
-    fn read_number(&mut self, start: usize) -> Result<Token<'a>, Error> {
+    fn read_number(&mut self, start: usize) -> Result<Token<'a>, human_errors::Error> {
         let mut end = start + self.advance_while_fn(|_, c| c.is_numeric());
-        if let Some((loc, c)) = self.chars.peek() {
-            if *c == '.'
-                && self
-                    .source
-                    .chars()
-                    .nth(loc + 1)
-                    .map(|c2| c2.is_numeric())
-                    .unwrap_or_default()
-            {
-                self.chars.next();
-                end += 1 + self.advance_while_fn(|_, c| c.is_numeric());
-            }
+        if let Some((loc, c)) = self.chars.peek()
+            && *c == '.'
+            && self
+                .source
+                .chars()
+                .nth(loc + 1)
+                .map(|c2| c2.is_numeric())
+                .unwrap_or_default()
+        {
+            self.chars.next();
+            end += 1 + self.advance_while_fn(|_, c| c.is_numeric());
         }
 
         Ok(Token::Number(
@@ -98,7 +98,7 @@ impl<'a> Scanner<'a> {
         ))
     }
 
-    fn read_identifier(&mut self, start: usize) -> Result<Token<'a>, Error> {
+    fn read_identifier(&mut self, start: usize) -> Result<Token<'a>, human_errors::Error> {
         let end = start
             + self.advance_while_fn(|_, c| c.is_alphanumeric() || c == '_' || c == '.' || c == '-');
         let lexeme = &self.source[start..end + 1];
@@ -118,7 +118,7 @@ impl<'a> Scanner<'a> {
 }
 
 impl<'a> Iterator for Scanner<'a> {
-    type Item = Result<Token<'a>, Error>;
+    type Item = Result<Token<'a>, human_errors::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some((idx, c)) = self.chars.next() {
@@ -165,11 +165,16 @@ impl<'a> Iterator for Scanner<'a> {
                             1 + idx - self.line_start,
                         ))))
                     } else {
-                        Some(Err(errors::user(
-                            &format!("Filter included an orphaned '&' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
-                            "Ensure that you are using the '&&' operator to implement a logical AND within your filter."
+                        Some(Err(human_errors::user(
+                            format!(
+                                "Filter included an orphaned '&' at {} which is not a valid operator.",
+                                Loc::new(self.line, 1 + idx - self.line_start)
+                            ),
+                            &[
+                                "Ensure that you are using the '&&' operator to implement a logical AND within your filter.",
+                            ],
                         )))
-                    }
+                    };
                 }
                 '|' => {
                     return if self.match_char('|') {
@@ -178,11 +183,16 @@ impl<'a> Iterator for Scanner<'a> {
                             1 + idx - self.line_start,
                         ))))
                     } else {
-                        Some(Err(errors::user(
-                            &format!("Filter included an orphaned '|' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
-                            "Ensure that you are using the '||' operator to implement a logical OR within your filter."
+                        Some(Err(human_errors::user(
+                            format!(
+                                "Filter included an orphaned '|' at {} which is not a valid operator.",
+                                Loc::new(self.line, 1 + idx - self.line_start)
+                            ),
+                            &[
+                                "Ensure that you are using the '||' operator to implement a logical OR within your filter.",
+                            ],
                         )))
-                    }
+                    };
                 }
                 '=' => {
                     return if self.match_char('=') {
@@ -191,11 +201,16 @@ impl<'a> Iterator for Scanner<'a> {
                             1 + idx - self.line_start,
                         ))))
                     } else {
-                        Some(Err(errors::user(
-                            &format!("Filter included an orphaned '=' at {} which is not a valid operator.", Loc::new(self.line, 1 + idx - self.line_start)),
-                            "Ensure that you are using the '==' operator to implement a logical equality within your filter."
+                        Some(Err(human_errors::user(
+                            format!(
+                                "Filter included an orphaned '=' at {} which is not a valid operator.",
+                                Loc::new(self.line, 1 + idx - self.line_start)
+                            ),
+                            &[
+                                "Ensure that you are using the '==' operator to implement a logical equality within your filter.",
+                            ],
                         )))
-                    }
+                    };
                 }
                 '!' => {
                     return if self.match_char('=') {
@@ -208,7 +223,7 @@ impl<'a> Iterator for Scanner<'a> {
                             self.line,
                             1 + idx - self.line_start,
                         ))))
-                    }
+                    };
                 }
                 '>' => {
                     return if self.match_char('=') {
@@ -221,7 +236,7 @@ impl<'a> Iterator for Scanner<'a> {
                             self.line,
                             idx - self.line_start,
                         ))))
-                    }
+                    };
                 }
                 '<' => {
                     return if self.match_char('=') {
@@ -234,7 +249,7 @@ impl<'a> Iterator for Scanner<'a> {
                             self.line,
                             idx - self.line_start,
                         ))))
-                    }
+                    };
                 }
                 '"' => {
                     return Some(self.read_string(idx));

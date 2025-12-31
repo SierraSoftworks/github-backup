@@ -1,7 +1,7 @@
 [package]
 name = "github-backup"
 version = "3.0.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 async-stream = "0.3.6"
@@ -13,7 +13,7 @@ ctrlc = "3.5.1"
 gix = { version = "0.76.0", features = [
   "blocking-http-transport-reqwest-rust-tls",
 ] }
-human-errors = "0.1.5"
+human-errors = { version = "0.2.2", features = ["pretty"] }
 parse_link_header = "0.4.0"
 pin-project = "1.1.10"
 reqwest = { version = "0.12.28", default-features = false, features = [

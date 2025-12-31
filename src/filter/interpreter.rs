@@ -1,7 +1,7 @@
 use super::{
+    FilterValue, Filterable,
     expr::{Expr, ExprVisitor},
     token::Token,
-    FilterValue, Filterable,
 };
 
 pub struct FilterContext<'a, T: Filterable> {
