@@ -6,8 +6,8 @@ use tokio_stream::{Stream, StreamExt as _};
 use tracing_batteries::prelude::*;
 
 use crate::{
-    engines::{BackupEngine, BackupState},
     BackupEntity, BackupPolicy, BackupSource,
+    engines::{BackupEngine, BackupState},
 };
 
 pub struct Pairing<E: BackupEntity, S: BackupSource<E>, T: BackupEngine<E>> {
@@ -19,10 +19,10 @@ pub struct Pairing<E: BackupEntity, S: BackupSource<E>, T: BackupEngine<E>> {
 }
 
 impl<
-        E: BackupEntity + Send + Sync + 'static,
-        S: BackupSource<E> + Send + Sync + 'static,
-        T: BackupEngine<E> + Send + Sync + Clone + 'static,
-    > Pairing<E, S, T>
+    E: BackupEntity + Send + Sync + 'static,
+    S: BackupSource<E> + Send + Sync + 'static,
+    T: BackupEngine<E> + Send + Sync + Clone + 'static,
+> Pairing<E, S, T>
 {
     pub fn new(source: S, target: T) -> Self {
         Self {

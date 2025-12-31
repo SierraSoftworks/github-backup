@@ -12,10 +12,10 @@ use std::sync::atomic::AtomicBool;
 
 pub trait BackupSource<T: BackupEntity> {
     fn kind(&self) -> &str;
-    fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error>;
+    fn validate(&self, policy: &BackupPolicy) -> Result<(), human_errors::Error>;
     fn load<'a>(
         &'a self,
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
-    ) -> impl Stream<Item = Result<T, crate::Error>> + 'a;
+    ) -> impl Stream<Item = Result<T, human_errors::Error>> + 'a;
 }

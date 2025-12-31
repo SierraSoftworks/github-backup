@@ -3,14 +3,13 @@ use std::sync::atomic::AtomicBool;
 use tokio_stream::Stream;
 
 use crate::{
+    BackupSource,
     entities::{Credentials, HttpFile},
-    errors::{self},
     helpers::{
-        github::{GitHubArtifactKind, GitHubRelease, GitHubRepo, GitHubRepoSourceKind},
         GitHubClient,
+        github::{GitHubArtifactKind, GitHubRelease, GitHubRepo, GitHubRepoSourceKind},
     },
     policy::BackupPolicy,
-    BackupSource,
 };
 
 #[derive(Clone, Default)]
@@ -97,17 +96,19 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
         GitHubArtifactKind::Release.as_str()
     }
 
-    fn validate(&self, policy: &BackupPolicy) -> Result<(), crate::Error> {
+    fn validate(&self, policy: &BackupPolicy) -> Result<(), human_errors::Error> {
         let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
 
         match target {
-            GitHubRepoSourceKind::Starred => Err(errors::user(
-                &format!(
+            GitHubRepoSourceKind::Starred => Err(human_errors::user(
+                format!(
                     "You cannot use 'from: {}' for backups of 'kind: {}' as it is not currently supported.",
                     policy.from.as_str(),
                     policy.kind.as_str()
                 ),
-                "Try using 'from: user' or one of the other supported sources (users/<user>, orgs/<org>, repos/<repo>, etc).",
+                &[
+                    "Try using 'from: user' or one of the other supported sources (users/<user>, orgs/<org>, repos/<repo>, etc).",
+                ],
             )),
             _ => Ok(()),
         }
@@ -117,7 +118,7 @@ impl BackupSource<HttpFile> for GitHubReleasesSource {
         &'a self,
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
-    ) -> impl Stream<Item = Result<HttpFile, crate::Error>> + 'a {
+    ) -> impl Stream<Item = Result<HttpFile, human_errors::Error>> + 'a {
         let target: GitHubRepoSourceKind = policy.from.as_str().parse().unwrap();
         let url = format!(
             "{}/{}?{}",

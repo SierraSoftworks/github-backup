@@ -1,6 +1,6 @@
 use clap::Parser;
 use engines::BackupState;
-use errors::Error;
+use human_errors::Error;
 use pairing::PairingHandler;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
@@ -169,7 +169,7 @@ async fn main() {
 
     if let Err(e) = result {
         session.record_error(&e);
-        error!("{}", e);
+        error!("{}", human_errors::pretty(&e));
         session.shutdown();
         std::process::exit(1);
     } else {

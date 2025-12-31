@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use super::{token::Token, FilterValue};
+use super::{FilterValue, token::Token};
 
 // WARNING: We cannot have clone/copy semantics here because the [`Filter`] relies on
 // pinning pointers to ensure that this struct can be safely used without additional

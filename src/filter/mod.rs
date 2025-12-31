@@ -19,7 +19,7 @@ pub struct Filter {
 }
 
 impl Filter {
-    pub fn new<S: Into<String>>(filter: S) -> Result<Self, crate::Error> {
+    pub fn new<S: Into<String>>(filter: S) -> Result<Self, human_errors::Error> {
         let filter = Box::new(filter.into());
         let filter_ptr = NonNull::from(&filter);
         let pinned = Box::into_pin(filter);
@@ -32,7 +32,7 @@ impl Filter {
         })
     }
 
-    pub fn matches<T: Filterable>(&self, target: &T) -> Result<bool, crate::Error> {
+    pub fn matches<T: Filterable>(&self, target: &T) -> Result<bool, human_errors::Error> {
         Ok(FilterContext::new(target).visit_expr(&self.ast).is_truthy())
     }
 
