@@ -72,16 +72,14 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             self.ensure_directory(parent)?;
         }
 
-        if let Some(origin_last_modified) = entity.last_modified {
-            if let Some(target_last_modified) = self.get_last_modified(&target_path) {
-                if target_last_modified >= origin_last_modified {
+        if let Some(origin_last_modified) = entity.last_modified
+            && let Some(target_last_modified) = self.get_last_modified(&target_path)
+                && target_last_modified >= origin_last_modified {
                     return Ok(BackupState::Unchanged(Some(format!(
                         "since {}",
                         target_last_modified.format("%Y-%m-%dT%H:%M:%S")
                     ))));
                 }
-            }
-        }
 
         let req = self
             .client
@@ -196,8 +194,8 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
         drop(file);
 
         let shasum = shasum.finalize();
-        if let Some(existing_sha256) = self.get_existing_sha256(&target_path).await {
-            if existing_sha256 == format!("{:x}", shasum) {
+        if let Some(existing_sha256) = self.get_existing_sha256(&target_path).await
+            && existing_sha256 == format!("{:x}", shasum) {
                 tokio::fs::remove_file(&temp_path).await.map_err(|e| human_errors::wrap_user(
                     e,
               format!("Unable to remove temporary backup file '{}' after verifying that it is a duplicate of the existing file.", temp_path.display()),
@@ -207,7 +205,6 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
                     "at sha256@{shasum:x}"
                 ))));
             }
-        }
 
         let state = if target_path.exists() {
             tokio::fs::remove_file(&target_path).await.wrap_err_as_user(

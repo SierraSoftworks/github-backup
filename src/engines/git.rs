@@ -205,14 +205,13 @@ impl GitEngine {
             &["Make sure that the remote repository is valid."],
         )?;
 
-        if let Some(original_head) = original_head {
-            if original_head == head_id {
+        if let Some(original_head) = original_head
+            && original_head == head_id {
                 return Ok(BackupState::Unchanged(Some(format!(
                     "at {}",
                     head_id.to_hex()
                 ))));
             }
-        }
 
         Ok(BackupState::Updated(Some(format!("{}", head_id.to_hex()))))
     }
