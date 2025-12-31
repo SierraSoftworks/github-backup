@@ -81,16 +81,16 @@ impl<'a> Scanner<'a> {
         let mut end = start + self.advance_while_fn(|_, c| c.is_numeric());
         if let Some((loc, c)) = self.chars.peek()
             && *c == '.'
-                && self
-                    .source
-                    .chars()
-                    .nth(loc + 1)
-                    .map(|c2| c2.is_numeric())
-                    .unwrap_or_default()
-            {
-                self.chars.next();
-                end += 1 + self.advance_while_fn(|_, c| c.is_numeric());
-            }
+            && self
+                .source
+                .chars()
+                .nth(loc + 1)
+                .map(|c2| c2.is_numeric())
+                .unwrap_or_default()
+        {
+            self.chars.next();
+            end += 1 + self.advance_while_fn(|_, c| c.is_numeric());
+        }
 
         Ok(Token::Number(
             Loc::new(self.line, 1 + start - self.line_start),
