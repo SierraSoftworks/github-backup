@@ -9,7 +9,7 @@ async-trait = "0.1.89"
 chrono = { version = "0.4.43", features = ["serde"] }
 clap = { version = "4.5.57", features = ["derive", "string"] }
 croner = "3.0.1"
-ctrlc = "3.5.1"
+ctrlc = "3.5.2"
 gix = { version = "0.79.0", features = [
   "blocking-http-transport-reqwest-rust-tls",
 ] }
