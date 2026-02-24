@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 async-stream = "0.3.6"
 async-trait = "0.1.89"
-chrono = { version = "0.4.43", features = ["serde"] }
+chrono = { version = "0.4.44", features = ["serde"] }
 clap = { version = "4.5.60", features = ["derive", "string"] }
 croner = "3.0.1"
 ctrlc = "3.5.2"
