@@ -149,7 +149,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Fetch Versioned Cargo.toml
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: cargofile
 
@@ -230,7 +230,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Pull in platform artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: github-backup-${{ env.PLATFORM_PAIR }}
 
@@ -282,7 +282,7 @@ jobs:
           echo "FULL_IMAGE_NAME=${image}" >> $GITHUB_ENV
 
       - name: Download digests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: image-digest-*
