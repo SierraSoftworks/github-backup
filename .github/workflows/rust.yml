@@ -32,7 +32,7 @@ jobs:
         run: sed -i "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/g" Cargo.toml
 
       - name: Stash Versioned Cargo.toml
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cargofile
           path: Cargo.toml
@@ -172,7 +172,7 @@ jobs:
           overwrite: "true"
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: github-backup-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }}
           path: target/${{ matrix.target }}/release/github-backup${{ matrix.extension }}
@@ -254,7 +254,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: image-digest-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
