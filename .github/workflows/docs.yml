@@ -28,7 +28,7 @@ jobs:
       - name: Build
         run: cd docs && npm run build
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: docs
           path: docs/.vuepress/dist
