@@ -102,8 +102,6 @@ async fn run(args: Args) -> Result<(), Error> {
                         error!("Unknown policy kind: {}", policy.kind);
                     }
                 }
-
-                println!();
             }
         }
 
