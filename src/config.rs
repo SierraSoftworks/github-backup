@@ -17,11 +17,11 @@ impl TryFrom<&Args> for Config {
     type Error = human_errors::Error;
 
     fn try_from(value: &Args) -> Result<Self, Self::Error> {
-        let content = std::fs::read_to_string(&value.config).wrap_err_as_user(
+        let content = std::fs::read_to_string(&value.config).wrap_user_err(
             format!("Failed to read the config file {}.", &value.config),
             &["Make sure that the configuration file exists and can be ready by the process."],
         )?;
-        let config: Config = serde_yaml::from_str(&content).wrap_err_as_user(
+        let config: Config = serde_yaml::from_str(&content).wrap_user_err(
             "Failed to parse your configuration file, as it is not recognized as valid YAML.",
             &["Make sure that your configuration file is formatted correctly."],
         )?;

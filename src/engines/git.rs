@@ -52,7 +52,7 @@ impl BackupEngine<GitRepo> for GitEngine {
 impl GitEngine {
     fn ensure_directory(&self, path: &Path) -> Result<(), human_errors::Error> {
         trace!("Ensuring directory exists: {}", path.display());
-        std::fs::create_dir_all(path).wrap_err_as_user(
+        std::fs::create_dir_all(path).wrap_user_err(
             format!("Unable to create backup directory '{}'", path.display()),
             &["Make sure that you have permission to create the directory."],
         )
@@ -70,7 +70,7 @@ impl GitEngine {
             repo.clone_url,
             target.display()
         );
-        let mut fetch = gix::prepare_clone(repo.clone_url.as_str(), target).wrap_err_as_system(
+        let mut fetch = gix::prepare_clone(repo.clone_url.as_str(), target).wrap_system_err(
             format!("Failed to clone the repository {}.", &repo.clone_url),
             &["Please make sure that the target directory is writable and that the repository is accessible."],
         )?;
@@ -87,7 +87,7 @@ impl GitEngine {
         }
 
         trace!("Running clone in bare mode (not checking out files)");
-        let (repository, _outcome) = fetch.fetch_only(Discard, cancel).wrap_err_as_system(
+        let (repository, _outcome) = fetch.fetch_only(Discard, cancel).wrap_system_err(
             format!("Unable to clone remote repository '{}'", repo.clone_url),
             &["Make sure that your internet connectivity is working correctly, and that your local git configuration is able to clone this repo."],
         )?;
@@ -97,7 +97,7 @@ impl GitEngine {
 
         trace!("Configuring core.bare for Git repository");
         self.update_config(&repository, |c| {
-            c.set_raw_value(&gix::config::tree::Core::BARE, "true").wrap_err_as_system(
+            c.set_raw_value(&gix::config::tree::Core::BARE, "true").wrap_system_err(
                 format!("Unable to set the 'core.bare' configuration option for repository '{}'", repo.name()),
                 &["Make sure that the git repository has been correctly initialized and run `git config core.bare true` to configure it correctly."],
             )?;
@@ -105,7 +105,7 @@ impl GitEngine {
             Ok(())
         })?;
 
-        let head_id = repository.head_id().wrap_err_as_user(
+        let head_id = repository.head_id().wrap_user_err(
             format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", &repo.clone_url),
             &["Make sure that the remote repository is valid."],
         )?;
@@ -121,7 +121,7 @@ impl GitEngine {
         cancel: &AtomicBool,
     ) -> Result<BackupState, human_errors::Error> {
         trace!("Opening repository {}", target.display());
-        let repository = gix::open(target).wrap_err_as_user(
+        let repository = gix::open(target).wrap_user_err(
             format!(
                 "Failed to open the repository '{}' at '{}'",
                 &repo.clone_url,
@@ -140,7 +140,7 @@ impl GitEngine {
             "Configuring fetch operation for repository {}",
             target.display()
         );
-        let remote = repository.find_fetch_remote(Some(repo.clone_url.as_str().into())).wrap_err_as_user(
+        let remote = repository.find_fetch_remote(Some(repo.clone_url.as_str().into())).wrap_user_err(
             format!(
                 "Failed to find the remote '{}' in the repository '{}'",
                 repo.clone_url,
@@ -155,7 +155,7 @@ impl GitEngine {
                 .map(|s| gix::bstr::BString::from(s.as_str()))
                 .collect::<Vec<gix::bstr::BString>>(),
               gix::remote::Direction::Fetch)
-            .wrap_err_as_user(
+            .wrap_user_err(
                 format!(
                     "Failed to configure the remote '{}' in the repository '{}' to fetch all branches.",
                     &repo.clone_url,
@@ -167,7 +167,7 @@ impl GitEngine {
         trace!("Connecting to remote repository {}", repo.clone_url);
         let mut connection = remote
             .connect(gix::remote::Direction::Fetch)
-            .wrap_err_as_user(
+            .wrap_user_err(
                 format!(
                     "Unable to establish connection to remote git repository '{}'",
                     &repo.clone_url
@@ -183,7 +183,7 @@ impl GitEngine {
         );
         connection
             .prepare_fetch(Discard, Default::default())
-            .wrap_err_as_user(
+            .wrap_user_err(
                 format!(
                     "Unable to prepare fetch from remote git repository '{}'",
                     &repo.clone_url
@@ -192,7 +192,7 @@ impl GitEngine {
             )?
             .with_write_packed_refs_only(true)
             .receive(Discard, cancel)
-            .wrap_err_as_user(
+            .wrap_user_err(
                 format!(
                     "Unable to fetch from remote git repository '{}'",
                     &repo.clone_url
@@ -200,7 +200,7 @@ impl GitEngine {
                 &["Make sure that the repository is available and correctly configured."],
             )?;
 
-        let head_id = repository.head_id().wrap_err_as_user(
+        let head_id = repository.head_id().wrap_user_err(
             format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", &repo.clone_url),
             &["Make sure that the remote repository is valid."],
         )?;
@@ -286,7 +286,7 @@ impl GitEngine {
             repo.path().join("config"),
             gix::config::Source::Local,
         )
-        .wrap_err_as_system(
+        .wrap_system_err(
             format!(
                 "Unable to load git configuration for repository '{}'",
                 repo.path().display()
@@ -296,7 +296,7 @@ impl GitEngine {
 
         update(&mut config)?;
 
-        let mut file = std::fs::File::create(repo.path().join("config")).wrap_err_as_system(
+        let mut file = std::fs::File::create(repo.path().join("config")).wrap_system_err(
             format!(
                 "Unable to write git configuration for repository '{}'",
                 repo.path().display()
@@ -304,7 +304,7 @@ impl GitEngine {
             &["Make sure that the git repository has been correctly initialized."],
         )?;
 
-        config.write_to(&mut file).wrap_err_as_system(
+        config.write_to(&mut file).wrap_system_err(
             format!(
                 "Unable to write git configuration for repository '{}'",
                 repo.path().display()
