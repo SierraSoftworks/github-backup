@@ -966,7 +966,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2587,7 +2587,7 @@ dependencies = [
  "portable-atomic",
  "portable-atomic-util",
  "serde_core",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2815,7 +2815,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3211,7 +3211,7 @@ dependencies = [
  "once_cell",
  "socket2 0.6.1",
  "tracing",
- "windows-sys 0.60.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3420,6 +3420,8 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "rustls-platform-verifier",
+ "serde",
+ "serde_json",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
@@ -3500,7 +3502,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3559,7 +3561,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3647,12 +3649,13 @@ checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
 
 [[package]]
 name = "sentry"
-version = "0.46.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9794f69ad475e76c057e326175d3088509649e3aed98473106b9fe94ba59424"
+checksum = "eb25f439f97d26fea01d717fa626167ceffcd981addaa670001e70505b72acbb"
 dependencies = [
+ "cfg_aliases",
  "httpdate",
- "reqwest 0.12.28",
+ "reqwest 0.13.1",
  "rustls",
  "sentry-actix",
  "sentry-core",
@@ -3663,9 +3666,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.46.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0fee202934063ace4f1d1d063113b8982293762628e563a2d2fba08fb20b110"
+checksum = "9453d18fc9a45d841636004aad50288d80cc07c34a9e88cd4397cb66e6356f67"
 dependencies = [
  "actix-http",
  "actix-web",
@@ -3676,9 +3679,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.46.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfc409727ae90765ca8ea76fe6c949d6f159a11d02e130b357fa652ee9efcada"
+checksum = "0ac170a5bba8bec6e3339c90432569d89641fa7a3d3e4f44987d24f0762e6adf"
 dependencies = [
  "rand 0.9.2",
  "sentry-types",
@@ -3689,9 +3692,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.46.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a63c02619733e917643fa91ec6744a18a1e48236cd876ce908a4c2b04f17bdf"
+checksum = "235865e639f1d72414fa5d35374e105c292e2ee3a2f90919d961bbb486626ee6"
 dependencies = [
  "bitflags",
  "log",
@@ -3700,9 +3703,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.46.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7b9b4e4c03a4d3643c18c78b8aa91d2cbee5da047d2fa0ca4bb29bc67e6c55c"
+checksum = "56780cb5597d676bf22e6c11d1f062eb4def46390ea3bfb047bcbcf7dfd19bdb"
 dependencies = [
  "debugid",
  "hex",
@@ -3989,7 +3992,7 @@ dependencies = [
  "getrandom 0.4.1",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4333,7 +4336,7 @@ dependencies = [
 [[package]]
 name = "tracing-batteries"
 version = "0.1.0"
-source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#fe30b5b9a664be60fef3244eb517df1f536f770c"
+source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#57da0efae65f9e492d6ed16e6d6f85a6e1e0ace9"
 dependencies = [
  "chrono",
  "hex",
@@ -4790,7 +4793,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
