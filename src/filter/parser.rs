@@ -170,7 +170,7 @@ impl<'a, I: Iterator<Item = Result<Token<'a>, Error>>> Parser<'a, I> {
         match self.tokens.next() {
             Some(Ok(Token::True(..))) => Ok(true.into()),
             Some(Ok(Token::False(..))) => Ok(false.into()),
-            Some(Ok(Token::Number(loc, n))) => Ok(FilterValue::Number(n.parse().wrap_err_as_user(
+            Some(Ok(Token::Number(loc, n))) => Ok(FilterValue::Number(n.parse().wrap_user_err(
                 format!("Failed to parse the number '{n}' which you provided at {}.", loc),
                 &["Please make sure that the number is well formatted. It should be in the form 123, or 123.45."],
             )?)),

@@ -61,11 +61,11 @@ impl GitHubClient {
               let resp = self.call(Method::GET, &url, creds, |r| r, cancel).await?;
 
               if let Some(link_header) = resp.headers().get(LINK) {
-                  let link_header = link_header.to_str().wrap_err_as_system(
+                  let link_header = link_header.to_str().wrap_system_err(
                       "Unable to parse GitHub's Link header due to invalid characters, which will result in pagination failing to work correctly.",
                       &["Please report this issue to us on GitHub."])?;
 
-                  let links = parse_link_header::parse_with_rel(link_header).wrap_err_as_system(
+                  let links = parse_link_header::parse_with_rel(link_header).wrap_system_err(
                     "Unable to parse GitHub's Link header, which will result in pagination failing to work correctly.",
                     &["Please report this issue to us on GitHub."])?;
 
@@ -107,7 +107,7 @@ impl GitHubClient {
     where
         B: FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
     {
-        let parsed_url: Url = url.as_ref().parse().wrap_err_as_user(
+        let parsed_url: Url = url.as_ref().parse().wrap_user_err(
             format!(
                 "Unable to parse GitHub URL '{}' as a valid URL.",
                 url.as_ref()

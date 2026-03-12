@@ -29,7 +29,7 @@ impl HttpFileEngine {
     }
 
     fn ensure_directory(&self, path: &Path) -> Result<(), human_errors::Error> {
-        std::fs::create_dir_all(path).wrap_err_as_user(
+        std::fs::create_dir_all(path).wrap_user_err(
             format!("Unable to create backup directory '{}'", path.display()),
             &["Make sure that you have permission to create the directory."],
         )
@@ -138,7 +138,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
 
         let mut file = tokio::fs::File::create(temp_path.as_path())
             .await
-            .wrap_err_as_user(
+            .wrap_user_err(
                 format!(
                     "Unable to create temporary backup file '{}'.",
                     temp_path.as_path().display()
@@ -209,7 +209,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
         }
 
         let state = if target_path.exists() {
-            tokio::fs::remove_file(&target_path).await.wrap_err_as_user(
+            tokio::fs::remove_file(&target_path).await.wrap_user_err(
               format!("Unable to remove original backup file '{}' prior to replacement with new file.", target_path.display()),
               &["Make sure that you have write (and delete) permission on the backup directory and try again."],
               )?;
@@ -245,7 +245,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
             format!("{:x}", shasum),
         )
         .await
-        .wrap_err_as_user(
+        .wrap_user_err(
             format!(
                 "Unable to write SHA-256 checksum file for backup file '{}'.",
                 target_path.display()
