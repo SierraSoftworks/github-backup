@@ -195,8 +195,9 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
         drop(file);
 
         let shasum = shasum.finalize();
+        let shasum_hex: String = shasum.iter().map(|b| format!("{b:02x}")).collect();
         if let Some(existing_sha256) = self.get_existing_sha256(&target_path).await
-            && existing_sha256 == format!("{:x}", shasum)
+            && existing_sha256 == shasum_hex
         {
             tokio::fs::remove_file(&temp_path).await.map_err(|e| human_errors::wrap_user(
                     e,
@@ -204,7 +205,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
               &["Make sure that you have write (and delete) permission on the backup directory and try again."],
               ))?;
             return Ok(BackupState::Unchanged(Some(format!(
-                "at sha256@{shasum:x}"
+                "at sha256@{shasum_hex}"
             ))));
         }
 
@@ -217,14 +218,14 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
                 entity
                     .last_modified
                     .map(|m| format!("at {}", m.format("%Y-%m-%dT%H:%M:%S")))
-                    .or(Some(format!("at sha256:{shasum:x}"))),
+                    .or(Some(format!("at sha256:{shasum_hex}"))),
             )
         } else {
             BackupState::New(
                 entity
                     .last_modified
                     .map(|m| format!("at {}", m.format("%Y-%m-%dT%H:%M:%S")))
-                    .or(Some(format!("at sha256:{shasum:x}"))),
+                    .or(Some(format!("at sha256:{shasum_hex}"))),
             )
         };
 
@@ -242,7 +243,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
                     .unwrap_or_default()
                     .to_string_lossy()
             )),
-            format!("{:x}", shasum),
+            shasum_hex,
         )
         .await
         .wrap_user_err(
