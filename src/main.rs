@@ -47,7 +47,7 @@ pub struct Args {
     pub concurrency: usize,
 }
 
-async fn run(args: Args) -> Result<(), Error> {
+async fn run(args: Args, session: &Session) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
     let github_repo =
@@ -78,6 +78,7 @@ async fn run(args: Args) -> Result<(), Error> {
 
             for policy in config.backups.iter() {
                 let _policy_span = info_span!("backup.policy", policy = %policy).entered();
+                let _page = session.record_new_page(format!("/backup/{}", policy));
 
                 match policy.kind.as_str() {
                     k if k == GitHubArtifactKind::Repo.as_str() => {
@@ -163,7 +164,7 @@ async fn main() {
         .with_battery(OpenTelemetry::new(""))
         .with_battery(Medama::new("https://analytics.sierrasoftworks.com"));
 
-    let result = run(args).await;
+    let result = run(args, &session).await;
 
     if let Err(e) = result {
         session.record_error(&e);
