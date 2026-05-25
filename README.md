@@ -27,7 +27,7 @@ copy of all of your GitHub repositories should the unthinkable happen.
 docker run \
   -v $(pwd)/config.yaml:/config.yaml \
   -v $(pwd)/backups:/backups \
-  ghcr.io/SierraSoftworks/github-backup:main \
+  ghcr.io/SierraSoftworks/github-backup:latest \
     --config /config.yaml
 ```
 
