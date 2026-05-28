@@ -97,7 +97,7 @@ impl GitEngine {
 
         trace!("Configuring core.bare for Git repository");
         self.update_config(&repository, |c| {
-            c.set_raw_value(&gix::config::tree::Core::BARE, "true").wrap_system_err(
+            c.set_raw_value(gix::config::tree::Core::BARE, "true").wrap_system_err(
                 format!("Unable to set the 'core.bare' configuration option for repository '{}'", repo.name()),
                 &["Make sure that the git repository has been correctly initialized and run `git config core.bare true` to configure it correctly."],
             )?;
@@ -226,6 +226,7 @@ impl GitEngine {
             creds => {
                 trace!("Configuring credentials for Git connection");
                 let creds = creds.clone();
+                #[allow(clippy::result_large_err)]
                 connection.set_credentials(move |a| match a {
                     Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {
                         identity: match &creds {
@@ -257,12 +258,12 @@ impl GitEngine {
         if repo.committer().is_none() {
             self.update_config(repo, |cfg| {
                 cfg.set_raw_value(
-                    &gix::config::tree::gitoxide::Committer::NAME_FALLBACK,
+                    gix::config::tree::gitoxide::Committer::NAME_FALLBACK,
                     "github-backup",
                 )
                 .expect("works - statically known");
                 cfg.set_raw_value(
-                    &gix::config::tree::gitoxide::Committer::EMAIL_FALLBACK,
+                    gix::config::tree::gitoxide::Committer::EMAIL_FALLBACK,
                     "github-backup@sierrasoftworks.github.io",
                 )
                 .expect("works - statically known");
