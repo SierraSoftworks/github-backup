@@ -6,7 +6,7 @@ use crate::{Args, policy::BackupPolicy};
 
 #[derive(Deserialize)]
 pub struct Config {
-    #[serde(deserialize_with = "deserialize_cron")]
+    #[serde(default, deserialize_with = "deserialize_cron")]
     pub schedule: Option<croner::Cron>,
 
     #[serde(default)]
@@ -55,6 +55,12 @@ mod tests {
     fn deserialize_cron(#[case] format: &str) {
         let config: Config = serde_yaml::from_str(&format!("schedule: {}", format)).unwrap();
         assert!(config.schedule.is_some());
+    }
+
+    #[test]
+    fn deserialize_cron_not_provided() {
+        let config: Config = serde_yaml::from_str("").unwrap();
+        assert!(config.schedule.is_none());
     }
 
     #[test]
