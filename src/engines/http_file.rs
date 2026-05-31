@@ -158,7 +158,7 @@ impl HttpFileEngine {
 
             match file.write_all(&chunk).await {
                 Ok(()) => {
-                    _ = shasum.update(chunk.as_ref());
+                    shasum.update(chunk.as_ref());
                 }
                 Err(e) => {
                     drop(file);
