@@ -1,17 +1,17 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
-use std::path::PathBuf;
 
 use crate::Filter;
 use crate::entities::Credentials;
+use crate::target::BackupTarget;
 
 #[derive(Deserialize)]
 pub struct BackupPolicy {
     pub kind: String,
     pub from: String,
-    #[serde(default = "default_backup_path")]
-    pub to: PathBuf,
+    #[serde(default)]
+    pub to: BackupTarget,
     #[serde(default)]
     pub credentials: Credentials,
     #[serde(default)]
@@ -32,10 +32,6 @@ impl Debug for BackupPolicy {
     }
 }
 
-fn default_backup_path() -> PathBuf {
-    PathBuf::from("./backups")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -54,7 +50,10 @@ mod tests {
         let policy: BackupPolicy = serde_yaml::from_str(policy).unwrap();
         assert_eq!(policy.kind, "backup");
         assert_eq!(policy.from, "source");
-        assert_eq!(policy.to, PathBuf::from("/tmp/backup"));
+        assert_eq!(
+            policy.to,
+            BackupTarget::FileSystem(std::path::PathBuf::from("/tmp/backup"))
+        );
         assert_eq!(
             policy.credentials,
             Credentials::UsernamePassword {

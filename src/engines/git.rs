@@ -15,22 +15,21 @@ use crate::{
     entities::{Credentials, GitRepo},
 };
 
-use super::{BackupEngine, BackupState};
+use super::BackupState;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GitEngine;
 
-#[async_trait::async_trait]
-impl BackupEngine<GitRepo> for GitEngine {
+impl GitEngine {
     #[allow(clippy::blocks_in_conditions)]
-    #[tracing::instrument(skip(self, target, entity), res, err, entity=%entity)]
-    async fn backup<P: AsRef<Path> + Send>(
+    #[tracing::instrument(skip(self, target, entity), ret, err, fields(entity = %entity))]
+    pub async fn backup(
         &self,
         entity: &GitRepo,
-        target: P,
+        target: &Path,
         cancel: &AtomicBool,
     ) -> Result<BackupState, crate::Error> {
-        let target_path = target.as_ref().join(entity.target_path());
+        let target_path = target.join(entity.target_path());
         self.ensure_directory(&target_path)?;
 
         if target_path.join(".git").exists() {

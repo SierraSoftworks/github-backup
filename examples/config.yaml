@@ -38,3 +38,21 @@ backups:
     from: repos/SierraSoftworks/github-backup
     to: /backup/github-releases
     filter: '!release.prerelease'
+
+  # Backup repos and release artifacts to Forgejo
+  - kind: github/repo
+    from: repos/SierraSoftworks/github-backup
+    to:
+      kind: forgejo/repo
+      address: https://forgejo.example.com
+      owner: backups
+      credentials: !Token forgejo_access_token
+
+  - kind: github/release
+    from: repos/SierraSoftworks/github-backup
+    to:
+      kind: forgejo/release
+      address: https://forgejo.example.com
+      owner: backups
+      credentials: !Token forgejo_access_token
+    filter: '!release.prerelease'
