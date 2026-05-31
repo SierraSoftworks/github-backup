@@ -19,6 +19,7 @@ pub(crate) mod helpers;
 mod pairing;
 mod policy;
 mod sources;
+mod target;
 mod telemetry;
 
 use crate::helpers::github::GitHubArtifactKind;
@@ -27,6 +28,7 @@ pub use entities::BackupEntity;
 pub use filter::{Filter, FilterValue, Filterable};
 pub use policy::BackupPolicy;
 pub use sources::BackupSource;
+pub use target::BackupTarget;
 
 static CANCEL: AtomicBool = AtomicBool::new(false);
 
@@ -50,19 +52,23 @@ pub struct Args {
 async fn run(args: Args, session: &Session) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
-    let github_repo =
-        pairing::Pairing::new(sources::GitHubRepoSource::default(), engines::GitEngine)
-            .with_dry_run(args.dry_run)
-            .with_concurrency_limit(args.concurrency);
+    let github_repo = pairing::Pairing::new(
+        sources::GitHubRepoSource::default(),
+        engines::RepoEngine::new(),
+    )
+    .with_dry_run(args.dry_run)
+    .with_concurrency_limit(args.concurrency);
 
-    let github_gist =
-        pairing::Pairing::new(sources::GitHubGistSource::default(), engines::GitEngine)
-            .with_dry_run(args.dry_run)
-            .with_concurrency_limit(args.concurrency);
+    let github_gist = pairing::Pairing::new(
+        sources::GitHubGistSource::default(),
+        engines::RepoEngine::new(),
+    )
+    .with_dry_run(args.dry_run)
+    .with_concurrency_limit(args.concurrency);
 
     let github_release = pairing::Pairing::new(
         sources::GitHubReleasesSource::default(),
-        engines::HttpFileEngine::new(),
+        engines::ReleaseEngine::new(),
     )
     .with_dry_run(args.dry_run)
     .with_concurrency_limit(args.concurrency);

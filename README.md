@@ -97,6 +97,39 @@ backups:
     to: /backups/gists/another-user
 ```
 
+#### Backing up to a Forgejo instance
+
+In addition to writing backups to the local filesystem, the `to` field can
+describe a remote [Forgejo](https://forgejo.org/) instance. Repositories are
+mirrored using Forgejo's repository migration API, while release artifacts are
+uploaded as release attachments.
+
+```yaml
+backups:
+  # Mirror a repository to a Forgejo instance
+  - kind: github/repo
+    from: repos/SierraSoftworks/github-backup
+    to:
+      kind: forgejo/repo
+      address: https://forgejo.example.com
+      owner: backups
+      credentials: !Token "your_forgejo_access_token"
+
+  # Upload release artifacts to a Forgejo instance
+  - kind: github/release
+    from: repos/SierraSoftworks/github-backup
+    to:
+      kind: forgejo/release
+      address: https://forgejo.example.com
+      owner: backups
+      credentials: !Token "your_forgejo_access_token"
+    filter: '!release.prerelease'
+```
+
+The `owner` field selects the Forgejo user or organization which should own the
+mirrored repositories (and host the releases). The `credentials` field accepts
+the same `!Token` and `!UsernamePassword` forms as GitHub credentials.
+
 ### OpenTelemetry Reporting
 
 In addition to the standard logging output, this tool also supports reporting metrics to an

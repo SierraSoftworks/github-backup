@@ -14,20 +14,14 @@ use crate::{
     errors::HumanizableError,
 };
 
-use super::{BackupEngine, BackupState};
+use super::BackupState;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct HttpFileEngine {
     client: Arc<reqwest::Client>,
 }
 
 impl HttpFileEngine {
-    pub fn new() -> Self {
-        Self {
-            client: Arc::new(reqwest::Client::new()),
-        }
-    }
-
     fn ensure_directory(&self, path: &Path) -> Result<(), human_errors::Error> {
         std::fs::create_dir_all(path).wrap_user_err(
             format!("Unable to create backup directory '{}'", path.display()),
@@ -58,16 +52,15 @@ impl HttpFileEngine {
     }
 }
 
-#[async_trait::async_trait]
-impl BackupEngine<HttpFile> for HttpFileEngine {
-    #[tracing::instrument(skip(self, entity, cancel, target), entity=%entity)]
-    async fn backup<P: AsRef<Path> + Send>(
+impl HttpFileEngine {
+    #[tracing::instrument(skip(self, entity, cancel, target), fields(entity = %entity))]
+    pub async fn backup(
         &self,
         entity: &HttpFile,
-        target: P,
+        target: &Path,
         cancel: &AtomicBool,
     ) -> Result<BackupState, crate::Error> {
-        let target_path = target.as_ref().join(entity.target_path());
+        let target_path = target.join(entity.target_path());
         if let Some(parent) = target_path.parent() {
             self.ensure_directory(parent)?;
         }
@@ -165,7 +158,7 @@ impl BackupEngine<HttpFile> for HttpFileEngine {
 
             match file.write_all(&chunk).await {
                 Ok(()) => {
-                    _ = shasum.update(chunk.as_ref());
+                    shasum.update(chunk.as_ref());
                 }
                 Err(e) => {
                     drop(file);
@@ -280,7 +273,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let engine = HttpFileEngine::new();
+        let engine = HttpFileEngine::default();
         let cancel = AtomicBool::new(false);
 
         let entity = HttpFile {
@@ -338,7 +331,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let engine = HttpFileEngine::new();
+        let engine = HttpFileEngine::default();
         let cancel = AtomicBool::new(false);
 
         // Set last_modified to a time in the future to ensure first backup happens

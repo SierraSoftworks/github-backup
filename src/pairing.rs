@@ -105,7 +105,7 @@ impl<
 
               let entity = entity?;
               if self.dry_run {
-                  info!("Would backup {entity} to {}", &policy.to.display());
+                  info!("Would backup {entity} to {}", &policy.to);
                   yield Ok((entity, BackupState::Skipped));
                   continue;
               }
@@ -128,7 +128,7 @@ impl<
                 let to = policy.to.clone();
                 join_set.spawn(async move {
                     debug!("Starting backup of {entity}");
-                    target.backup(&entity, to.as_path(), cancel).await.map(|state| (entity, state.clone()))
+                    target.backup(&entity, &to, cancel).await.map(|state| (entity, state.clone()))
                 }.instrument(span));
               }
           }
@@ -205,8 +205,6 @@ pub trait PairingHandler<E: BackupEntity> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
-
     use rstest::rstest;
 
     use crate::entities::GitRepo;
@@ -258,10 +256,10 @@ mod tests {
 
     #[async_trait::async_trait]
     impl BackupEngine<GitRepo> for MockEngine {
-        async fn backup<P: AsRef<Path> + Send>(
+        async fn backup(
             &self,
             entity: &GitRepo,
-            _target: P,
+            _target: &crate::BackupTarget,
             _cancel: &AtomicBool,
         ) -> Result<BackupState, crate::Error> {
             Ok(BackupState::New(Some(entity.name.clone())))
