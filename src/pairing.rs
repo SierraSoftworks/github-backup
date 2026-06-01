@@ -19,7 +19,7 @@ pub struct Pairing<E: BackupEntity, S: BackupSource<E>, T: BackupEngine<E>> {
 }
 
 impl<
-    E: BackupEntity + Send + Sync + 'static,
+    E: BackupEntity + Clone + Send + Sync + 'static,
     S: BackupSource<E> + Send + Sync + 'static,
     T: BackupEngine<E> + Send + Sync + Clone + 'static,
 > Pairing<E, S, T>
@@ -94,18 +94,15 @@ impl<
           let mut join_set: JoinSet<Result<(E, BackupState), crate::Error>> = JoinSet::new();
 
           for await entity in self.source.load(policy, cancel).trace(tracing::info_span!("backup.source.load")) {
-              while join_set.len() >= self.concurrency_limit {
-                debug!("Reached concurrency limit of {}, waiting for a task to complete", self.concurrency_limit);
-                yield join_set.join_next().await.unwrap().unwrap();
-              }
-
               if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                   break;
               }
 
               let entity = entity?;
               if self.dry_run {
-                  info!("Would backup {entity} to {}", &policy.to);
+                  for to in policy.to.iter() {
+                      info!("Would backup {entity} to {to}");
+                  }
                   yield Ok((entity, BackupState::Skipped));
                   continue;
               }
@@ -122,13 +119,23 @@ impl<
                 }
               }
 
-              {
-                let span = tracing_batteries::prelude::info_span!(parent: &span, "backup.step", item=%entity);
+              // A single source entity may be mirrored to several targets. We
+              // load the entity once (above) and fan out one backup task per
+              // configured target so we don't re-query the source for each
+              // destination.
+              for to in policy.to.iter() {
+                while join_set.len() >= self.concurrency_limit {
+                  debug!("Reached concurrency limit of {}, waiting for a task to complete", self.concurrency_limit);
+                  yield join_set.join_next().await.unwrap().unwrap();
+                }
+
+                let span = tracing_batteries::prelude::info_span!(parent: &span, "backup.step", item=%entity, target=%to);
                 let target = self.target.clone();
-                let to = policy.to.clone();
+                let to = to.clone();
+                let entity = entity.clone();
                 join_set.spawn(async move {
                     debug!("Starting backup of {entity}");
-                    target.backup(&entity, &to, cancel).await.map(|state| (entity, state.clone()))
+                    target.backup(&entity, &to, cancel).await.map(|state| (entity, state))
                 }.instrument(span));
               }
           }

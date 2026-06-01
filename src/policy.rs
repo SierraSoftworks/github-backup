@@ -4,14 +4,14 @@ use std::fmt::{Debug, Display, Formatter};
 
 use crate::Filter;
 use crate::entities::Credentials;
-use crate::target::BackupTarget;
+use crate::target::BackupTargets;
 
 #[derive(Deserialize)]
 pub struct BackupPolicy {
     pub kind: String,
     pub from: String,
     #[serde(default)]
-    pub to: BackupTarget,
+    pub to: BackupTargets,
     #[serde(default)]
     pub credentials: Credentials,
     #[serde(default)]
@@ -52,7 +52,9 @@ mod tests {
         assert_eq!(policy.from, "source");
         assert_eq!(
             policy.to,
-            BackupTarget::FileSystem(std::path::PathBuf::from("/tmp/backup"))
+            BackupTargets(vec![crate::target::BackupTarget::FileSystem(
+                std::path::PathBuf::from("/tmp/backup")
+            )])
         );
         assert_eq!(
             policy.credentials,
