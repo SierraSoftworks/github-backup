@@ -9,7 +9,7 @@ LABEL org.opencontainers.image.description="Backup your GitHub repositories and 
 LABEL org.opencontainers.image.licenses=MIT
 
 RUN apt-get update && \
-    apt-get install -y openssl && \
+    apt-get install -y openssl ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
