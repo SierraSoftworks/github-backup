@@ -123,6 +123,18 @@ impl Release {
     }
 }
 
+/// The outcome of attempting to create a release on a Forgejo instance.
+#[derive(Debug, Clone)]
+pub enum CreateReleaseResult {
+    /// The release was created and Forgejo returned its details.
+    Created(Release),
+    /// A release already exists for the requested tag. Forgejo responds with a
+    /// 409 Conflict in this case (for example when the tag was synced onto a
+    /// mirrored repository, or an existing draft release cannot be surfaced by
+    /// the tag lookup API).
+    AlreadyExists,
+}
+
 /// A release attachment (asset) on a Forgejo instance.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Attachment {
