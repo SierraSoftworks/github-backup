@@ -9,6 +9,18 @@ kind in your configuration file. This kind supports the same `from`
 directives as the `github/repo` kind, allowing you to backup releases
 from your own repositories, those of other users, or those of an organization.
 
+## Release Notes
+Each release is backed up together with its release notes (the description
+shown on the GitHub release page). When backing up to the local filesystem,
+the notes are written to a `RELEASE_NOTES.md` file alongside the release's
+artifacts (under `<owner>/<repo>/<tag>/`). When replicating to a Forgejo
+target, the notes are stored in the corresponding Forgejo release's
+description instead, and are kept in sync if they change on the source.
+
+The source code archive (`source.tar.gz`) and the `RELEASE_NOTES.md` file are
+not uploaded as assets when replicating to Forgejo, since Forgejo generates
+its own source archives and the notes are stored in the release description.
+
 ## Examples
 
 ```yaml{5-6,11-12,16-17,22-23} title="config.yaml"
@@ -42,6 +54,12 @@ backups:
 When backing up release artifacts, you may use the following fields in your filter
 expressions. These fields are accessed using the `release.<field>` syntax, for example
 `release.prerelease` to determine if a release is a pre-release.
+
+Filters are evaluated per-asset, so the `asset.*` fields let you control exactly
+which artifacts within a release are backed up, while the `release.*` and `repo.*`
+fields apply to the release and its source repository as a whole. The release
+notes are backed up whenever the release matches at the `release.*` / `repo.*`
+level.
 
 For `kind: github/release`
 

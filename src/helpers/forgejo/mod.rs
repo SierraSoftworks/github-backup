@@ -2,7 +2,9 @@ mod client;
 mod entities;
 
 pub use client::ForgejoClient;
-pub use entities::{CreateReleaseOptions, CreateReleaseResult, MigrateRepoOptions};
+pub use entities::{
+    CreateReleaseOptions, CreateReleaseResult, EditReleaseOptions, MigrateRepoOptions, Release,
+};
 
 #[cfg(test)]
 mod tests {
@@ -147,5 +149,24 @@ mod tests {
             .upload_release_asset(&target(), "example", 9, "binary.zip", vec![1, 2, 3])
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn update_release() {
+        let client =
+            ForgejoClient::default().mock("/api/v1/repos/backups/example/releases/9", |b| {
+                b.with_body(
+                    r#"{"id": 9, "tag_name": "v2.0", "body": "Updated notes", "assets": []}"#,
+                )
+            });
+
+        let options = EditReleaseOptions::new().with_body(Some("Updated notes".to_string()));
+        let release = client
+            .update_release(&target(), "example", 9, &options)
+            .await
+            .unwrap();
+
+        assert_eq!(release.id, 9);
+        assert_eq!(release.body.as_deref(), Some("Updated notes"));
     }
 }

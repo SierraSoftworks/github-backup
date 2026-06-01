@@ -9,7 +9,8 @@ use crate::{
 };
 
 use super::entities::{
-    CreateReleaseOptions, CreateReleaseResult, MigrateRepoOptions, Release, Repository,
+    CreateReleaseOptions, CreateReleaseResult, EditReleaseOptions, MigrateRepoOptions, Release,
+    Repository,
 };
 
 /// A thin client for the subset of the Forgejo REST API that we need in order
@@ -125,6 +126,28 @@ impl ForgejoClient {
         Ok(CreateReleaseResult::Created(
             self.parse_json(resp, &url).await?,
         ))
+    }
+
+    /// Updates an existing release on the Forgejo instance, for example to keep
+    /// its release notes in sync with the source.
+    pub async fn update_release(
+        &self,
+        target: &RemoteTarget,
+        repo: &str,
+        release_id: u64,
+        options: &EditReleaseOptions,
+    ) -> Result<Release, human_errors::Error> {
+        let url = target.api_url(&format!(
+            "repos/{}/{}/releases/{}",
+            target.owner, repo, release_id
+        ));
+        let resp = self
+            .call(Method::PATCH, &url, &target.credentials, |r| {
+                r.json(options)
+            })
+            .await?;
+        let resp = self.ensure_success(resp, "updating a release").await?;
+        self.parse_json(resp, &url).await
     }
 
     /// Uploads an asset to an existing release.

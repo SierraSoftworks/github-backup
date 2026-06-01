@@ -104,6 +104,35 @@ impl CreateReleaseOptions {
         self.prerelease = prerelease;
         self
     }
+
+    pub fn with_body(mut self, body: Option<String>) -> Self {
+        self.body = body;
+        self
+    }
+}
+
+/// Options used when editing an existing release on a Forgejo instance.
+///
+/// See the Forgejo `PATCH /repos/{owner}/{repo}/releases/{id}` endpoint.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct EditReleaseOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub draft: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prerelease: Option<bool>,
+}
+
+impl EditReleaseOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_body(mut self, body: Option<String>) -> Self {
+        self.body = body;
+        self
+    }
 }
 
 /// A subset of the fields returned by Forgejo when describing a release.
@@ -112,6 +141,8 @@ pub struct Release {
     pub id: u64,
     #[allow(dead_code)]
     pub tag_name: String,
+    #[serde(default)]
+    pub body: Option<String>,
     #[serde(default)]
     pub assets: Vec<Attachment>,
 }

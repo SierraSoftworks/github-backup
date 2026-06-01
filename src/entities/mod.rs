@@ -1,10 +1,12 @@
 mod credentials;
 #[macro_use]
 mod macros;
+mod release;
 
 use crate::{FilterValue, Filterable};
 
 pub use credentials::Credentials;
+pub use release::Release;
 use std::collections::HashMap;
 use unicase::UniCase;
 

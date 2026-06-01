@@ -107,15 +107,21 @@ impl<
                   continue;
               }
 
-              match policy.filter.matches(&entity) {
-                Ok(true) => {},
-                Ok(false) => {
-                  yield Ok((entity, BackupState::Skipped));
-                  continue;
-                },
-                Err(e) => {
-                  yield Err(e);
-                  continue;
+              // Some sources (such as releases) bundle several filterable
+              // items into a single entity and apply the policy filter to each
+              // item themselves. For those we skip the entity-level filtering
+              // so that filtering keeps operating at the per-item granularity.
+              if !self.source.filters_internally() {
+                match policy.filter.matches(&entity) {
+                  Ok(true) => {},
+                  Ok(false) => {
+                    yield Ok((entity, BackupState::Skipped));
+                    continue;
+                  },
+                  Err(e) => {
+                    yield Err(e);
+                    continue;
+                  }
                 }
               }
 

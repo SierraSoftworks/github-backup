@@ -1,13 +1,15 @@
 mod forgejo;
 mod git;
 mod http_file;
+mod release;
 
 pub use forgejo::{ForgejoReleaseEngine, ForgejoRepoEngine};
 pub use git::GitEngine;
 pub use http_file::HttpFileEngine;
+pub use release::ReleaseEngine;
 
 use crate::BackupEntity;
-use crate::entities::{GitRepo, HttpFile};
+use crate::entities::GitRepo;
 use crate::target::{BackupTarget, RemoteTargetKind};
 use std::fmt::Display;
 use std::sync::atomic::AtomicBool;
@@ -67,45 +69,6 @@ impl BackupEngine<GitRepo> for RepoEngine {
     }
 }
 
-/// A composite engine which backs up release artifacts either to the local
-/// filesystem or to a Forgejo instance, depending on the configured target.
-#[derive(Clone, Default)]
-pub struct ReleaseEngine {
-    http: HttpFileEngine,
-    forgejo: ForgejoReleaseEngine,
-}
-
-impl ReleaseEngine {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-#[async_trait::async_trait]
-impl BackupEngine<HttpFile> for ReleaseEngine {
-    async fn backup(
-        &self,
-        entity: &HttpFile,
-        target: &BackupTarget,
-        cancel: &AtomicBool,
-    ) -> Result<BackupState, human_errors::Error> {
-        match target {
-            BackupTarget::FileSystem(path) => self.http.backup(entity, path, cancel).await,
-            BackupTarget::Remote(remote) => match remote.kind {
-                RemoteTargetKind::ForgejoRelease => {
-                    self.forgejo.backup(entity, remote, cancel).await
-                }
-                RemoteTargetKind::ForgejoRepo => Err(human_errors::user(
-                    "You have configured a 'forgejo/repo' target for a release backup, which is not supported.",
-                    &[
-                        "Use a 'forgejo/release' target to back up release artifacts, or change the policy 'kind' to 'github/repo' to mirror repositories.",
-                    ],
-                )),
-            },
-        }
-    }
-}
-
 impl Display for BackupState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -117,5 +80,52 @@ impl Display for BackupState {
             BackupState::Updated(None) => write!(f, "updated"),
             BackupState::Unchanged(None) => write!(f, "unchanged"),
         }
+    }
+}
+
+/// Combines the backup states of the individual components of a composite
+/// entity (such as a release's assets and notes) into a single state.
+///
+/// The combined state reflects the "strongest" change applied: a `New`
+/// component takes precedence over an `Updated` one, which takes precedence
+/// over `Unchanged`. The description summarises how many components fell into
+/// each category. An empty set of components is treated as `Skipped`.
+pub(crate) fn summarize_states(states: &[BackupState]) -> BackupState {
+    let mut new = 0;
+    let mut updated = 0;
+    let mut unchanged = 0;
+    let mut skipped = 0;
+
+    for state in states {
+        match state {
+            BackupState::New(_) => new += 1,
+            BackupState::Updated(_) => updated += 1,
+            BackupState::Unchanged(_) => unchanged += 1,
+            BackupState::Skipped => skipped += 1,
+        }
+    }
+
+    let summary = [
+        (new, "new"),
+        (updated, "updated"),
+        (unchanged, "unchanged"),
+        (skipped, "skipped"),
+    ]
+    .iter()
+    .filter(|(count, _)| *count > 0)
+    .map(|(count, label)| format!("{count} {label}"))
+    .collect::<Vec<_>>()
+    .join(", ");
+
+    let summary = Some(summary).filter(|s| !s.is_empty());
+
+    if new > 0 {
+        BackupState::New(summary)
+    } else if updated > 0 {
+        BackupState::Updated(summary)
+    } else if unchanged > 0 {
+        BackupState::Unchanged(summary)
+    } else {
+        BackupState::Skipped
     }
 }
