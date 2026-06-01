@@ -130,6 +130,31 @@ The `owner` field selects the Forgejo user or organization which should own the
 mirrored repositories (and host the releases). The `credentials` field accepts
 the same `!Token` and `!UsernamePassword` forms as GitHub credentials.
 
+#### Backing up to multiple destinations
+
+The `to` field also accepts a **list** of targets, allowing a single policy to
+mirror its source to several destinations at once. The source (for example the
+GitHub API) is queried only once, and each resulting repository or release is
+written to every configured target. You can freely mix filesystem paths and
+remote targets within the same list.
+
+```yaml
+backups:
+  # Back up a repository to the local filesystem *and* a Forgejo instance
+  - kind: github/repo
+    from: repos/SierraSoftworks/github-backup
+    to:
+      - /backups/github
+      - kind: forgejo/repo
+        address: https://forgejo.example.com
+        owner: backups
+        credentials: !Token "your_forgejo_access_token"
+```
+
+When `to` is omitted it defaults to a single `./backups` filesystem target, and
+a single target (a path string or a remote map) continues to work exactly as
+before.
+
 ### OpenTelemetry Reporting
 
 In addition to the standard logging output, this tool also supports reporting metrics to an

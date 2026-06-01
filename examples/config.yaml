@@ -56,3 +56,14 @@ backups:
       owner: backups
       credentials: !Token forgejo_access_token
     filter: '!release.prerelease'
+
+
+  # Backup repos to the local filesystem and Forgejo simultaneously
+  - kind: github/repo
+    from: repos/SierraSoftworks/github-backup
+    to:
+      - /backup/github
+      - kind: forgejo/repo
+        address: https://forgejo.example.com
+        owner: backups
+        credentials: !Token forgejo_access_token

@@ -83,6 +83,99 @@ impl<'de> Deserialize<'de> for BackupTarget {
     }
 }
 
+/// One or more [`BackupTarget`]s that a single backup policy should write to.
+///
+/// Accepting a list of targets allows a policy's source data (for example the
+/// GitHub API) to be queried once while the resulting entities are mirrored to
+/// several destinations.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BackupTargets(pub Vec<BackupTarget>);
+
+impl BackupTargets {
+    pub fn iter(&self) -> std::slice::Iter<'_, BackupTarget> {
+        self.0.iter()
+    }
+}
+
+impl Default for BackupTargets {
+    fn default() -> Self {
+        BackupTargets(vec![BackupTarget::default()])
+    }
+}
+
+impl Display for BackupTargets {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (i, target) in self.0.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{target}")?;
+        }
+        Ok(())
+    }
+}
+
+impl<'de> Deserialize<'de> for BackupTargets {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // The `to` field accepts a single target (a filesystem path string or a
+        // remote target map) or a sequence mixing both forms. We dispatch via a
+        // visitor so the underlying deserializer streams each target directly,
+        // preserving support for YAML-tagged credentials.
+        struct TargetsVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for TargetsVisitor {
+            type Value = BackupTargets;
+
+            fn expecting(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                f.write_str("a backup target or a list of backup targets")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(BackupTargets(vec![BackupTarget::FileSystem(
+                    PathBuf::from(value),
+                )]))
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(BackupTargets(vec![BackupTarget::FileSystem(
+                    PathBuf::from(value),
+                )]))
+            }
+
+            fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let target =
+                    RemoteTarget::deserialize(serde::de::value::MapAccessDeserializer::new(map))?;
+                Ok(BackupTargets(vec![BackupTarget::Remote(target)]))
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut targets = Vec::new();
+                while let Some(target) = seq.next_element::<BackupTarget>()? {
+                    targets.push(target);
+                }
+                Ok(BackupTargets(targets))
+            }
+        }
+
+        deserializer.deserialize_any(TargetsVisitor)
+    }
+}
+
 /// A backup target which uploads repositories and/or release artifacts to a
 /// remote service (such as a Forgejo instance) using its REST API.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -196,6 +289,65 @@ mod tests {
         assert_eq!(
             BackupTarget::default(),
             BackupTarget::FileSystem(PathBuf::from("./backups"))
+        );
+    }
+
+    #[test]
+    fn deserialize_targets_single_string() {
+        let targets: BackupTargets = serde_yaml::from_str("/tmp/backup").unwrap();
+        assert_eq!(
+            targets,
+            BackupTargets(vec![BackupTarget::FileSystem(PathBuf::from("/tmp/backup"))])
+        );
+    }
+
+    #[test]
+    fn deserialize_targets_single_remote() {
+        let targets: BackupTargets = serde_yaml::from_str(
+            r#"
+            kind: forgejo/repo
+            address: https://forgejo.example.com
+            owner: backups
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(targets.0.len(), 1);
+        assert!(matches!(targets.0[0], BackupTarget::Remote(_)));
+    }
+
+    #[test]
+    fn deserialize_targets_mixed_list() {
+        let targets: BackupTargets = serde_yaml::from_str(
+            r#"
+            - /tmp/backup
+            - kind: forgejo/repo
+              address: https://forgejo.example.com
+              owner: backups
+              credentials: !Token abc123
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            targets,
+            BackupTargets(vec![
+                BackupTarget::FileSystem(PathBuf::from("/tmp/backup")),
+                BackupTarget::Remote(RemoteTarget {
+                    kind: RemoteTargetKind::ForgejoRepo,
+                    address: "https://forgejo.example.com".to_string(),
+                    owner: "backups".to_string(),
+                    credentials: Credentials::Token("abc123".to_string()),
+                }),
+            ])
+        );
+    }
+
+    #[test]
+    fn default_targets_is_single_filesystem() {
+        assert_eq!(
+            BackupTargets::default(),
+            BackupTargets(vec![BackupTarget::FileSystem(PathBuf::from("./backups"))])
         );
     }
 }
