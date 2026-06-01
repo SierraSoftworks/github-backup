@@ -2,7 +2,7 @@ mod client;
 mod entities;
 
 pub use client::ForgejoClient;
-pub use entities::{CreateReleaseOptions, MigrateRepoOptions};
+pub use entities::{CreateReleaseOptions, CreateReleaseResult, MigrateRepoOptions};
 
 #[cfg(test)]
 mod tests {
@@ -105,13 +105,34 @@ mod tests {
         });
 
         let options = CreateReleaseOptions::new("v2.0").with_prerelease(true);
-        let release = client
+        let result = client
             .create_release(&target(), "example", &options)
             .await
             .unwrap();
 
-        assert_eq!(release.id, 9);
-        assert_eq!(release.tag_name, "v2.0");
+        match result {
+            CreateReleaseResult::Created(release) => {
+                assert_eq!(release.id, 9);
+                assert_eq!(release.tag_name, "v2.0");
+            }
+            CreateReleaseResult::AlreadyExists => panic!("expected the release to be created"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_release_conflict() {
+        let client = ForgejoClient::default().mock("/api/v1/repos/backups/example/releases", |b| {
+            b.with_status_code(StatusCode::CONFLICT)
+                .with_body(r#"{"message":"Release has no Tag"}"#)
+        });
+
+        let options = CreateReleaseOptions::new("v2.0");
+        let result = client
+            .create_release(&target(), "example", &options)
+            .await
+            .unwrap();
+
+        assert!(matches!(result, CreateReleaseResult::AlreadyExists));
     }
 
     #[tokio::test]

@@ -8,7 +8,7 @@ use crate::{
     engines::BackupState,
     entities::{Credentials, HttpFile},
     errors::HumanizableError,
-    helpers::forgejo::{CreateReleaseOptions, ForgejoClient},
+    helpers::forgejo::{CreateReleaseOptions, CreateReleaseResult, ForgejoClient},
     target::RemoteTarget,
 };
 
@@ -44,7 +44,28 @@ impl ForgejoReleaseEngine {
                 let options = CreateReleaseOptions::new(tag.clone())
                     .with_draft(draft)
                     .with_prerelease(prerelease);
-                self.client.create_release(target, &repo, &options).await?
+
+                match self.client.create_release(target, &repo, &options).await? {
+                    CreateReleaseResult::Created(release) => release,
+                    CreateReleaseResult::AlreadyExists => {
+                        // Forgejo reports a 409 Conflict when a release already
+                        // exists for this tag, even though the lookup above
+                        // returned nothing. This happens for draft releases our
+                        // token cannot surface, or for tags synced onto a
+                        // mirrored repository. Try the lookup once more, and if
+                        // the release still cannot be retrieved skip the asset
+                        // rather than failing the entire backup policy.
+                        match self.client.get_release_by_tag(target, &repo, &tag).await? {
+                            Some(release) => release,
+                            None => {
+                                warn!(
+                                    "A release for tag '{tag}' already exists on the Forgejo target but could not be retrieved; skipping asset '{asset_name}'."
+                                );
+                                return Ok(BackupState::Skipped);
+                            }
+                        }
+                    }
+                }
             }
         };
 

@@ -8,7 +8,9 @@ use crate::{
     target::RemoteTarget,
 };
 
-use super::entities::{CreateReleaseOptions, MigrateRepoOptions, Release, Repository};
+use super::entities::{
+    CreateReleaseOptions, CreateReleaseResult, MigrateRepoOptions, Release, Repository,
+};
 
 /// A thin client for the subset of the Forgejo REST API that we need in order
 /// to mirror repositories and upload release artifacts.
@@ -98,18 +100,31 @@ impl ForgejoClient {
     }
 
     /// Creates a new release on the Forgejo instance.
+    ///
+    /// Forgejo responds with a 409 Conflict when a release already exists for
+    /// the requested tag (which can happen even when [`get_release_by_tag`]
+    /// reports the release as missing); this is surfaced as
+    /// [`CreateReleaseResult::AlreadyExists`] rather than an error so callers
+    /// can recover.
     pub async fn create_release(
         &self,
         target: &RemoteTarget,
         repo: &str,
         options: &CreateReleaseOptions,
-    ) -> Result<Release, human_errors::Error> {
+    ) -> Result<CreateReleaseResult, human_errors::Error> {
         let url = target.api_url(&format!("repos/{}/{}/releases", target.owner, repo));
         let resp = self
             .call(Method::POST, &url, &target.credentials, |r| r.json(options))
             .await?;
+
+        if resp.status() == StatusCode::CONFLICT {
+            return Ok(CreateReleaseResult::AlreadyExists);
+        }
+
         let resp = self.ensure_success(resp, "creating a release").await?;
-        self.parse_json(resp, &url).await
+        Ok(CreateReleaseResult::Created(
+            self.parse_json(resp, &url).await?,
+        ))
     }
 
     /// Uploads an asset to an existing release.
