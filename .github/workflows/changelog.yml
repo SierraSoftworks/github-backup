@@ -11,7 +11,14 @@ jobs:
   update:
     name: Prepare
     runs-on: ubuntu-latest
+    # Dependabot only gets a read-only GITHUB_TOKEN, so release-drafter cannot
+    # create/update releases when triggered by Dependabot PRs. Skip it there.
+    if: github.actor != 'dependabot[bot]'
     steps:
       - uses: release-drafter/release-drafter@v7.3.1
+        with:
+          # Only draft releases on the main branch; on pull requests we just
+          # run the autolabeler.
+          disable-releases: ${{ github.ref_name != 'main' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
