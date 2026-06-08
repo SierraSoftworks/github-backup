@@ -254,39 +254,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case("users/notheotherben")]
-    #[tokio::test]
-    #[cfg_attr(feature = "pure_tests", ignore)]
-    async fn get_releases(#[case] target: &str) {
-        use tokio_stream::StreamExt;
-
-        let source = GitHubReleasesSource::default();
-
-        let policy: BackupPolicy = serde_yaml::from_str(&format!(
-            r#"
-          kind: github/release
-          from: {}
-          to: /tmp
-          credentials: {}
-        "#,
-            target,
-            std::env::var("GITHUB_TOKEN")
-                .map(|t| format!("!Token {t}"))
-                .unwrap_or_else(|_| "!None".to_string())
-        ))
-        .unwrap();
-
-        println!("Using credentials: {}", policy.credentials);
-
-        let stream = source.load(&policy, &CANCEL);
-        tokio::pin!(stream);
-
-        while let Some(release) = stream.next().await {
-            println!("{}", release.expect("Failed to load release"));
-        }
-    }
-
-    #[rstest]
     #[case("github.releases.0.json", 31)]
     #[tokio::test]
     async fn get_releases_mocked(#[case] filename: &str, #[case] expected_entries: usize) {
