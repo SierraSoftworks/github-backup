@@ -120,6 +120,22 @@ impl GitEngine {
         cancel: &AtomicBool,
     ) -> Result<BackupState, human_errors::Error> {
         trace!("Opening repository {}", target.display());
+        {
+            let repository = gix::open(target).wrap_user_err(
+                format!(
+                    "Failed to open the repository '{}' at '{}'",
+                    &repo.clone_url,
+                    &target.display()
+                ),
+                &["Make sure that the target directory is a valid git repository."],
+            )?;
+            self.ensure_committer(&repository)?;
+        }
+
+        // Re-open the repository to pick up any config changes made by ensure_committer
+        // (e.g. the gitoxide committer fallback written to the on-disk config).
+        // The in-memory config of a gix::Repository is loaded at open time, so
+        // writes made via update_config are not visible until the repo is reopened.
         let repository = gix::open(target).wrap_user_err(
             format!(
                 "Failed to open the repository '{}' at '{}'",
@@ -128,8 +144,6 @@ impl GitEngine {
             ),
             &["Make sure that the target directory is a valid git repository."],
         )?;
-
-        self.ensure_committer(&repository)?;
 
         let original_head = repository.head_id().ok();
 
