@@ -145,20 +145,29 @@ jobs:
           target: ${{ matrix.target }}
           components: llvm-tools-preview
 
-      - name: Setup Cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Fetch Versioned Cargo.toml
-        uses: actions/download-artifact@v8
-        with:
-          name: cargofile
-
+      # Install cross *before* Setup Cache. rust-cache restores cargo's
+      # install metadata (.crates2.json) but not the cargo bin directory,
+      # so if the cache runs first, binstall sees cross as "already
+      # installed", skips it, and the binary is never materialised. Running
+      # the install against a clean CARGO_HOME (with --force) guarantees the
+      # binary actually exists.
       - name: Install Cross
         if: matrix.builder == 'cross'
         shell: bash
         run: |
           curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          cargo binstall --no-confirm cross
+          cargo binstall --no-confirm --force cross
+          echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> "$GITHUB_PATH"
+
+      - name: Setup Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Fetch Versioned Cargo.toml
+        uses: actions/download-artifact@v8
+        with:
+          name: cargofile
 
       - name: cargo build
         run: ${{ matrix.builder }} build --release --target ${{ matrix.target }}
