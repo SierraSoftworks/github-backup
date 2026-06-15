@@ -19,6 +19,9 @@ Here are a few common filter examples which you might use in your configuration.
 - `!release.prerelease && !asset.source-code` - Only include release artifacts which are not marked as pre-releases and are not source code archives.
 - `repo.name in ["git-tool", "grey"]` - Only include repositories with the names "git-tool" or "grey".
 - `repo.stargazers >= 5` - Only include repositories with at least 5 stars.
+- `repo.name like "*-backup"` - Only include repositories whose name ends with "-backup" using glob pattern matching.
+- `repo.name matches r"^awesome-\d+$"` - Only include repositories whose name matches the given regular expression.
+- `repo.pushed_at > now() - 30d` - Only include repositories which have been pushed to within the last 30 days.
 
 ## Language Features
 ### Properties - `repo.<field>`
@@ -46,6 +49,12 @@ If you wish to treat an empty string as a valid value, you can use `repo.<field>
 evaluation of an empty string.
 :::
 
+::: tip
+You can also write *raw strings* using an `r` prefix (for example `r"^v\d+$"`), within which backslashes are treated literally
+rather than as escape sequences. This is particularly convenient when writing [regular expression](#pattern-matching-like-matches)
+patterns. Use the hashed form `r#"..."#` if your pattern needs to contain a double quote.
+:::
+
 #### Numbers
 Numbers are represented internally as a 64-bit floating-point value, which means that they can represent most reasonably sized
 integers as well as most reasonably precise decimal numbers. For example, `5` and `5.0` are equivalent in the filter language.
@@ -60,6 +69,18 @@ example, `repo.fork` will evaluate to `true` if the repository is a fork, and `f
 #### Null/Undefined
 The `null` value is used to represent the absence of a value, and is considered falsey when evaluated. Accessing a property which
 does not exist will return `null`.
+
+#### Datetimes and Durations
+Some fields, such as `repo.pushed_at` or `release.published_at`, expose native timestamps rather than strings. These can be compared
+against one another, and against the current time using the [`now()`](#functions) function, allowing you to backup only those entities
+which have changed recently.
+
+Durations are written as a number immediately followed by a unit (`ms`, `s`, `m` for minutes, `h`, `d`, or `w`), and several segments
+can be chained together to form a more precise duration, for example `1h30m`. Datetimes and durations support `+` and `-` arithmetic,
+so `now() - 7d` evaluates to the point in time seven days ago.
+
+ - `repo.pushed_at > now() - 30d` - Only include repositories which have been pushed to within the last 30 days.
+ - `release.published_at < now() - 1w` - Only include releases which were published more than a week ago.
 
 ## Operators
 ### Unary Negation - `!`
@@ -102,8 +123,9 @@ comparison. These operators **DO NOT** perform type coercion, which means that y
 type - for example, comparing `5 <= "5" || 5 >= "5"` will always return `false`.
 
 ::: warning
-String comparisons are performed using a case-insensitive comparison of ASCII characters, which means that `"Hello" == "hello"` will return `true`,
-as will `"hello👋" == "hello"`.
+String comparisons are performed case-insensitively using the filter language's Unicode case-folding rules, which means that
+`"Hello" == "hello"` will return `true`, as will `"STRASSE" == "straße"`. If you need an exact, case-sensitive comparison, use the
+[`_cs` variants](#case-sensitivity-cs) of the string operators.
 :::
 
  - `==` - Returns `true` if the left and right hand expressions are equal.
@@ -135,6 +157,35 @@ The prefix and suffix matching operators are used to determine whether a string 
 
  - `"hello" startswith "he"` - Determines whether the string `hello` starts with the sequence `he`, returning `true` in this case.
  - `"goodbye" endswith "bye"` - Determines whether the string `goodbye` ends with the sequence `bye`, returning `true` in this case.
+
+### Pattern Matching - `like`, `matches`
+The pattern matching operators allow you to match a string against a pattern, which can be useful when you want to match
+repositories whose names follow a particular convention without listing each of them explicitly.
+
+ - `like` performs a case-insensitive [glob](https://en.wikipedia.org/wiki/Glob_(programming)) match, where `*` matches any
+   sequence of characters (including none), `?` matches exactly one character, and a backslash makes the following character
+   literal (`\*`, `\?`, `\\`). For example, `repo.name like "feat/*"` matches any repository whose name begins with `feat/`.
+ - `matches` performs a [regular expression](https://docs.rs/regex/latest/regex/#syntax) match. Regular expressions are
+   case-sensitive (use `(?i)` to ignore case) and unanchored (use `^` and `$` to anchor the match). For example,
+   `repo.name matches r"^release/v\d+(\.\d+){2}$"` matches names like `release/v1.2.3`.
+
+::: tip
+Regular expression patterns are easiest to write using [raw strings](#strings) (`r"..."`), which do not process backslash
+escape sequences and so avoid the need to double-escape characters like `\d`.
+:::
+
+### Case Sensitivity - `_cs`
+The string operators (`contains`, `in`, `startswith`, `endswith`, and `like`) compare values case-insensitively by default. Each of
+them has a case-sensitive variant with a `_cs` suffix (`contains_cs`, `in_cs`, `startswith_cs`, `endswith_cs`, and `like_cs`) which
+compares strings exactly as written. The `matches` operator is always case-sensitive unless you opt in with the `(?i)` flag.
+
+## Functions
+Filters may call built-in functions using the familiar `name(args...)` syntax. Unknown function names and incorrect argument counts
+are rejected when the filter is parsed.
+
+ - `now()` - Returns the current UTC time, evaluated afresh on every evaluation. This is most useful in combination with
+   [durations](#datetimes-and-durations), for example `repo.pushed_at > now() - 30d`.
+ - `trim(string)` - Returns the string argument with leading and trailing whitespace removed (`null` for non-string values).
 
 ## Nerdy Details
 The filtering language itself is implemented as a simple recursive descent parser which compiles an expression

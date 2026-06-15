@@ -70,9 +70,13 @@ For `kind: github/release`
 | `release.draft`       | `boolean`  | Whether the release is a draft (unpublished) release               |
 | `release.prerelease`  | `boolean`  | Whether to identify the release as a prerelease or a full release  |
 | `release.published`   | `boolean`  | Whether the release is a published (not a draft) release           |
+| `release.created_at`  | `datetime` | When the release was created (_2013-02-27T19:35:32Z_)              |
+| `release.published_at`| `datetime` | When the release was published, or `null` for drafts (_2013-02-27T19:35:32Z_) |
 | `asset.name`          | `string`   | The file name of the asset (_github-backup-darwin-arm64_)          |
 | `asset.size`          | `integer`  | The size of the asset, in kilobytes. (_1024_)                      |
 | `asset.downloaded`    | `boolean`  | If the asset was downloaded at least once from the GitHub Release  |
+| `asset.created_at`    | `datetime` | When the asset was created (_2013-02-27T19:35:32Z_)               |
+| `asset.updated_at`    | `datetime` | When the asset was last updated (_2013-02-27T19:35:32Z_)          |
 
 ```json
 {
@@ -117,7 +121,11 @@ For `kind: github/release`
     // Whether the release is a draft (inverse of published)
     "draft": false,
     /// Whether the release has been published yet or not (inverse of draft)
-    "published": true
+    "published": true,
+    // When the release was created
+    "created_at": "2013-02-27T19:35:32Z",
+    // When the release was published (null for draft releases)
+    "published_at": "2013-02-27T19:35:32Z"
   },
 
   // Describes a specific artifact which is part of a release
@@ -127,7 +135,11 @@ For `kind: github/release`
     // The size of the release asset in kilobytes
     "size": 1024,
     // Whether the asset has been downloaded at least once
-    "downloaded": true
+    "downloaded": true,
+    // When the asset was created
+    "created_at": "2013-02-27T19:35:32Z",
+    // When the asset was last updated
+    "updated_at": "2013-02-27T19:35:32Z"
   }
 }
 ```

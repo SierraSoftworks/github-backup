@@ -29,7 +29,7 @@ macro_rules! entity {
             }
             )*
 
-            pub fn with_metadata<V: Into<FilterValue>>(mut self, key: &'static str, value: V) -> Self {
+            pub fn with_metadata<'a, V: Into<FilterValue<'a>>>(mut self, key: &'static str, value: V) -> Self {
                 self.metadata.insert(key, value.into());
                 self
             }
@@ -47,7 +47,7 @@ macro_rules! entity {
         }
 
         impl crate::Filterable for $name {
-            fn get(&self, key: &str) -> crate::FilterValue {
+            fn get(&self, key: &str) -> crate::FilterValue<'_> {
                 self.metadata.get(key)
             }
         }
@@ -79,7 +79,7 @@ mod tests {
         assert_eq!(entity.url, "http://example.com");
         assert_eq!(entity.credentials, Credentials::Token("test".to_string()));
 
-        assert_eq!(entity.get("test"), FilterValue::String("test".to_string()));
+        assert_eq!(entity.get("test"), FilterValue::String("test".into()));
         assert_eq!(entity.get("test2"), FilterValue::Number(1_f64));
     }
 }

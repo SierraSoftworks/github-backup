@@ -1027,6 +1027,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "filt-rs"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6b2137f98f1cdb6e92f000d78ff8a094f12d66d0acda26c239d59a2c9675155"
+dependencies = [
+ "chrono",
+ "human-errors",
+ "regex",
+ "serde",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1220,6 +1232,7 @@ dependencies = [
  "clap",
  "croner",
  "ctrlc",
+ "filt-rs",
  "gix",
  "http 1.4.2",
  "human-errors",
@@ -1650,7 +1663,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19753d40da53d0ec41604750eeb969097a90fb2d7f7992730d904541c04e2c19"
 dependencies = [
  "bstr",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.1",
 ]
 
 [[package]]
