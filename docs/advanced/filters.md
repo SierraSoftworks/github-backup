@@ -167,7 +167,7 @@ repositories whose names follow a particular convention without listing each of 
    literal (`\*`, `\?`, `\\`). For example, `repo.name like "*-rs"` matches any repository whose name ends with `-rs`.
  - `matches` performs a [regular expression](https://docs.rs/regex/latest/regex/#syntax) match. Regular expressions are
    case-sensitive (use `(?i)` to ignore case) and unanchored (use `^` and `$` to anchor the match). For example,
-   `repo.name matches r"^release/v\d+(\.\d+){2}$"` matches names like `release/v1.2.3`.
+  `release.tag matches r"^v\d+(\.\d+){2}$"` matches tags like `v1.2.3`.
 
 ::: tip
 Regular expression patterns are easiest to write using [raw strings](#strings) (`r"..."`), which do not process backslash
