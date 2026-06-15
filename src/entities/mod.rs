@@ -7,6 +7,7 @@ use crate::{FilterValue, Filterable};
 
 pub use credentials::Credentials;
 pub use release::Release;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use unicase::UniCase;
 
@@ -18,18 +19,33 @@ pub trait BackupEntity: std::fmt::Display + Filterable {
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct Metadata(HashMap<UniCase<&'static str>, FilterValue>);
+pub struct Metadata(HashMap<UniCase<&'static str>, FilterValue<'static>>);
 
 impl Metadata {
-    pub fn insert<V: Into<FilterValue>>(&mut self, key: &'static str, value: V) {
-        self.0.insert(UniCase::new(key), value.into());
+    pub fn insert<'a, V: Into<FilterValue<'a>>>(&mut self, key: &'static str, value: V) {
+        self.0.insert(UniCase::new(key), into_owned(value.into()));
     }
 
-    pub fn get(&self, key: &str) -> FilterValue {
+    pub fn get(&self, key: &str) -> FilterValue<'_> {
         self.0
             .get(&UniCase::new(key))
             .cloned()
             .unwrap_or(FilterValue::Null)
+    }
+}
+
+/// Converts a [`FilterValue`] into one which owns all of its data so that it
+/// can be cached within a [`Metadata`] collection (whose entries must outlive
+/// the entity they were derived from).
+fn into_owned(value: FilterValue<'_>) -> FilterValue<'static> {
+    match value {
+        FilterValue::Null => FilterValue::Null,
+        FilterValue::Bool(b) => FilterValue::Bool(b),
+        FilterValue::Number(n) => FilterValue::Number(n),
+        FilterValue::String(s) => FilterValue::String(Cow::Owned(s.into_owned())),
+        FilterValue::Tuple(v) => FilterValue::Tuple(v.into_iter().map(into_owned).collect()),
+        FilterValue::DateTime(dt) => FilterValue::DateTime(dt),
+        FilterValue::Duration(d) => FilterValue::Duration(d),
     }
 }
 

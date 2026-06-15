@@ -65,3 +65,5 @@ These fields are also available when using [`github/repo`](./repo.md) or [`githu
 | `gist.file_names`       | `array`   | List of file names in the gist                 |
 | `gist.languages`        | `array`   | List of programming languages used in the gist |
 | `gist.type`             | `string`  | MIME-Type of content in the gist               |
+| `gist.created_at`       | `datetime`| When the gist was created                      |
+| `gist.updated_at`       | `datetime`| When the gist was last updated                 |

@@ -110,6 +110,9 @@ impl MetadataSource for GitHubRepo {
         metadata.insert("repo.template", self.is_template);
         metadata.insert("repo.forks", self.forks_count as u32);
         metadata.insert("repo.stargazers", self.stargazers_count as u32);
+        metadata.insert("repo.pushed_at", self.pushed_at);
+        metadata.insert("repo.created_at", self.created_at);
+        metadata.insert("repo.updated_at", self.updated_at);
     }
 }
 
@@ -203,6 +206,8 @@ impl MetadataSource for GitHubRelease {
         metadata.insert("release.draft", self.draft);
         metadata.insert("release.prerelease", self.prerelease);
         metadata.insert("release.published", self.published_at.is_some());
+        metadata.insert("release.created_at", self.created_at);
+        metadata.insert("release.published_at", self.published_at);
     }
 }
 
@@ -247,6 +252,8 @@ impl MetadataSource for GitHubReleaseAsset {
         metadata.insert("asset.name", self.name.as_str());
         metadata.insert("asset.size", self.size);
         metadata.insert("asset.downloaded", self.download_count > 0);
+        metadata.insert("asset.created_at", self.created_at);
+        metadata.insert("asset.updated_at", self.updated_at);
     }
 }
 
@@ -309,8 +316,8 @@ pub struct GitHubGist {
     pub forks: Option<Vec<serde_json::Value>>,
     pub history: Option<Vec<serde_json::Value>>,
 
-    pub created_at: String,
-    pub updated_at: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl MetadataSource for GitHubGist {
@@ -321,6 +328,8 @@ impl MetadataSource for GitHubGist {
         metadata.insert("gist.comments", self.comments);
         metadata.insert("gist.files", self.files.len() as u32);
         metadata.insert("gist.forks", self.forks.iter().count() as u32);
+        metadata.insert("gist.created_at", self.created_at);
+        metadata.insert("gist.updated_at", self.updated_at);
         metadata.insert(
             "gist.file_names",
             self.files

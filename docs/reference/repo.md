@@ -73,6 +73,9 @@ These fields are also available when using [`github/release`](./release.md) or [
 | `repo.template`        | `boolean`  | Whether this repository acts as a template that can be used to generate new repositories           |
 | `repo.forks`           | `integer`  | The number of times this repository is forked                                                      |
 | `repo.stargazers`      | `integer`  | The number of people starred this repository                                                       |
+| `repo.pushed_at`       | `datetime` | When the repository was last pushed to (_2011-01-26T19:06:43Z_)                                     |
+| `repo.created_at`      | `datetime` | When the repository was created (_2011-01-26T19:01:12Z_)                                            |
+| `repo.updated_at`      | `datetime` | When the repository was last updated (_2011-01-26T19:14:43Z_)                                       |
 
 ```json
 {
@@ -102,7 +105,13 @@ These fields are also available when using [`github/release`](./release.md) or [
     // The number of times this repository has been forked.
     "forks": 0,
     // The number of people who have starred this repository.
-    "stargazers": 501
+    "stargazers": 501,
+    // When the repository was last pushed to.
+    "pushed_at": "2011-01-26T19:06:43Z",
+    // When the repository was created.
+    "created_at": "2011-01-26T19:01:12Z",
+    // When the repository was last updated.
+    "updated_at": "2011-01-26T19:14:43Z"
   }
 }
 ```
