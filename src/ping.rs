@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use tracing_batteries::prelude::*;
 
+use crate::telemetry::TracePropagationExt;
+
 /// Configuration for an HTTP-based cron monitoring solution (such as
 /// [Sentry Cron Monitors](https://docs.sentry.io/product/crons/) or
 /// [healthchecks.io](https://healthchecks.io)).
@@ -71,6 +73,7 @@ impl Pinger {
             .client
             .get(url)
             .header("User-Agent", "SierraSoftworks/github-backup")
+            .with_trace_context()
             .send()
             .await
         {
