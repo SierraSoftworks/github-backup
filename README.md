@@ -178,13 +178,13 @@ state of each scheduled run to an HTTP-based cron monitoring service such as
 [Sentry Cron Monitors](https://docs.sentry.io/product/crons/) or
 [healthchecks.io](https://healthchecks.io/).
 
-Monitoring is configured under the top-level `monitor` key, where you can provide
+Monitoring is configured under the top-level `ping` key, where you can provide
 a separate URL for each state you care about. Each URL is fetched with a simple
 HTTP `GET` request when the corresponding state is reached, and any state you
 omit is simply not reported.
 
 ```yaml
-monitor:
+ping:
   # Fetched when a backup run starts.
   start: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=in_progress
   # Fetched when a backup run completes successfully.

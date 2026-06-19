@@ -2,7 +2,7 @@ use human_errors::ResultExt;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
-use crate::{Args, monitor::MonitorConfig, policy::BackupPolicy};
+use crate::{Args, ping::PingConfig, policy::BackupPolicy};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -10,7 +10,7 @@ pub struct Config {
     pub schedule: Option<croner::Cron>,
 
     #[serde(default)]
-    pub monitor: MonitorConfig,
+    pub ping: PingConfig,
 
     #[serde(default)]
     pub backups: Vec<BackupPolicy>,
@@ -67,16 +67,16 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_monitor_not_provided() {
+    fn deserialize_ping_not_provided() {
         let config: Config = serde_yaml::from_str("").unwrap();
-        assert_eq!(config.monitor, crate::monitor::MonitorConfig::default());
+        assert_eq!(config.ping, crate::ping::PingConfig::default());
     }
 
     #[test]
-    fn deserialize_monitor() {
+    fn deserialize_ping() {
         let config: Config = serde_yaml::from_str(
             r#"
-            monitor:
+            ping:
               start: https://example.com/start
               success: https://example.com/success
               failure: https://example.com/failure
@@ -85,15 +85,15 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            config.monitor.start.as_deref(),
+            config.ping.start.as_deref(),
             Some("https://example.com/start")
         );
         assert_eq!(
-            config.monitor.success.as_deref(),
+            config.ping.success.as_deref(),
             Some("https://example.com/success")
         );
         assert_eq!(
-            config.monitor.failure.as_deref(),
+            config.ping.failure.as_deref(),
             Some("https://example.com/failure")
         );
     }

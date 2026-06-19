@@ -10,7 +10,7 @@ use tracing_batteries::prelude::*;
 /// run. Any field which is left unset is simply skipped, allowing you to report
 /// only the states you care about.
 #[derive(Debug, Default, Clone, Deserialize, PartialEq, Eq)]
-pub struct MonitorConfig {
+pub struct PingConfig {
     /// The URL to fetch when a backup run starts.
     #[serde(default)]
     pub start: Option<String>,
@@ -26,18 +26,18 @@ pub struct MonitorConfig {
 
 /// Reports the lifecycle of a backup run to an HTTP-based cron monitoring
 /// service by issuing simple `GET` requests to the URLs configured in
-/// [`MonitorConfig`].
+/// [`PingConfig`].
 ///
 /// Reporting is best-effort: failures to reach the monitoring service are
 /// logged but never propagated, ensuring that a flaky monitor can never cause
 /// an otherwise healthy backup run to be reported as failed.
-pub struct Monitor {
-    config: MonitorConfig,
+pub struct Pinger {
+    config: PingConfig,
     client: reqwest::Client,
 }
 
-impl Monitor {
-    pub fn new(config: MonitorConfig) -> Self {
+impl Pinger {
+    pub fn new(config: PingConfig) -> Self {
         Self {
             config,
             client: reqwest::Client::new(),
@@ -59,7 +59,7 @@ impl Monitor {
         self.ping("failure", self.config.failure.as_deref()).await;
     }
 
-    #[tracing::instrument(skip(self, url), fields(monitor.state = state))]
+    #[tracing::instrument(skip(self, url), fields(ping.state = state))]
     async fn ping(&self, state: &str, url: Option<&str>) {
         let Some(url) = url else {
             return;
@@ -98,14 +98,13 @@ mod tests {
 
     #[test]
     fn deserialize_empty() {
-        let config: MonitorConfig = serde_yaml::from_str("{}").unwrap();
-        assert_eq!(config, MonitorConfig::default());
+        let config: PingConfig = serde_yaml::from_str("{}").unwrap();
+        assert_eq!(config, PingConfig::default());
     }
 
     #[test]
     fn deserialize_partial() {
-        let config: MonitorConfig =
-            serde_yaml::from_str("start: https://example.com/start").unwrap();
+        let config: PingConfig = serde_yaml::from_str("start: https://example.com/start").unwrap();
         assert_eq!(config.start.as_deref(), Some("https://example.com/start"));
         assert_eq!(config.success, None);
         assert_eq!(config.failure, None);
@@ -124,15 +123,15 @@ mod tests {
                 .await;
         }
 
-        let monitor = Monitor::new(MonitorConfig {
+        let pinger = Pinger::new(PingConfig {
             start: Some(format!("{}/start", server.uri())),
             success: Some(format!("{}/success", server.uri())),
             failure: Some(format!("{}/failure", server.uri())),
         });
 
-        monitor.on_start().await;
-        monitor.on_success().await;
-        monitor.on_failure().await;
+        pinger.on_start().await;
+        pinger.on_success().await;
+        pinger.on_failure().await;
 
         // `MockServer` verifies the `.expect(1)` expectations when dropped.
     }
@@ -148,11 +147,11 @@ mod tests {
             .mount(&server)
             .await;
 
-        let monitor = Monitor::new(MonitorConfig::default());
+        let pinger = Pinger::new(PingConfig::default());
 
-        monitor.on_start().await;
-        monitor.on_success().await;
-        monitor.on_failure().await;
+        pinger.on_start().await;
+        pinger.on_success().await;
+        pinger.on_failure().await;
     }
 
     #[tokio::test]
@@ -165,12 +164,12 @@ mod tests {
             .mount(&server)
             .await;
 
-        let monitor = Monitor::new(MonitorConfig {
+        let pinger = Pinger::new(PingConfig {
             success: Some(format!("{}/success", server.uri())),
             ..Default::default()
         });
 
         // This must not panic even though the monitor returned an error status.
-        monitor.on_success().await;
+        pinger.on_success().await;
     }
 }

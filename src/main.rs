@@ -1,8 +1,8 @@
 use clap::Parser;
 use engines::BackupState;
 use human_errors::Error;
-use monitor::Monitor;
 use pairing::PairingHandler;
+use ping::Pinger;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::time::Duration;
 use tracing_batteries::prelude::*;
@@ -16,8 +16,8 @@ mod engines;
 mod entities;
 mod errors;
 pub(crate) mod helpers;
-mod monitor;
 mod pairing;
+mod ping;
 mod policy;
 mod sources;
 mod target;
@@ -53,7 +53,7 @@ pub struct Args {
 async fn run(args: Args, session: &Session) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
-    let monitor = Monitor::new(config.monitor.clone());
+    let pinger = Pinger::new(config.ping.clone());
 
     let github_repo = pairing::Pairing::new(
         sources::GitHubRepoSource::default(),
@@ -84,7 +84,7 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
 
         let handler = LoggingPairingHandler::default();
 
-        monitor.on_start().await;
+        pinger.on_start().await;
 
         {
             let _span = info_span!("backup.all").entered();
@@ -120,9 +120,9 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
         }
 
         if handler.errors() > 0 {
-            monitor.on_failure().await;
+            pinger.on_failure().await;
         } else {
-            monitor.on_success().await;
+            pinger.on_success().await;
         }
 
         if let Some(next_run) = next_run {
@@ -208,5 +208,28 @@ async fn main() {
         std::process::exit(1);
     } else {
         session.shutdown();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entities::GitRepo;
+
+    #[test]
+    fn logging_handler_counts_errors() {
+        let handler = LoggingPairingHandler::default();
+        assert_eq!(handler.errors(), 0);
+
+        // Each reported error should be accumulated so that a run with any
+        // failures can be reported to the cron monitor as a failure.
+        PairingHandler::<GitRepo>::on_error(&handler, human_errors::user("boom", &[]));
+        PairingHandler::<GitRepo>::on_error(&handler, human_errors::user("boom", &[]));
+        assert_eq!(handler.errors(), 2);
+
+        // Successful completions must not affect the error count.
+        let repo = GitRepo::new("octocat/Hello-World", "https://example.com/repo.git", None);
+        handler.on_complete(repo, BackupState::Skipped);
+        assert_eq!(handler.errors(), 2);
     }
 }

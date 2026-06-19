@@ -11,14 +11,14 @@ monitoring service to track whether your backups are running as expected and to
 alert you if they stop.
 
 ## Configuration
-Monitoring is configured under the top-level `monitor` key in your configuration
+Monitoring is configured under the top-level `ping` key in your configuration
 file. You may provide a separate URL for each of the `start`, `success`, and
 `failure` states, and any state you leave out is simply not reported.
 
 ```yaml
 schedule: "0 * * * *"
 
-monitor:
+ping:
   # Fetched when a backup run starts.
   start: https://example.com/monitor/start
   # Fetched when a backup run completes successfully.
@@ -51,7 +51,7 @@ state at the same URL while varying the `status` value to report the lifecycle o
 your backups.
 
 ```yaml
-monitor:
+ping:
   start: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=in_progress
   success: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=ok
   failure: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=error
@@ -62,7 +62,7 @@ monitor:
 `/start` and `/fail` suffixes used to signal the start and failure of a run.
 
 ```yaml
-monitor:
+ping:
   start: https://hc-ping.com/your-uuid/start
   success: https://hc-ping.com/your-uuid
   failure: https://hc-ping.com/your-uuid/fail
