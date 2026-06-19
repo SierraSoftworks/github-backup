@@ -170,6 +170,33 @@ OTEL_TRACES_SAMPLER=traceidratio
 OTEL_TRACES_SAMPLER_ARG=1.0
 ```
 
+### Cron Monitoring
+
+If you run this tool on a schedule, you'll often want to be alerted when a backup
+run fails to start or complete. To support this, GitHub Backup can report the
+state of each scheduled run to an HTTP-based cron monitoring service such as
+[Sentry Cron Monitors](https://docs.sentry.io/product/crons/) or
+[healthchecks.io](https://healthchecks.io/).
+
+Monitoring is configured under the top-level `monitor` key, where you can provide
+a separate URL for each state you care about. Each URL is fetched with a simple
+HTTP `GET` request when the corresponding state is reached, and any state you
+omit is simply not reported.
+
+```yaml
+monitor:
+  # Fetched when a backup run starts.
+  start: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=in_progress
+  # Fetched when a backup run completes successfully.
+  success: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=ok
+  # Fetched when a backup run completes with one or more errors.
+  failure: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=error
+```
+
+A run is reported as a `failure` if any policy reports one or more errors, and as
+a `success` otherwise. Reporting is best-effort: if the monitoring service can't
+be reached, a warning is logged but the backup run itself is unaffected.
+
 ## Filters
 
 This tool allows you to configure filters to control which GitHub repositories are backed up and

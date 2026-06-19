@@ -1,5 +1,14 @@
 schedule: "0 * * * *"
 
+# Optionally report the status of each backup run to an HTTP-based cron
+# monitoring service (such as Sentry Crons or healthchecks.io). Each URL is
+# fetched with a simple HTTP GET request when the corresponding state is
+# reached, and any state you leave out is simply not reported.
+monitor:
+  start: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=in_progress
+  success: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=ok
+  failure: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=error
+
 backups:
   # Backup all the repositories that the provided credentials have access to
   - kind: github/repo

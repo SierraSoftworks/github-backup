@@ -2,12 +2,15 @@ use human_errors::ResultExt;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
-use crate::{Args, policy::BackupPolicy};
+use crate::{Args, monitor::MonitorConfig, policy::BackupPolicy};
 
 #[derive(Deserialize)]
 pub struct Config {
     #[serde(default, deserialize_with = "deserialize_cron")]
     pub schedule: Option<croner::Cron>,
+
+    #[serde(default)]
+    pub monitor: MonitorConfig,
 
     #[serde(default)]
     pub backups: Vec<BackupPolicy>,
@@ -61,6 +64,38 @@ mod tests {
     fn deserialize_cron_not_provided() {
         let config: Config = serde_yaml::from_str("").unwrap();
         assert!(config.schedule.is_none());
+    }
+
+    #[test]
+    fn deserialize_monitor_not_provided() {
+        let config: Config = serde_yaml::from_str("").unwrap();
+        assert_eq!(config.monitor, crate::monitor::MonitorConfig::default());
+    }
+
+    #[test]
+    fn deserialize_monitor() {
+        let config: Config = serde_yaml::from_str(
+            r#"
+            monitor:
+              start: https://example.com/start
+              success: https://example.com/success
+              failure: https://example.com/failure
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.monitor.start.as_deref(),
+            Some("https://example.com/start")
+        );
+        assert_eq!(
+            config.monitor.success.as_deref(),
+            Some("https://example.com/success")
+        );
+        assert_eq!(
+            config.monitor.failure.as_deref(),
+            Some("https://example.com/failure")
+        );
     }
 
     #[test]
