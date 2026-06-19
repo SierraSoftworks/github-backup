@@ -2,12 +2,15 @@ use human_errors::ResultExt;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
-use crate::{Args, policy::BackupPolicy};
+use crate::{Args, ping::PingConfig, policy::BackupPolicy};
 
 #[derive(Deserialize)]
 pub struct Config {
     #[serde(default, deserialize_with = "deserialize_cron")]
     pub schedule: Option<croner::Cron>,
+
+    #[serde(default)]
+    pub ping: PingConfig,
 
     #[serde(default)]
     pub backups: Vec<BackupPolicy>,
@@ -61,6 +64,38 @@ mod tests {
     fn deserialize_cron_not_provided() {
         let config: Config = serde_yaml::from_str("").unwrap();
         assert!(config.schedule.is_none());
+    }
+
+    #[test]
+    fn deserialize_ping_not_provided() {
+        let config: Config = serde_yaml::from_str("").unwrap();
+        assert_eq!(config.ping, crate::ping::PingConfig::default());
+    }
+
+    #[test]
+    fn deserialize_ping() {
+        let config: Config = serde_yaml::from_str(
+            r#"
+            ping:
+              start: https://example.com/start
+              success: https://example.com/success
+              failure: https://example.com/failure
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.ping.start.as_deref(),
+            Some("https://example.com/start")
+        );
+        assert_eq!(
+            config.ping.success.as_deref(),
+            Some("https://example.com/success")
+        );
+        assert_eq!(
+            config.ping.failure.as_deref(),
+            Some("https://example.com/failure")
+        );
     }
 
     #[test]

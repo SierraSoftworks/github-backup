@@ -79,7 +79,8 @@ export default defineUserConfig({
           children: [
             '/guide/README.md',
             '/guide/enterprise.md',
-            '/guide/telemetry.md'
+            '/guide/telemetry.md',
+            '/guide/monitors.md'
           ]
         },
         {

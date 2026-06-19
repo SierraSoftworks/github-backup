@@ -2,7 +2,8 @@ use clap::Parser;
 use engines::BackupState;
 use human_errors::Error;
 use pairing::PairingHandler;
-use std::sync::atomic::AtomicBool;
+use ping::Pinger;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::time::Duration;
 use tracing_batteries::prelude::*;
 use tracing_batteries::{OpenTelemetry, Session, Umami};
@@ -16,6 +17,7 @@ mod entities;
 mod errors;
 pub(crate) mod helpers;
 mod pairing;
+mod ping;
 mod policy;
 mod sources;
 mod target;
@@ -51,6 +53,8 @@ pub struct Args {
 async fn run(args: Args, session: &Session) -> Result<(), Error> {
     let config = config::Config::try_from(&args)?;
 
+    let pinger = Pinger::new(config.ping.clone());
+
     let github_repo = pairing::Pairing::new(
         sources::GitHubRepoSource::default(),
         engines::RepoEngine::new(),
@@ -78,6 +82,10 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
             .as_ref()
             .and_then(|s| s.find_next_occurrence(&chrono::Utc::now(), false).ok());
 
+        let handler = LoggingPairingHandler::default();
+
+        pinger.on_start().await;
+
         {
             let _span = info_span!("backup.all").entered();
 
@@ -88,21 +96,15 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
                 match policy.kind.as_str() {
                     k if k == GitHubArtifactKind::Repo.as_str() => {
                         info!("Backing up repositories for {}", &policy);
-                        github_repo
-                            .run(policy, &LoggingPairingHandler, &CANCEL)
-                            .await;
+                        github_repo.run(policy, &handler, &CANCEL).await;
                     }
                     k if k == GitHubArtifactKind::Release.as_str() => {
                         info!("Backing up release artifacts for {}", &policy);
-                        github_release
-                            .run(policy, &LoggingPairingHandler, &CANCEL)
-                            .await;
+                        github_release.run(policy, &handler, &CANCEL).await;
                     }
                     k if k == GitHubArtifactKind::Gist.as_str() => {
                         info!("Backing up gist artifacts for {}", &policy);
-                        github_gist
-                            .run(policy, &LoggingPairingHandler, &CANCEL)
-                            .await;
+                        github_gist.run(policy, &handler, &CANCEL).await;
                     }
                     _ => {
                         error!("Unknown policy kind: {}", policy.kind);
@@ -112,7 +114,15 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
         }
 
         if CANCEL.load(std::sync::atomic::Ordering::Relaxed) {
+            // The run was interrupted (e.g. by SIGINT), so we deliberately avoid
+            // reporting either success or failure to the cron monitor.
             break;
+        }
+
+        if handler.errors() > 0 {
+            pinger.on_failure().await;
+        } else {
+            pinger.on_success().await;
         }
 
         if let Some(next_run) = next_run {
@@ -131,7 +141,19 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
     Ok(())
 }
 
-pub struct LoggingPairingHandler;
+#[derive(Default)]
+pub struct LoggingPairingHandler {
+    errors: AtomicUsize,
+}
+
+impl LoggingPairingHandler {
+    /// The total number of errors observed across every policy reported to this
+    /// handler, used to decide whether a backup run should be reported as a
+    /// success or a failure to the cron monitor.
+    fn errors(&self) -> usize {
+        self.errors.load(std::sync::atomic::Ordering::Relaxed)
+    }
+}
 
 impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
     fn on_complete(&self, entity: E, state: BackupState) {
@@ -144,6 +166,8 @@ impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
     }
 
     fn on_error(&self, error: Error) {
+        self.errors
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         warn!("Error: {}", error);
     }
 
@@ -184,5 +208,28 @@ async fn main() {
         std::process::exit(1);
     } else {
         session.shutdown();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entities::GitRepo;
+
+    #[test]
+    fn logging_handler_counts_errors() {
+        let handler = LoggingPairingHandler::default();
+        assert_eq!(handler.errors(), 0);
+
+        // Each reported error should be accumulated so that a run with any
+        // failures can be reported to the cron monitor as a failure.
+        PairingHandler::<GitRepo>::on_error(&handler, human_errors::user("boom", &[]));
+        PairingHandler::<GitRepo>::on_error(&handler, human_errors::user("boom", &[]));
+        assert_eq!(handler.errors(), 2);
+
+        // Successful completions must not affect the error count.
+        let repo = GitRepo::new("octocat/Hello-World", "https://example.com/repo.git", None);
+        handler.on_complete(repo, BackupState::Skipped);
+        assert_eq!(handler.errors(), 2);
     }
 }
