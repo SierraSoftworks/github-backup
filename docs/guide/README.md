@@ -14,6 +14,14 @@ To solve this, we created GitHub Backup - a lightweight tool which runs a schedu
 backup/sync of your GitHub repositories with advanced filtering support to ensure that
 only the repositories you care about are backed up.
 
+## Installation
+On macOS and Linux, the easiest way to get started is to install GitHub Backup
+from the Sierra Softworks [Homebrew](https://brew.sh) tap.
+
+```sh
+brew install sierrasoftworks/tap/github-backup
+```
+
 ## Example
 To run GitHub Backup, you will need to download the latest release from the
 [GitHub Releases](https://github.com/SierraSoftworks/github-backup/releases)

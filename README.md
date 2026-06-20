@@ -7,6 +7,14 @@ GitHub organizations and clone (or fetch) them to your local machine. It is desi
 as part of a scheduled backup process with the ultimate goal of ensuring that you have a local
 copy of all of your GitHub repositories should the unthinkable happen.
 
+## Installation
+
+Install with [Homebrew](https://brew.sh):
+
+```sh
+brew install sierrasoftworks/tap/github-backup
+```
+
 ## Features
 
 - **Backup Multiple Organizations**, automatically gathering the full list of repositories for
