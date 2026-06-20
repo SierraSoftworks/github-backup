@@ -322,3 +322,18 @@ jobs:
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ env.FULL_IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+
+  tap:
+    name: Update Homebrew Tap
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    needs:
+      - build
+    steps:
+      - name: Update Homebrew Tap
+        uses: SierraSoftworks/actions-tap@v1
+        with:
+          app-id: ${{ secrets.TAP_APP_ID }}
+          private-key: ${{ secrets.TAP_APP_PRIVATE_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          aliases: major minor
