@@ -231,7 +231,7 @@ impl GitEngine {
     }
 
     fn authenticate_connection<T: Transport>(
-        connection: &mut Connection<'_, '_, T>,
+        connection: &mut Connection<'_, '_, '_, T>,
         creds: &Credentials,
     ) {
         match creds {

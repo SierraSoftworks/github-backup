@@ -11,7 +11,7 @@ clap = { version = "4.6.1", features = ["derive", "string"] }
 croner = "3.0.1"
 ctrlc = "3.5.2"
 filt-rs = { version = "1.1.0", features = ["chrono", "regex", "serde"] }
-gix = { version = "0.84.0", features = [
+gix = { version = "0.85.0", features = [
   "blocking-http-transport-reqwest-rust-tls",
 ] }
 human-errors = { version = "0.2.3", features = ["pretty"] }
