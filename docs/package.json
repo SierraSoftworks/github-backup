@@ -23,7 +23,7 @@
   "devDependencies": {
     "@vuepress/bundler-vite": "2.0.0-rc.30",
     "@vuepress/plugin-register-components": "2.0.0-rc.130",
-    "@vuepress/theme-default": "2.0.0-rc.130",
+    "@vuepress/theme-default": "2.0.0-rc.131",
     "sass-embedded": "^1.100.0",
     "vuepress": "2.0.0-rc.30"
   },
