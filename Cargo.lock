@@ -4403,10 +4403,11 @@ dependencies = [
 [[package]]
 name = "tracing-batteries"
 version = "0.1.0"
-source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#89854ad16dde3c4af6b9fc6e87ffa0d64b158fc1"
+source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#cf35de7fad4e013391383219abed2f4d58abe963"
 dependencies = [
  "chrono",
  "hex",
+ "iana-time-zone",
  "opentelemetry",
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",

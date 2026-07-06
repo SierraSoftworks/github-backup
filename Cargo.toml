@@ -38,7 +38,7 @@ tokio = { version = "1.50.0", features = [
 ] }
 tokio-stream = "0.1.18"
 tracing = "0.1.44"
-tracing-batteries = { git = "https://github.com/sierrasoftworks/tracing-batteries-rs.git", features = ["umami", "opentelemetry", "sentry"] }
+tracing-batteries = { git = "https://github.com/sierrasoftworks/tracing-batteries-rs.git", features = ["analytics", "opentelemetry", "sentry"] }
 unicase = "2.9.0"
 
 [dev-dependencies]
