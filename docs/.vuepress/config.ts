@@ -23,9 +23,10 @@ export default defineUserConfig({
     ['meta', { name: "description", content: "Automatically backup your GitHub repositories and releases, just in case." }],
     ['link', { rel: 'icon', href: '/favicon.ico' }],
     ["script", {
-        defer: "",
-        src: "https://analytics.sierrasoftworks.com/script.js",
-        "data-website-id": "0b7b161d-5120-44da-930c-bac4999e2fca"
+        async: "",
+        src: "https://analytics.sierrasoftworks.com/tracker.js",
+        "data-api": "https://analytics.sierrasoftworks.com",
+        "data-auto-capture-exceptions": "true"
     }],
   ],
 
