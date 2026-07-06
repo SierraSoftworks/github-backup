@@ -6,7 +6,7 @@ use ping::Pinger;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::time::Duration;
 use tracing_batteries::prelude::*;
-use tracing_batteries::{OpenTelemetry, Session, Umami};
+use tracing_batteries::{Analytics, OpenTelemetry, Session};
 
 #[macro_use]
 mod macros;
@@ -191,13 +191,7 @@ async fn main() {
 
     let session = Session::new("github-backup", version!())
         .with_battery(OpenTelemetry::new(""))
-        .with_battery(
-            Umami::new(
-                "https://analytics.sierrasoftworks.com",
-                "0b7b161d-5120-44da-930c-bac4999e2fca",
-            )
-            .with_initial_page("/.app/"),
-        );
+        .with_battery(Analytics::new("https://analytics.sierrasoftworks.com"));
 
     let result = run(args, &session).await;
 
