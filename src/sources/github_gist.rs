@@ -5,7 +5,7 @@ use tokio_stream::Stream;
 use crate::helpers::github::GitHubGist;
 use crate::{
     BackupSource,
-    entities::GitRepo,
+    entities::{GitRepo, RecoveryMode},
     helpers::{
         GitHubClient,
         github::{GitHubArtifactKind, GitHubRepoSourceKind},
@@ -25,6 +25,10 @@ impl BackupSource<GitRepo> for GitHubGistSource {
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), human_errors::Error> {
         let _: GitHubRepoSourceKind = policy.from.as_str().parse()?;
+
+        if let Some(mode) = policy.properties.get("recovery") {
+            let _: RecoveryMode = mode.parse()?;
+        }
 
         Ok(())
     }
@@ -56,6 +60,12 @@ impl BackupSource<GitRepo> for GitHubGistSource {
             .get("refspecs")
             .map(|r| r.split(',').map(|r| r.to_string()).collect::<Vec<String>>());
 
+        let recovery_mode: RecoveryMode = policy
+            .properties
+            .get("recovery")
+            .map(|mode| mode.parse().unwrap())
+            .unwrap_or_default();
+
         async_stream::try_stream! {
           if matches!(target, GitHubRepoSourceKind::Gist(_)) {
             let gist: GitHubGist = self.client.get(&url, &policy.credentials, cancel).await?;
@@ -64,6 +74,7 @@ impl BackupSource<GitRepo> for GitHubGistSource {
               gist.git_pull_url.as_str(),
               refspecs.clone())
                 .with_credentials(policy.credentials.clone())
+                .with_recovery_mode(recovery_mode)
                 .with_metadata_source(&gist);
           } else {
             for await gist in self.client.get_paginated(&url, &policy.credentials, cancel) {
@@ -73,6 +84,7 @@ impl BackupSource<GitRepo> for GitHubGistSource {
                 gist.git_pull_url.as_str(),
                 refspecs.clone())
                   .with_credentials(policy.credentials.clone())
+                  .with_recovery_mode(recovery_mode)
                   .with_metadata_source(&gist);
             }
           }

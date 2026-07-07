@@ -43,6 +43,15 @@ backups:
     from: repos/SierraSoftworks/github-backup
     to: /backup/github
 
+  # Automatically replace local repositories which fail to update due to local
+  # corruption with a fresh clone (the default "non-destructive" recovery mode
+  # only removes stale git lock files and retries)
+  - kind: github/repo
+    from: repos/SierraSoftworks/grey
+    to: /backup/github
+    properties:
+      recovery: destructive
+
   - kind: github/release
     from: repos/SierraSoftworks/github-backup
     to: /backup/github-releases
