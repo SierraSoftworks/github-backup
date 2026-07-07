@@ -4,7 +4,7 @@ use tokio_stream::Stream;
 
 use crate::{
     BackupSource,
-    entities::GitRepo,
+    entities::{GitRepo, RecoveryMode},
     helpers::{
         GitHubClient,
         github::GitHubRepo,
@@ -25,6 +25,11 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
 
     fn validate(&self, policy: &BackupPolicy) -> Result<(), human_errors::Error> {
         let _: GitHubRepoSourceKind = policy.from.as_str().parse()?;
+
+        if let Some(mode) = policy.properties.get("recovery") {
+            let _: RecoveryMode = mode.parse()?;
+        }
+
         Ok(())
     }
 
@@ -54,6 +59,12 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
             .get("refspecs")
             .map(|r| r.split(',').map(|r| r.to_string()).collect::<Vec<String>>());
 
+        let recovery_mode: RecoveryMode = policy
+            .properties
+            .get("recovery")
+            .map(|mode| mode.parse().unwrap())
+            .unwrap_or_default();
+
         async_stream::try_stream! {
           if matches!(target, GitHubRepoSourceKind::Repo(_)) {
             let repo: GitHubRepo = self.client.get(&url, &policy.credentials, cancel).await?;
@@ -62,6 +73,7 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
               repo.clone_url.as_str(),
               refspecs.clone())
                 .with_credentials(policy.credentials.clone())
+                .with_recovery_mode(recovery_mode)
                 .with_metadata_source(&repo);
           } else {
             for await repo in self.client.get_paginated(&url, &policy.credentials, cancel) {
@@ -71,6 +83,7 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
                 repo.clone_url.as_str(),
                 refspecs.clone())
                   .with_credentials(policy.credentials.clone())
+                  .with_recovery_mode(recovery_mode)
                   .with_metadata_source(&repo);
             }
           }
@@ -135,6 +148,33 @@ mod tests {
     }
 
     #[rstest]
+    #[case("none", true)]
+    #[case("non-destructive", true)]
+    #[case("destructive", true)]
+    #[case("bogus", false)]
+    fn validation_recovery_mode(#[case] mode: &str, #[case] success: bool) {
+        let source = GitHubRepoSource::default();
+
+        let policy = serde_yaml::from_str(&format!(
+            r#"
+            kind: github/repo
+            from: user
+            to: /tmp
+            properties:
+              recovery: {}
+            "#,
+            mode
+        ))
+        .expect("parse policy");
+
+        if success {
+            source.validate(&policy).expect("validation to succeed");
+        } else {
+            source.validate(&policy).expect_err("validation to fail");
+        }
+    }
+
+    #[rstest]
     #[case("users/notheotherben")]
     #[tokio::test]
     #[cfg_attr(feature = "pure_tests", ignore)]
@@ -188,6 +228,8 @@ mod tests {
           kind: github/repo
           from: {}
           to: /tmp
+          properties:
+            recovery: non-destructive
         "#,
             target
         ))

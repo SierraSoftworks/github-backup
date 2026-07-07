@@ -1,11 +1,13 @@
 mod credentials;
 #[macro_use]
 mod macros;
+mod recovery;
 mod release;
 
 use crate::{FilterValue, Filterable};
 
 pub use credentials::Credentials;
+pub use recovery::RecoveryMode;
 pub use release::Release;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -61,4 +63,5 @@ entity!(HttpFile(url: U => String) {
 
 entity!(GitRepo(clone_url: U => String, refspecs: R => Option<Vec<String>>) {
     with_credentials => credentials: Credentials,
+    with_recovery_mode => recovery_mode: RecoveryMode,
 });

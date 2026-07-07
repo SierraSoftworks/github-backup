@@ -55,7 +55,8 @@ export default defineUserConfig({
         children: [
           '/advanced/filters.md',
           '/advanced/query-params.md',
-          '/advanced/refspecs.md'
+          '/advanced/refspecs.md',
+          '/advanced/recovery.md'
         ]
       },
       {
@@ -97,7 +98,8 @@ export default defineUserConfig({
           children: [
             '/advanced/filters.md',
             '/advanced/query-params.md',
-            '/advanced/refspecs.md'
+            '/advanced/refspecs.md',
+            '/advanced/recovery.md'
           ]
         }
       ],
