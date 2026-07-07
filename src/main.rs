@@ -82,16 +82,16 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
             .as_ref()
             .and_then(|s| s.find_next_occurrence(&chrono::Utc::now(), false).ok());
 
-        let handler = LoggingPairingHandler::default();
+        let handler = LoggingPairingHandler::new(&session);
 
         pinger.on_start().await;
 
         {
             let _span = info_span!("backup.all").entered();
+            let _page = session.record_new_page("/backup");
 
             for policy in config.backups.iter() {
                 let _policy_span = info_span!("backup.policy", policy = %policy).entered();
-                let _page = session.record_new_page(format!("/backup/{}", policy));
 
                 match policy.kind.as_str() {
                     k if k == GitHubArtifactKind::Repo.as_str() => {
@@ -141,12 +141,19 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
     Ok(())
 }
 
-#[derive(Default)]
-pub struct LoggingPairingHandler {
+pub struct LoggingPairingHandler<'a> {
+    session: &'a Session,
     errors: AtomicUsize,
 }
 
-impl LoggingPairingHandler {
+impl<'a> LoggingPairingHandler<'a> {
+    fn new(session: &'a Session) -> Self {
+        Self {
+            session,
+            errors: AtomicUsize::new(0),
+        }
+    }
+
     /// The total number of errors observed across every policy reported to this
     /// handler, used to decide whether a backup run should be reported as a
     /// success or a failure to the cron monitor.
@@ -155,8 +162,8 @@ impl LoggingPairingHandler {
     }
 }
 
-impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
-    fn on_complete(&self, entity: E, state: BackupState) {
+impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler<'_> {
+    fn on_complete(&self, _policy: &BackupPolicy, entity: E, state: BackupState) {
         match &state {
             state @ BackupState::Unchanged(_) | state @ BackupState::Skipped => {
                 debug!(" - {} ({})", entity, state)
@@ -165,16 +172,40 @@ impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler {
         }
     }
 
-    fn on_error(&self, error: Error) {
+    fn on_error(&self, policy: &BackupPolicy, error: Error) {
         self.errors
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+        if error.is(human_errors::Kind::System) {
+            let info = tracing_batteries::ErrorInfo::new(&error)
+                .with_metadata("policy.kind", format!("{}", policy.kind));
+
+            self.session.record_custom_error(info);
+        } else {
+            error!("Error: {}", error);
+        }
+
         warn!("Error: {}", error);
     }
 
-    fn on_summary(&self, summary: SummaryStatistics) {
+    fn on_summary(&self, policy: &BackupPolicy, summary: SummaryStatistics) {
         info!(
             "Backup completed after {}s: {summary}",
             summary.duration().as_secs()
+        );
+
+        self.session.record_event(
+            "policy::run",
+            [
+                ("policy.kind", format!("{}", policy.kind)),
+                ("stats.new", summary.new.to_string()),
+                ("stats.unchanged", summary.unchanged.to_string()),
+                ("stats.updated", summary.updated.to_string()),
+                ("stats.skipped", summary.skipped.to_string()),
+                ("stats.error", summary.error.to_string()),
+            ]
+            .map(|(k, v)| (k.to_string(), v))
+            .into(),
         );
     }
 }
@@ -212,18 +243,22 @@ mod tests {
 
     #[test]
     fn logging_handler_counts_errors() {
-        let handler = LoggingPairingHandler::default();
+        let session =
+            Session::new("github-backup", version!()).with_battery(tracing_batteries::Testing);
+
+        let handler = LoggingPairingHandler::new(&session);
         assert_eq!(handler.errors(), 0);
 
         // Each reported error should be accumulated so that a run with any
         // failures can be reported to the cron monitor as a failure.
-        PairingHandler::<GitRepo>::on_error(&handler, human_errors::user("boom", &[]));
-        PairingHandler::<GitRepo>::on_error(&handler, human_errors::user("boom", &[]));
+        let policy = BackupPolicy::default();
+        PairingHandler::<GitRepo>::on_error(&handler, &policy, human_errors::user("boom", &[]));
+        PairingHandler::<GitRepo>::on_error(&handler, &policy, human_errors::user("boom", &[]));
         assert_eq!(handler.errors(), 2);
 
         // Successful completions must not affect the error count.
         let repo = GitRepo::new("octocat/Hello-World", "https://example.com/repo.git", None);
-        handler.on_complete(repo, BackupState::Skipped);
+        handler.on_complete(&policy, repo, BackupState::Skipped);
         assert_eq!(handler.errors(), 2);
     }
 }

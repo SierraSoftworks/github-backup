@@ -6,7 +6,7 @@ use crate::Filter;
 use crate::entities::Credentials;
 use crate::target::BackupTargets;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct BackupPolicy {
     pub kind: String,
     pub from: String,
