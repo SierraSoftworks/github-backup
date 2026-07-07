@@ -62,17 +62,17 @@ impl<
             match result {
                 Ok((entity, state)) => {
                     stats.record_state(&state);
-                    handler.on_complete(entity, state)
+                    handler.on_complete(policy, entity, state)
                 }
                 Err(e) => {
                     stats.record_error();
-                    handler.on_error(e)
+                    handler.on_error(policy, e)
                 }
             }
         }
 
         stats.finish();
-        handler.on_summary(stats);
+        handler.on_summary(policy, stats);
     }
 
     pub fn run_all_backups<'a>(
@@ -211,9 +211,9 @@ impl Display for SummaryStatistics {
 }
 
 pub trait PairingHandler<E: BackupEntity> {
-    fn on_complete(&self, entity: E, state: BackupState);
-    fn on_error(&self, error: crate::Error);
-    fn on_summary(&self, _stats: SummaryStatistics) {}
+    fn on_complete(&self, policy: &BackupPolicy, entity: E, state: BackupState);
+    fn on_error(&self, policy: &BackupPolicy, error: crate::Error);
+    fn on_summary(&self, _policy: &BackupPolicy, _stats: SummaryStatistics) {}
 }
 
 #[cfg(test)]
