@@ -39,12 +39,13 @@ impl GitHubReleasesSource {
           let releases_url = format!("{}/releases", repo.url);
 
           for await release in self.client.get_paginated(&releases_url, &policy.credentials, cancel) {
-            if let Err(e) = release {
-              yield Err(e);
-              continue;
-            }
-
-            let release: GitHubRelease = release.unwrap();
+            let release: GitHubRelease = match release {
+              Ok(release) => release,
+              Err(e) => {
+                yield Err(e);
+                continue;
+              }
+            };
 
             let mut entity = Release::new(
                 format!("{}/{}", &repo.full_name, &release.tag_name),
@@ -170,21 +171,27 @@ impl BackupSource<Release> for GitHubReleasesSource {
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<Release, human_errors::Error>> + 'a {
-        let target: GitHubRepoSourceKind = policy.from.as_str().parse().unwrap();
-        let url = format!(
-            "{}/{}?{}",
-            policy
-                .properties
-                .get("api_url")
-                .unwrap_or(&"https://api.github.com".to_string())
-                .trim_end_matches('/'),
-            target.api_endpoint(GitHubArtifactKind::Release),
-            policy.properties.get("query").unwrap_or(&"".to_string())
-        )
-        .trim_end_matches('?')
-        .to_string();
-
         async_stream::stream! {
+          let target: GitHubRepoSourceKind = match policy.from.as_str().parse() {
+            Ok(target) => target,
+            Err(e) => {
+              yield Err(e);
+              return;
+            }
+          };
+          let url = format!(
+              "{}/{}?{}",
+              policy
+                  .properties
+                  .get("api_url")
+                  .unwrap_or(&"https://api.github.com".to_string())
+                  .trim_end_matches('/'),
+              target.api_endpoint(GitHubArtifactKind::Release),
+              policy.properties.get("query").unwrap_or(&"".to_string())
+          )
+          .trim_end_matches('?')
+          .to_string();
+
           if matches!(target, GitHubRepoSourceKind::Repo(_)) {
             let repo: GitHubRepo = self.client.get(&url, &policy.credentials, cancel).await?;
 
@@ -193,12 +200,13 @@ impl BackupSource<Release> for GitHubReleasesSource {
             }
           } else {
             for await repo in self.client.get_paginated(&url, &policy.credentials, cancel) {
-              if let Err(e) = repo {
-                yield Err(e);
-                continue;
-              }
-
-              let repo: GitHubRepo = repo.unwrap();
+              let repo: GitHubRepo = match repo {
+                Ok(repo) => repo,
+                Err(e) => {
+                  yield Err(e);
+                  continue;
+                }
+              };
 
               for await file in self.load_releases(policy, &repo, cancel) {
                 yield file;

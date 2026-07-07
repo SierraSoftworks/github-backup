@@ -8,6 +8,7 @@ use tracing_batteries::prelude::*;
 use crate::{
     BackupEntity, BackupPolicy, BackupSource,
     engines::{BackupEngine, BackupState},
+    errors::HumanizableError as _,
 };
 
 pub struct Pairing<E: BackupEntity, S: BackupSource<E>, T: BackupEngine<E>> {
@@ -132,7 +133,11 @@ impl<
               for to in policy.to.iter() {
                 while join_set.len() >= self.concurrency_limit {
                   debug!("Reached concurrency limit of {}, waiting for a task to complete", self.concurrency_limit);
-                  yield join_set.join_next().await.unwrap().unwrap();
+                  match join_set.join_next().await {
+                    Some(Ok(result)) => yield result,
+                    Some(Err(e)) => yield Err(e.to_human_error()),
+                    None => break,
+                  }
                 }
 
                 let span = tracing_batteries::prelude::info_span!(parent: &span, "backup.step", item=%entity, target=%to);
@@ -147,7 +152,10 @@ impl<
           }
 
           while let Some(fut) = join_set.join_next().await {
-            yield fut.unwrap();
+            match fut {
+              Ok(result) => yield result,
+              Err(e) => yield Err(e.to_human_error()),
+            }
           }
         }
     }
