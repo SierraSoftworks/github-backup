@@ -228,6 +228,8 @@ mod tests {
           kind: github/repo
           from: {}
           to: /tmp
+          properties:
+            recovery: non-destructive
         "#,
             target
         ))

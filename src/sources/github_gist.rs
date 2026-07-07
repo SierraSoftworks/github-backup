@@ -147,6 +147,32 @@ mod tests {
     }
 
     #[rstest]
+    #[case("non-destructive", true)]
+    #[case("destructive", true)]
+    #[case("bogus", false)]
+    fn validation_recovery_mode(#[case] mode: &str, #[case] success: bool) {
+        let source = GitHubGistSource::default();
+
+        let policy = serde_yaml::from_str(&format!(
+            r#"
+            kind: github/gist
+            from: user
+            to: /tmp
+            properties:
+              recovery: {}
+            "#,
+            mode
+        ))
+        .expect("parse policy");
+
+        if success {
+            source.validate(&policy).expect("validation to succeed");
+        } else {
+            source.validate(&policy).expect_err("validation to fail");
+        }
+    }
+
+    #[rstest]
     #[case("user", "/gists", "github.gists.0.json", 2)]
     #[case("users/octocat", "/users/octocat/gists", "github.gists.0.json", 2)]
     #[case("starred", "/gists/starred", "github.gists.0.json", 2)]
@@ -174,6 +200,8 @@ mod tests {
           kind: github/gist
           from: {}
           to: /tmp
+          properties:
+            recovery: non-destructive
         "#,
             target
         ))

@@ -753,6 +753,168 @@ mod tests {
         assert_eq!(format!("{}", annotate_state(state, "recovered")), expected);
     }
 
+    /// Creates a directory containing a (not necessarily valid) `.git`
+    /// directory with a stale lock file inside it, simulating a repository
+    /// whose previous backup run was killed part-way through a fetch.
+    fn setup_repo_with_stale_lock(target: &Path) -> PathBuf {
+        std::fs::create_dir_all(target.join(".git"))
+            .expect("to be able to create the git directory");
+
+        let lock_file = target.join(".git").join("packed-refs.lock");
+        std::fs::write(&lock_file, "").expect("to be able to create the lock file");
+        std::fs::File::options()
+            .write(true)
+            .open(&lock_file)
+            .expect("to be able to open the lock file")
+            .set_modified(std::time::SystemTime::now() - Duration::from_secs(60 * 60))
+            .expect("to be able to age the lock file");
+
+        lock_file
+    }
+
+    #[test]
+    fn test_recover_disabled_returns_original_error() {
+        let temp_dir = tempfile::tempdir().expect("a temporary directory");
+        let lock_file = setup_repo_with_stale_lock(temp_dir.path());
+
+        let repo = GitRepo::new("test/repo", "https://example.com/repo.git", None)
+            .with_recovery_mode(RecoveryMode::Disabled);
+
+        let err = GitEngine
+            .recover(
+                &repo,
+                temp_dir.path(),
+                &AtomicBool::new(false),
+                human_errors::user("simulated fetch failure", &[]),
+            )
+            .expect_err("recovery should not be attempted when it is disabled");
+
+        assert!(
+            format!("{err}").contains("simulated fetch failure"),
+            "the original error should be reported unchanged"
+        );
+        assert!(
+            lock_file.exists(),
+            "the repository should have been left untouched"
+        );
+    }
+
+    #[test]
+    fn test_recover_skipped_when_cancelled() {
+        let temp_dir = tempfile::tempdir().expect("a temporary directory");
+        let lock_file = setup_repo_with_stale_lock(temp_dir.path());
+
+        let repo = GitRepo::new("test/repo", "https://example.com/repo.git", None);
+
+        let err = GitEngine
+            .recover(
+                &repo,
+                temp_dir.path(),
+                &AtomicBool::new(true),
+                human_errors::user("simulated fetch failure", &[]),
+            )
+            .expect_err("recovery should not be attempted when the backup has been cancelled");
+
+        assert!(format!("{err}").contains("simulated fetch failure"));
+        assert!(
+            lock_file.exists(),
+            "the repository should have been left untouched"
+        );
+    }
+
+    #[test]
+    fn test_recover_reports_retry_failure() {
+        let temp_dir = tempfile::tempdir().expect("a temporary directory");
+        let lock_file = setup_repo_with_stale_lock(temp_dir.path());
+
+        let repo = GitRepo::new("test/repo", "https://example.com/repo.git", None);
+
+        // The stale lock is removed, but the retried fetch fails because the
+        // directory is not a valid git repository; that error is reported.
+        let err = GitEngine
+            .recover(
+                &repo,
+                temp_dir.path(),
+                &AtomicBool::new(false),
+                human_errors::user("simulated fetch failure", &[]),
+            )
+            .expect_err("recovery should fail when the retried fetch fails");
+
+        assert!(
+            !lock_file.exists(),
+            "the stale lock file should have been removed"
+        );
+        assert!(
+            format!("{err}").contains("Failed to open the repository"),
+            "the error from the retried fetch should be reported, got: {err}"
+        );
+    }
+
+    #[test]
+    fn test_destructive_recovery_leaves_original_when_clone_fails() {
+        let temp_dir = tempfile::tempdir().expect("a temporary directory");
+        let target = temp_dir.path().join("owner").join("repo");
+        std::fs::create_dir_all(target.join(".git"))
+            .expect("to be able to create the git directory");
+        std::fs::write(target.join(".git").join("HEAD"), "ref: refs/heads/main")
+            .expect("to be able to create the HEAD file");
+
+        // Leftovers from a previously interrupted recovery attempt should be
+        // cleaned up before the fresh clone is attempted.
+        let staging = temp_dir.path().join("owner").join(".repo.recovery");
+        let discard = temp_dir.path().join("owner").join(".repo.discard");
+        for dir in [&staging, &discard] {
+            std::fs::create_dir_all(dir).expect("to be able to create the leftover directory");
+            std::fs::write(dir.join("junk"), "junk").expect("to be able to create the junk file");
+        }
+
+        // The clone URL points at a location which doesn't exist, so the
+        // fresh clone (acting as the canary for destructive recovery) fails.
+        let missing_remote = temp_dir.path().join("missing-remote.git");
+        let repo = GitRepo::new(
+            "owner/repo",
+            missing_remote.display().to_string(),
+            None::<Vec<String>>,
+        )
+        .with_recovery_mode(RecoveryMode::Destructive);
+
+        let err = GitEngine
+            .recover(
+                &repo,
+                &target,
+                &AtomicBool::new(false),
+                human_errors::user("simulated fetch failure", &[]),
+            )
+            .expect_err("recovery should fail when the fresh clone fails");
+
+        assert!(
+            format!("{err}").contains("simulated fetch failure"),
+            "the original error should be included in the causal chain, got: {err}"
+        );
+        assert!(
+            target.join(".git").join("HEAD").exists(),
+            "the original repository should have been left untouched"
+        );
+        assert!(
+            !discard.exists(),
+            "leftover recovery directories should have been cleaned up"
+        );
+    }
+
+    #[test]
+    fn test_reclone_rejects_target_without_parent() {
+        let repo = GitRepo::new("test/repo", "https://example.com/repo.git", None);
+
+        let err = GitEngine
+            .reclone_and_replace(&repo, Path::new("/"), &AtomicBool::new(false))
+            .expect_err("recovery should be rejected for a target without a parent directory");
+
+        assert!(
+            format!("{err}").contains("Unable to determine a temporary recovery location"),
+            "got: {err}"
+        );
+    }
+
     #[cfg_attr(feature = "pure_tests", ignore)]
     #[rstest]
     #[case("SierraSoftworks/grey", "https://github.com/sierrasoftworks/grey.git")]
