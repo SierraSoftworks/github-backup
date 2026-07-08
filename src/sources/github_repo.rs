@@ -38,34 +38,34 @@ impl BackupSource<GitRepo> for GitHubRepoSource {
         policy: &'a BackupPolicy,
         cancel: &'a AtomicBool,
     ) -> impl Stream<Item = Result<GitRepo, human_errors::Error>> + 'a {
-        let target: GitHubRepoSourceKind = policy.from.as_str().parse().unwrap();
-        let url = format!(
-            "{}/{}?{}",
-            policy
-                .properties
-                .get("api_url")
-                .unwrap_or(&"https://api.github.com".to_string())
-                .trim_end_matches('/'),
-            target.api_endpoint(GitHubArtifactKind::Repo),
-            policy.properties.get("query").unwrap_or(&"".to_string())
-        )
-        .trim_end_matches('?')
-        .to_string();
-
-        tracing_batteries::prelude::debug!("Calling {} to fetch repos", &url);
-
-        let refspecs = policy
-            .properties
-            .get("refspecs")
-            .map(|r| r.split(',').map(|r| r.to_string()).collect::<Vec<String>>());
-
-        let recovery_mode: RecoveryMode = policy
-            .properties
-            .get("recovery")
-            .map(|mode| mode.parse().unwrap())
-            .unwrap_or_default();
-
         async_stream::try_stream! {
+          let target: GitHubRepoSourceKind = policy.from.as_str().parse()?;
+
+          let url = format!(
+              "{}/{}?{}",
+              policy
+                  .properties
+                  .get("api_url")
+                  .unwrap_or(&"https://api.github.com".to_string())
+                  .trim_end_matches('/'),
+              target.api_endpoint(GitHubArtifactKind::Repo),
+              policy.properties.get("query").unwrap_or(&"".to_string())
+          )
+          .trim_end_matches('?')
+          .to_string();
+
+          tracing_batteries::prelude::debug!("Calling {} to fetch repos", &url);
+
+          let refspecs = policy
+              .properties
+              .get("refspecs")
+              .map(|r| r.split(',').map(|r| r.to_string()).collect::<Vec<String>>());
+
+          let recovery_mode: RecoveryMode = match policy.properties.get("recovery") {
+              Some(mode) => mode.parse()?,
+              None => RecoveryMode::default(),
+          };
+
           if matches!(target, GitHubRepoSourceKind::Repo(_)) {
             let repo: GitHubRepo = self.client.get(&url, &policy.credentials, cancel).await?;
             yield GitRepo::new(

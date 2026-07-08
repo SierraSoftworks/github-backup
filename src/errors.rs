@@ -95,6 +95,18 @@ impl HumanizableError for reqwest::header::InvalidHeaderValue {
     }
 }
 
+impl HumanizableError for tokio::task::JoinError {
+    fn to_human_error(self) -> human_errors::Error {
+        human_errors::wrap_system(
+            self,
+            "A backup task terminated unexpectedly before it could complete.",
+            &[
+                "This is likely a bug in github-backup, please report it to us on GitHub along with the error details above.",
+            ],
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct ResponseError {
     pub status_code: StatusCode,
