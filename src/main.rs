@@ -82,7 +82,7 @@ async fn run(args: Args, session: &Session) -> Result<(), Error> {
             .as_ref()
             .and_then(|s| s.find_next_occurrence(&chrono::Utc::now(), false).ok());
 
-        let handler = LoggingPairingHandler::new(&session);
+        let handler = LoggingPairingHandler::new(session);
 
         pinger.on_start().await;
 
@@ -178,7 +178,7 @@ impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler<'_> {
 
         if error.is(human_errors::Kind::System) {
             let info = tracing_batteries::ErrorInfo::new(&error)
-                .with_metadata("policy.kind", format!("{}", policy.kind));
+                .with_metadata("policy.kind", policy.kind.to_string());
 
             self.session.record_custom_error(info);
         } else {
@@ -197,7 +197,7 @@ impl<E: BackupEntity> PairingHandler<E> for LoggingPairingHandler<'_> {
         self.session.record_event(
             "policy::run",
             [
-                ("policy.kind", format!("{}", policy.kind)),
+                ("policy.kind", policy.kind.to_string()),
                 ("stats.new", summary.new.to_string()),
                 ("stats.unchanged", summary.unchanged.to_string()),
                 ("stats.updated", summary.updated.to_string()),
