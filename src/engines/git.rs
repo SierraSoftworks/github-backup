@@ -85,7 +85,7 @@ impl GitEngine {
             target.display()
         );
         let mut fetch = gix::prepare_clone(repo.clone_url.as_str(), target).wrap_user_err(
-            format!("Failed to clone the repository {}.", &repo.clone_url),
+            format!("Failed to clone the repository {}.", repo.clone_url),
             &["Please make sure that the target directory is writable and that the repository is accessible."],
         )?;
 
@@ -120,7 +120,7 @@ impl GitEngine {
         })?;
 
         let head_id = repository.head_id().wrap_user_err(
-            format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", &repo.clone_url),
+            format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", repo.clone_url),
             &["Make sure that the remote repository is valid."],
         )?;
 
@@ -139,8 +139,8 @@ impl GitEngine {
             let repository = gix::open(target).wrap_user_err(
                 format!(
                     "Failed to open the repository '{}' at '{}'",
-                    &repo.clone_url,
-                    &target.display()
+                    repo.clone_url,
+                    target.display()
                 ),
                 &["Make sure that the target directory is a valid git repository."],
             )?;
@@ -154,8 +154,8 @@ impl GitEngine {
         let repository = gix::open(target).wrap_user_err(
             format!(
                 "Failed to open the repository '{}' at '{}'",
-                &repo.clone_url,
-                &target.display()
+                repo.clone_url,
+                target.display()
             ),
             &["Make sure that the target directory is a valid git repository."],
         )?;
@@ -172,7 +172,7 @@ impl GitEngine {
             format!(
                 "Failed to find the remote '{}' in the repository '{}'",
                 repo.clone_url,
-                &target.display()
+                target.display()
                 ),
             &["Make sure that the repository is correctly configured and that the remote exists."],
         )?
@@ -186,8 +186,8 @@ impl GitEngine {
             .wrap_user_err(
                 format!(
                     "Failed to configure the remote '{}' in the repository '{}' to fetch all branches.",
-                    &repo.clone_url,
-                    &target.display()
+                    repo.clone_url,
+                    target.display()
                     ),
                     &["Make sure that the repository is correctly configured and that the remote exists."],
                 )?;
@@ -198,7 +198,7 @@ impl GitEngine {
             .wrap_user_err(
                 format!(
                     "Unable to establish connection to remote git repository '{}'",
-                    &repo.clone_url
+                    repo.clone_url
                 ),
                 &["Make sure that the repository is available and correctly configured."],
             )?;
@@ -214,7 +214,7 @@ impl GitEngine {
             .wrap_user_err(
                 format!(
                     "Unable to prepare fetch from remote git repository '{}'",
-                    &repo.clone_url
+                    repo.clone_url
                 ),
                 &["Make sure that the repository is available and correctly configured."],
             )?
@@ -223,13 +223,13 @@ impl GitEngine {
             .wrap_user_err(
                 format!(
                     "Unable to fetch from remote git repository '{}'",
-                    &repo.clone_url
+                    repo.clone_url
                 ),
                 &["Make sure that the repository is available and correctly configured."],
             )?;
 
         let head_id = repository.head_id().wrap_user_err(
-            format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", &repo.clone_url),
+            format!("The repository '{}' did not have a valid HEAD, which may indicate that there is something wrong with the source repository.", repo.clone_url),
             &["Make sure that the remote repository is valid."],
         )?;
 
