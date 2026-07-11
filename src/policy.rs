@@ -6,6 +6,13 @@ use crate::Filter;
 use crate::entities::Credentials;
 use crate::target::BackupTargets;
 
+/// The number of times an individual target backup is retried if it fails
+/// before the failure is reported, unless overridden by the `retries` policy
+/// property. Backing up a failed target one more time before giving up smooths
+/// over the transient network and remote-side failures which are common when
+/// mirroring large numbers of repositories.
+pub const DEFAULT_RETRIES: usize = 1;
+
 #[derive(Deserialize, Default)]
 pub struct BackupPolicy {
     pub kind: String,
@@ -18,6 +25,28 @@ pub struct BackupPolicy {
     pub filter: Filter,
     #[serde(default)]
     pub properties: HashMap<String, String>,
+}
+
+impl BackupPolicy {
+    /// The number of times the backup of an individual target should be retried
+    /// if it fails before the error is reported to the user.
+    ///
+    /// Configured through the optional `retries` policy property and defaulting
+    /// to [`DEFAULT_RETRIES`]. A value of `0` disables retries entirely, causing
+    /// the first failure to be reported immediately.
+    pub fn retries(&self) -> Result<usize, crate::Error> {
+        match self.properties.get("retries") {
+            Some(value) => value.trim().parse().map_err(|_| {
+                human_errors::user(
+                    format!("The 'retries' property value '{value}' is not a valid number."),
+                    &[
+                        "Set the 'retries' property to a non-negative whole number, such as '1', or remove it to use the default.",
+                    ],
+                )
+            }),
+            None => Ok(DEFAULT_RETRIES),
+        }
+    }
 }
 
 impl Display for BackupPolicy {
@@ -72,5 +101,63 @@ mod tests {
 
         assert_eq!(format!("{}", policy), "backup/source");
         assert_eq!(format!("{:?}", policy), "backup/source");
+    }
+
+    #[test]
+    fn test_retries_default() {
+        let policy = BackupPolicy::default();
+        assert_eq!(
+            policy
+                .retries()
+                .expect("the default retry count to be valid"),
+            DEFAULT_RETRIES
+        );
+    }
+
+    #[test]
+    fn test_retries_configured() {
+        let policy: BackupPolicy = serde_yaml::from_str(
+            r#"
+            kind: backup
+            from: source
+            properties:
+              retries: "3"
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(policy.retries().expect("a valid retry count"), 3);
+    }
+
+    #[test]
+    fn test_retries_zero_disables_retries() {
+        let policy: BackupPolicy = serde_yaml::from_str(
+            r#"
+            kind: backup
+            from: source
+            properties:
+              retries: "0"
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(policy.retries().expect("a valid retry count"), 0);
+    }
+
+    #[test]
+    fn test_retries_invalid() {
+        let policy: BackupPolicy = serde_yaml::from_str(
+            r#"
+            kind: backup
+            from: source
+            properties:
+              retries: "not-a-number"
+            "#,
+        )
+        .unwrap();
+
+        policy
+            .retries()
+            .expect_err("an invalid retry count to be rejected");
     }
 }

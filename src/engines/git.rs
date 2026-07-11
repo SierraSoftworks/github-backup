@@ -84,7 +84,7 @@ impl GitEngine {
             repo.clone_url,
             target.display()
         );
-        let mut fetch = gix::prepare_clone(repo.clone_url.as_str(), target).wrap_system_err(
+        let mut fetch = gix::prepare_clone(repo.clone_url.as_str(), target).wrap_user_err(
             format!("Failed to clone the repository {}.", &repo.clone_url),
             &["Please make sure that the target directory is writable and that the repository is accessible."],
         )?;
@@ -101,7 +101,7 @@ impl GitEngine {
         }
 
         trace!("Running clone in bare mode (not checking out files)");
-        let (repository, _outcome) = fetch.fetch_only(Discard, cancel).wrap_system_err(
+        let (repository, _outcome) = fetch.fetch_only(Discard, cancel).wrap_user_err(
             format!("Unable to clone remote repository '{}'", repo.clone_url),
             &["Make sure that your internet connectivity is working correctly, and that your local git configuration is able to clone this repo."],
         )?;

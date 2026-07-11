@@ -92,6 +92,14 @@ impl<
             }
           }
 
+          let retries = match policy.retries() {
+            Ok(retries) => retries,
+            Err(e) => {
+              yield Err(e);
+              return;
+            }
+          };
+
           let mut join_set: JoinSet<Result<(E, BackupState), crate::Error>> = JoinSet::new();
 
           for await entity in self.source.load(policy, cancel).trace(tracing::info_span!("backup.source.load")) {
@@ -146,7 +154,30 @@ impl<
                 let entity = entity.clone();
                 join_set.spawn(async move {
                     debug!("Starting backup of {entity}");
-                    target.backup(&entity, &to, cancel).await.map(|state| (entity, state))
+
+                    // A single target is backed up, up to `retries + 1` times,
+                    // so that transient failures (dropped connections, momentarily
+                    // unavailable remotes, and similar) don't cause an otherwise
+                    // healthy backup to be reported as a failure.
+                    let mut attempt = 0usize;
+                    loop {
+                        attempt += 1;
+                        match target.backup(&entity, &to, cancel).await {
+                            Ok(state) => break Ok((entity, state)),
+                            Err(e) => {
+                                if attempt > retries
+                                    || cancel.load(std::sync::atomic::Ordering::Relaxed)
+                                {
+                                    break Err(e);
+                                }
+
+                                warn!(
+                                    "Backup of {entity} failed on attempt {attempt} of {}, retrying: {e}",
+                                    retries + 1
+                                );
+                            }
+                        }
+                    }
                 }.instrument(span));
               }
           }
@@ -272,6 +303,69 @@ mod tests {
         }
     }
 
+    /// A source which yields exactly one repository, used to exercise the
+    /// per-target retry behaviour with deterministic attempt counts.
+    struct SingleRepoSource;
+
+    impl BackupSource<GitRepo> for SingleRepoSource {
+        fn kind(&self) -> &str {
+            "mock"
+        }
+
+        fn validate(&self, _policy: &BackupPolicy) -> Result<(), crate::Error> {
+            Ok(())
+        }
+
+        fn load<'a>(
+            &'a self,
+            _policy: &'a BackupPolicy,
+            _cancel: &'a AtomicBool,
+        ) -> impl Stream<Item = Result<GitRepo, crate::Error>> + 'a {
+            async_stream::stream! {
+              yield Ok(GitRepo::new(
+                "octocat/Hello-World",
+                "https://example.com/repo.git",
+                None,
+              ));
+            }
+        }
+    }
+
+    /// An engine which fails its first `failures_remaining` attempts before
+    /// succeeding, recording how many times it was invoked so that the retry
+    /// behaviour can be asserted.
+    #[derive(Clone)]
+    struct FlakyEngine {
+        failures_remaining: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+        attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    #[async_trait::async_trait]
+    impl BackupEngine<GitRepo> for FlakyEngine {
+        async fn backup(
+            &self,
+            entity: &GitRepo,
+            _target: &crate::BackupTarget,
+            _cancel: &AtomicBool,
+        ) -> Result<BackupState, crate::Error> {
+            use std::sync::atomic::Ordering;
+
+            self.attempts.fetch_add(1, Ordering::SeqCst);
+
+            // Consume one of the budgeted failures, if any remain.
+            let consumed = self.failures_remaining.fetch_update(
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+                |remaining| remaining.checked_sub(1),
+            );
+
+            match consumed {
+                Ok(_) => Err(human_errors::user("simulated transient failure", &[])),
+                Err(_) => Ok(BackupState::New(Some(entity.name.clone()))),
+            }
+        }
+    }
+
     #[derive(Clone)]
     struct MockEngine;
 
@@ -355,5 +449,138 @@ mod tests {
             MatchType::Equal => assert_eq!(count, matches),
             MatchType::GreaterOrEqual => assert!(count >= matches),
         }
+    }
+
+    async fn collect_backup_results(
+        source: SingleRepoSource,
+        engine: FlakyEngine,
+        retries: &str,
+    ) -> Vec<Result<(GitRepo, BackupState), crate::Error>> {
+        let policy: BackupPolicy = serde_yaml::from_str(&format!(
+            r#"
+            kind: mock
+            from: mock
+            to: /tmp
+            properties:
+              retries: "{retries}"
+            "#
+        ))
+        .unwrap();
+
+        let pairing = Pairing::new(source, engine);
+        let stream = pairing.run_all_backups(&policy, &CANCEL);
+        tokio::pin!(stream);
+
+        let mut results = Vec::new();
+        while let Some(result) = stream.next().await {
+            results.push(result);
+        }
+        results
+    }
+
+    #[tokio::test]
+    async fn retries_recover_transient_failures() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let engine = FlakyEngine {
+            // Fail once, then succeed on the retry.
+            failures_remaining: Arc::new(AtomicUsize::new(1)),
+            attempts: attempts.clone(),
+        };
+
+        let results = collect_backup_results(SingleRepoSource, engine, "1").await;
+
+        assert_eq!(results.len(), 1);
+        assert!(
+            results[0].is_ok(),
+            "the backup should succeed once the transient failure clears"
+        );
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            2,
+            "the target should have been attempted twice (one failure + one retry)"
+        );
+    }
+
+    #[tokio::test]
+    async fn retries_give_up_after_exhausting_the_budget() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let engine = FlakyEngine {
+            // Fail more times than the retry budget allows.
+            failures_remaining: Arc::new(AtomicUsize::new(5)),
+            attempts: attempts.clone(),
+        };
+
+        let results = collect_backup_results(SingleRepoSource, engine, "1").await;
+
+        assert_eq!(results.len(), 1);
+        assert!(
+            results[0].is_err(),
+            "the backup should fail once the retry budget is exhausted"
+        );
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            2,
+            "the target should have been attempted exactly retries + 1 times"
+        );
+    }
+
+    #[tokio::test]
+    async fn retries_can_be_disabled() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let engine = FlakyEngine {
+            failures_remaining: Arc::new(AtomicUsize::new(1)),
+            attempts: attempts.clone(),
+        };
+
+        let results = collect_backup_results(SingleRepoSource, engine, "0").await;
+
+        assert_eq!(results.len(), 1);
+        assert!(
+            results[0].is_err(),
+            "the first failure should be reported immediately when retries are disabled"
+        );
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            1,
+            "the target should only have been attempted once when retries are disabled"
+        );
+    }
+
+    #[tokio::test]
+    async fn invalid_retries_property_is_reported() {
+        let policy: BackupPolicy = serde_yaml::from_str(
+            r#"
+            kind: mock
+            from: mock
+            to: /tmp
+            properties:
+              retries: "not-a-number"
+            "#,
+        )
+        .unwrap();
+
+        let pairing = Pairing::new(MockRepoSource, MockEngine);
+        let stream = pairing.run_all_backups(&policy, &CANCEL);
+        tokio::pin!(stream);
+
+        let mut results = Vec::new();
+        while let Some(result) = stream.next().await {
+            results.push(result);
+        }
+
+        assert_eq!(results.len(), 1);
+        assert!(
+            results[0].is_err(),
+            "an invalid 'retries' property should be reported as an error"
+        );
     }
 }

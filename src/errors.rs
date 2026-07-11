@@ -14,12 +14,12 @@ impl HumanizableError for reqwest::Error {
                     "Make sure that your internet connection is working correctly and the service is not blocked by your firewall.",
                 ],
             )
-        } else if self.is_decode() {
-            human_errors::wrap_system(
+        } else if self.is_timeout() {
+            human_errors::wrap_user(
                 self,
-                "We could not decode the response from the remote server.",
+                "We timed out making a web request.",
                 &[
-                    "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
+                    "This is usually caused by a slow or unreliable network connection, or a remote server which is temporarily overloaded. Please try again later.",
                 ],
             )
         } else if self.is_redirect() {
@@ -30,12 +30,20 @@ impl HumanizableError for reqwest::Error {
                     "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
                 ],
             )
-        } else if self.is_timeout() {
+        } else if self.is_request() {
+            human_errors::wrap_user(
+                self,
+                "We could not complete a web request to the remote server.",
+                &[
+                    "This is usually caused by a transient network problem, such as a dropped or reset connection. Please make sure your internet connection is working correctly and try again later.",
+                ],
+            )
+        } else if self.is_decode() {
             human_errors::wrap_system(
                 self,
-                "We timed out making a web request.",
+                "We could not decode the response from the remote server.",
                 &[
-                    "This is likely due to a problem with the remote server or your internet connection, please try again later and report the problem to us on GitHub if the issue persists.",
+                    "This is likely due to a problem with the remote server, please try again later and report the problem to us on GitHub if the issue persists.",
                 ],
             )
         } else {
@@ -153,3 +161,57 @@ impl std::fmt::Display for ResponseError {
 }
 
 impl std::error::Error for ResponseError {}
+
+#[cfg(test)]
+mod tests {
+    use super::HumanizableError;
+
+    #[tokio::test]
+    async fn connect_failure_is_user_error() {
+        // Port 1 on localhost is (essentially) never listening, so the
+        // connection attempt fails before a request can even be sent. This
+        // stands in for the transient connectivity failures we now classify as
+        // user errors so that they are retried rather than reported as bugs.
+        let err = reqwest::Client::new()
+            .get("http://127.0.0.1:1/")
+            .send()
+            .await
+            .expect_err("the connection to a closed port should fail");
+
+        let human = err.to_human_error();
+        assert!(
+            human.is(human_errors::Kind::User),
+            "connectivity failures should be reported as user errors, got: {human}"
+        );
+    }
+
+    #[tokio::test]
+    async fn timeout_is_user_error() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_delay(std::time::Duration::from_secs(30)),
+            )
+            .mount(&server)
+            .await;
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(50))
+            .build()
+            .expect("a reqwest client");
+
+        let err = client
+            .get(server.uri())
+            .send()
+            .await
+            .expect_err("the request should time out");
+
+        assert!(err.is_timeout(), "expected a timeout error, got: {err}");
+
+        let human = err.to_human_error();
+        assert!(
+            human.is(human_errors::Kind::User),
+            "timeouts should be reported as user errors, got: {human}"
+        );
+    }
+}
