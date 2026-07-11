@@ -5,11 +5,9 @@
       <sourceFolder url="file://$MODULE_DIR$/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
-      <excludeFolder url="file://$MODULE_DIR$/.direnv" />
       <excludeFolder url="file://$MODULE_DIR$/docs/.vuepress/.cache" />
       <excludeFolder url="file://$MODULE_DIR$/docs/.vuepress/.temp" />
       <excludeFolder url="file://$MODULE_DIR$/docs/.vuepress/dist" />
-      <excludeFolder url="file://$MODULE_DIR$/result" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
