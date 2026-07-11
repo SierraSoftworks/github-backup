@@ -21,7 +21,7 @@ impl TryFrom<&Args> for Config {
 
     fn try_from(value: &Args) -> Result<Self, Self::Error> {
         let content = std::fs::read_to_string(&value.config).wrap_user_err(
-            format!("Failed to read the config file {}.", &value.config),
+            format!("Failed to read the config file {}.", value.config),
             &["Make sure that the configuration file exists and can be ready by the process."],
         )?;
         let config: Config = serde_yaml::from_str(&content).wrap_user_err(

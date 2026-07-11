@@ -83,7 +83,7 @@ impl GitHubClient {
                 Err(err) => {
                   Err(human_errors::wrap_system(
                     err,
-                    format!("Unable to parse GitHub response into the expected structure when requesting '{}'.", &url),
+                    format!("Unable to parse GitHub response into the expected structure when requesting '{}'.", url),
                     &["Please report this issue to us on GitHub."],
                 ))?;
                 }

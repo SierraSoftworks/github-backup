@@ -48,7 +48,7 @@ impl GitHubReleasesSource {
             };
 
             let mut entity = Release::new(
-                format!("{}/{}", &repo.full_name, &release.tag_name),
+                format!("{}/{}", repo.full_name, release.tag_name),
                 repo.full_name.as_str(),
                 release.tag_name.as_str(),
               )
@@ -60,7 +60,7 @@ impl GitHubReleasesSource {
 
             if let Some(tarball_url) = &release.tarball_url {
               entity = entity.with_asset(
-                HttpFile::new(format!("{}/{}/source.tar.gz", &repo.full_name, &release.tag_name), tarball_url)
+                HttpFile::new(format!("{}/{}/source.tar.gz", repo.full_name, release.tag_name), tarball_url)
                   .with_metadata_source(repo)
                   .with_metadata_source(&release)
                   .with_metadata("asset.source-code", true)
@@ -86,7 +86,7 @@ impl GitHubReleasesSource {
               let asset_url = format!("{}/releases/assets/{}", repo.url, asset.id);
 
               entity = entity.with_asset(
-                HttpFile::new(format!("{}/{}/{}", &repo.full_name, &release.tag_name, &asset.name), asset_url)
+                HttpFile::new(format!("{}/{}/{}", repo.full_name, release.tag_name, asset.name), asset_url)
                   .with_content_type(Some("application/octet-stream".to_string()))
                   .with_credentials(match &policy.credentials {
                     Credentials::Token(token) => Credentials::UsernamePassword {

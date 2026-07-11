@@ -56,7 +56,8 @@ export default defineUserConfig({
           '/advanced/filters.md',
           '/advanced/query-params.md',
           '/advanced/refspecs.md',
-          '/advanced/recovery.md'
+          '/advanced/recovery.md',
+          '/advanced/retries.md'
         ]
       },
       {
@@ -99,7 +100,8 @@ export default defineUserConfig({
             '/advanced/filters.md',
             '/advanced/query-params.md',
             '/advanced/refspecs.md',
-            '/advanced/recovery.md'
+            '/advanced/recovery.md',
+            '/advanced/retries.md'
           ]
         }
       ],
