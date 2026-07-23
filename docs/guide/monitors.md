@@ -2,8 +2,8 @@
 GitHub Backup is designed to run unattended on a schedule, which makes it
 important to know when a backup run fails to start or complete. To support this,
 GitHub Backup can report the state of each scheduled run to an HTTP-based cron
-monitoring service such as [Sentry Cron Monitors](https://docs.sentry.io/product/crons/)
-or [healthchecks.io](https://healthchecks.io/).
+monitoring service such as [Sentry Cron Monitors](https://docs.sentry.io/product/crons/),
+[Watchgoose](https://watchgoose.com) or [healthchecks.io](https://healthchecks.io/).
 
 Whenever a backup run starts or completes, GitHub Backup will make a simple HTTP
 `GET` request to the URL you've configured for that state, allowing your
@@ -56,6 +56,22 @@ ping:
   success: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=ok
   failure: https://sentry.io/api/0/organizations/your-org/monitors/github-backup/checkins/?status=error
 ```
+
+### Watchgoose
+[Watchgoose](https://watchgoose.com/) provides a base ping URL, with
+`/start` and `/fail` suffixes used to signal the start and failure of a run.
+Create a check in Watchgoose, copy its ping URL, and configure it as follows:
+
+```yaml
+ping:
+  start: https://watchgoose.com/ping/your-uuid-here/start
+  success: https://watchgoose.com/ping/your-uuid-here
+  failure: https://watchgoose.com/ping/your-uuid-here/fail
+```
+
+Set the check's expected schedule and grace period to match the backup schedule.
+Watchgoose can then alert when a run fails explicitly, does not arrive, or starts
+but exceeds the configured runtime grace period.
 
 ### healthchecks.io
 [healthchecks.io](https://healthchecks.io/) provides a base ping URL, with
