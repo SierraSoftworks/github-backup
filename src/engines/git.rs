@@ -568,7 +568,7 @@ impl GitEngine {
         mut update: U,
     ) -> Result<(), human_errors::Error>
     where
-        U: FnMut(&mut gix::config::File<'_>) -> Result<(), human_errors::Error>,
+        U: FnMut(&mut gix::config::File) -> Result<(), human_errors::Error>,
     {
         let mut config = gix::config::File::from_path_no_includes(
             repo.path().join("config"),
