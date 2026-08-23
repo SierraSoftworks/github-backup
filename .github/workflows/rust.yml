@@ -107,7 +107,6 @@ jobs:
             run_on: windows-latest
             target: x86_64-pc-windows-msvc
             extension: .exe
-            builder: cargo
 
           # Linux builds
           - arch: amd64
@@ -115,24 +114,20 @@ jobs:
             os: linux
             target: x86_64-unknown-linux-gnu
             test: true
-            builder: cargo
           - arch: "arm64"
             os: linux
-            run_on: ubuntu-latest
+            run_on: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            builder: cross
 
           # Apple MacOS builds
           - arch: amd64
             run_on: macos-latest
             os: darwin
             target: x86_64-apple-darwin
-            builder: cargo
           - arch: arm64
             run_on: macos-latest
             os: darwin
             target: aarch64-apple-darwin
-            builder: cargo
 
     steps:
       - name: Check out code
@@ -145,20 +140,6 @@ jobs:
           target: ${{ matrix.target }}
           components: llvm-tools-preview
 
-      # Install cross *before* Setup Cache. rust-cache restores cargo's
-      # install metadata (.crates2.json) but not the cargo bin directory,
-      # so if the cache runs first, binstall sees cross as "already
-      # installed", skips it, and the binary is never materialised. Running
-      # the install against a clean CARGO_HOME (with --force) guarantees the
-      # binary actually exists.
-      - name: Install Cross
-        if: matrix.builder == 'cross'
-        shell: bash
-        run: |
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          cargo binstall --no-confirm --force cross
-          echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> "$GITHUB_PATH"
-
       - name: Setup Cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -170,7 +151,7 @@ jobs:
           name: cargofile
 
       - name: cargo build
-        run: ${{ matrix.builder }} build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Upload GitHub Release Artifacts
         uses: SierraSoftworks/gh-releases@v1.0.10
