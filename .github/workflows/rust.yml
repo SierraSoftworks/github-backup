@@ -95,6 +95,13 @@ jobs:
     name: ${{ matrix.os }}-${{ matrix.arch }}-release
     runs-on: ${{ matrix.run_on }}
 
+    # id-token lets the symbols action authenticate to the symbol server with
+    # this workflow's OIDC identity; contents stays writable for the release
+    # asset upload (an explicit permissions block replaces the defaults).
+    permissions:
+      contents: write
+      id-token: write
+
     needs:
       - version
 
@@ -151,7 +158,25 @@ jobs:
           name: cargofile
 
       - name: cargo build
+        env:
+          # Line tables, kept through the link, in release builds so published
+          # symbols carry source attribution; PR/push builds keep the profile's
+          # defaults (no debug info, strip=debuginfo).
+          CARGO_PROFILE_RELEASE_DEBUG: ${{ github.event_name == 'release' && '1' || 'false' }}
+          CARGO_PROFILE_RELEASE_STRIP: ${{ github.event_name == 'release' && 'none' || 'debuginfo' }}
         run: cargo build --release --target ${{ matrix.target }}
+
+      # Publish debug symbols to symbols.sierrasoftworks.com (build ID derived
+      # server-side; authenticated with this workflow's OIDC id-token) so
+      # Pyroscope's symbolizer and debuggers can resolve production frames.
+      # On Linux and macOS the action re-strips the binary after splitting the
+      # symbols out, so release assets keep their usual size.
+      - name: Publish debug symbols
+        uses: SierraSoftworks/symbols@v1
+        if: github.event_name == 'release'
+        with:
+          binary: target/${{ matrix.target }}/release/github-backup${{ matrix.extension }}
+          version: ${{ github.event.release.tag_name }}
 
       - name: Upload GitHub Release Artifacts
         uses: SierraSoftworks/gh-releases@v1.0.10
