@@ -353,7 +353,7 @@ mod tests {
             self.attempts.fetch_add(1, Ordering::SeqCst);
 
             // Consume one of the budgeted failures, if any remain.
-            let consumed = self.failures_remaining.fetch_update(
+            let consumed = self.failures_remaining.try_update(
                 Ordering::SeqCst,
                 Ordering::SeqCst,
                 |remaining| remaining.checked_sub(1),
