@@ -101,13 +101,14 @@ mod tests {
 
     #[test]
     fn deserialize_empty() {
-        let config: PingConfig = serde_yaml::from_str("{}").unwrap();
+        let config: PingConfig = serde_norway::from_str("{}").unwrap();
         assert_eq!(config, PingConfig::default());
     }
 
     #[test]
     fn deserialize_partial() {
-        let config: PingConfig = serde_yaml::from_str("start: https://example.com/start").unwrap();
+        let config: PingConfig =
+            serde_norway::from_str("start: https://example.com/start").unwrap();
         assert_eq!(config.start.as_deref(), Some("https://example.com/start"));
         assert_eq!(config.success, None);
         assert_eq!(config.failure, None);

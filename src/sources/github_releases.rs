@@ -244,7 +244,7 @@ mod tests {
     fn validation(#[case] from: &str, #[case] success: bool) {
         let source = GitHubReleasesSource::default();
 
-        let policy = serde_yaml::from_str(&format!(
+        let policy = serde_norway::from_str(&format!(
             r#"
         kind: github/release
         from: {}
@@ -270,7 +270,7 @@ mod tests {
 
         let source = GitHubReleasesSource::default();
 
-        let policy: BackupPolicy = serde_yaml::from_str(&format!(
+        let policy: BackupPolicy = serde_norway::from_str(&format!(
             r#"
           kind: github/release
           from: {}
@@ -310,7 +310,7 @@ mod tests {
                 }),
         );
 
-        let policy: BackupPolicy = serde_yaml::from_str(
+        let policy: BackupPolicy = serde_norway::from_str(
             r#"
           kind: github/release
           from: users/octocat
@@ -369,7 +369,7 @@ mod tests {
                 }),
         );
 
-        let policy: BackupPolicy = serde_yaml::from_str(&format!(
+        let policy: BackupPolicy = serde_norway::from_str(&format!(
             r#"
           kind: github/release
           from: users/octocat

@@ -205,7 +205,8 @@ mod tests {
         #[case] expected_kind: GitHubArtifactKind,
         #[case] url: &str,
     ) {
-        let kind: GitHubArtifactKind = serde_yaml::from_str(&format!("\"{}\"", kind_str)).unwrap();
+        let kind: GitHubArtifactKind =
+            serde_norway::from_str(&format!("\"{}\"", kind_str)).unwrap();
 
         assert_eq!(kind, expected_kind);
         assert_eq!(kind.as_str(), kind_str);

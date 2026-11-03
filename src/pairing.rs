@@ -406,7 +406,7 @@ mod tests {
     ) {
         use tokio_stream::StreamExt;
 
-        let policy: BackupPolicy = serde_yaml::from_str(&format!(
+        let policy: BackupPolicy = serde_norway::from_str(&format!(
             r#"
             kind: mock
             from: mock
@@ -456,7 +456,7 @@ mod tests {
         engine: FlakyEngine,
         retries: &str,
     ) -> Vec<Result<(GitRepo, BackupState), crate::Error>> {
-        let policy: BackupPolicy = serde_yaml::from_str(&format!(
+        let policy: BackupPolicy = serde_norway::from_str(&format!(
             r#"
             kind: mock
             from: mock
@@ -557,7 +557,7 @@ mod tests {
 
     #[tokio::test]
     async fn invalid_retries_property_is_reported() {
-        let policy: BackupPolicy = serde_yaml::from_str(
+        let policy: BackupPolicy = serde_norway::from_str(
             r#"
             kind: mock
             from: mock
