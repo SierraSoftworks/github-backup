@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn deserialize_filesystem_string() {
-        let target: BackupTarget = serde_yaml::from_str("/tmp/backup").unwrap();
+        let target: BackupTarget = serde_norway::from_str("/tmp/backup").unwrap();
         assert_eq!(
             target,
             BackupTarget::FileSystem(PathBuf::from("/tmp/backup"))
@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn deserialize_forgejo_repo() {
-        let target: BackupTarget = serde_yaml::from_str(
+        let target: BackupTarget = serde_norway::from_str(
             r#"
             kind: forgejo/repo
             address: https://forgejo.example.com
@@ -262,7 +262,7 @@ mod tests {
 
     #[test]
     fn deserialize_forgejo_release() {
-        let target: BackupTarget = serde_yaml::from_str(
+        let target: BackupTarget = serde_norway::from_str(
             r#"
             kind: forgejo/release
             address: https://forgejo.example.com/
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn deserialize_targets_single_string() {
-        let targets: BackupTargets = serde_yaml::from_str("/tmp/backup").unwrap();
+        let targets: BackupTargets = serde_norway::from_str("/tmp/backup").unwrap();
         assert_eq!(
             targets,
             BackupTargets(vec![BackupTarget::FileSystem(PathBuf::from("/tmp/backup"))])
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn deserialize_targets_single_remote() {
-        let targets: BackupTargets = serde_yaml::from_str(
+        let targets: BackupTargets = serde_norway::from_str(
             r#"
             kind: forgejo/repo
             address: https://forgejo.example.com
@@ -318,7 +318,7 @@ mod tests {
 
     #[test]
     fn deserialize_targets_mixed_list() {
-        let targets: BackupTargets = serde_yaml::from_str(
+        let targets: BackupTargets = serde_norway::from_str(
             r#"
             - /tmp/backup
             - kind: forgejo/repo

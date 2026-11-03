@@ -76,7 +76,7 @@ mod tests {
           properties:
             key: value
         "#;
-        let policy: BackupPolicy = serde_yaml::from_str(policy).unwrap();
+        let policy: BackupPolicy = serde_norway::from_str(policy).unwrap();
         assert_eq!(policy.kind, "backup");
         assert_eq!(policy.from, "source");
         assert_eq!(
@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_retries_configured() {
-        let policy: BackupPolicy = serde_yaml::from_str(
+        let policy: BackupPolicy = serde_norway::from_str(
             r#"
             kind: backup
             from: source
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_retries_zero_disables_retries() {
-        let policy: BackupPolicy = serde_yaml::from_str(
+        let policy: BackupPolicy = serde_norway::from_str(
             r#"
             kind: backup
             from: source
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_retries_invalid() {
-        let policy: BackupPolicy = serde_yaml::from_str(
+        let policy: BackupPolicy = serde_norway::from_str(
             r#"
             kind: backup
             from: source

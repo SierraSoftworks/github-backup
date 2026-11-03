@@ -128,7 +128,7 @@ mod tests {
     fn validation_gist(#[case] from: &str, #[case] success: bool) {
         let source = GitHubGistSource::default();
 
-        let policy = serde_yaml::from_str(&format!(
+        let policy = serde_norway::from_str(&format!(
             r#"
             kind: github/gist
             from: {}
@@ -152,7 +152,7 @@ mod tests {
     fn validation_recovery_mode(#[case] mode: &str, #[case] success: bool) {
         let source = GitHubGistSource::default();
 
-        let policy = serde_yaml::from_str(&format!(
+        let policy = serde_norway::from_str(&format!(
             r#"
             kind: github/gist
             from: user
@@ -194,7 +194,7 @@ mod tests {
             GitHubClient::default().mock(api_endpoint, |b| b.with_body_from_file(filename)),
         );
 
-        let policy: BackupPolicy = serde_yaml::from_str(&format!(
+        let policy: BackupPolicy = serde_norway::from_str(&format!(
             r#"
           kind: github/gist
           from: {}
