@@ -1702,7 +1702,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7518b930f6aeb75e871d32ce873c2ae46e35cef19b5a0b039d4337f651d897cd"
 dependencies = [
  "bstr",
- "hashbrown 0.17.1",
+ "hashbrown 0.16.1",
 ]
 
 [[package]]
@@ -4489,7 +4489,7 @@ dependencies = [
 [[package]]
 name = "tracing-batteries"
 version = "0.1.0"
-source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#4aa19b634594c380bcb5fb7203bea6ae0ae91380"
+source = "git+https://github.com/sierrasoftworks/tracing-batteries-rs.git#95d2aee6d3737ad2235912ee663ded8e1861a72a"
 dependencies = [
  "chrono",
  "hex",
