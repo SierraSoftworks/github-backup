@@ -83,7 +83,10 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: grcov
-        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../**' --ignore '/*' --ignore 'C:/' -o ./lcov.info
+        # Point grcov at target/debug/ rather than target/debug/deps/: Rust 1.100
+        # moved test binaries to target/debug/build/<pkg>/<hash>/out/, and grcov
+        # searches the directory recursively so this covers both layouts.
+        run: grcov . --binary-path target/debug/ -s . -t lcov --ignore-not-existing --ignore '../**' --ignore '/*' --ignore 'C:/' -o ./lcov.info
 
       - name: codecov upload
         uses: codecov/codecov-action@v7.1.1
