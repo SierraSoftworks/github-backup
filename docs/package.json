@@ -21,11 +21,11 @@
   },
   "homepage": "https://github.com/SierraSoftworks/github-backup#readme",
   "devDependencies": {
-    "@vuepress/bundler-vite": "2.0.0-rc.31",
+    "@vuepress/bundler-vite": "2.0.0-rc.32",
     "@vuepress/plugin-register-components": "2.0.0-rc.135",
     "@vuepress/theme-default": "2.0.0-rc.137",
     "sass-embedded": "^1.108.1",
-    "vuepress": "2.0.0-rc.31"
+    "vuepress": "2.0.0-rc.32"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.68.2"
