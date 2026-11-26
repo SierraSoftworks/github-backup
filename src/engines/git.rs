@@ -10,7 +10,7 @@ use gix::{
     progress::Discard,
     protocol::transport::client::blocking_io::Transport,
     remote::{Connection, fetch::Tags},
-    sec::identity::Account,
+    sec::identity::Credentials as GitCredentials,
 };
 use human_errors::ResultExt;
 use tracing_batteries::prelude::*;
@@ -516,22 +516,24 @@ impl GitEngine {
                 #[allow(clippy::result_large_err)]
                 connection.set_credentials(move |a| match a {
                     Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {
-                        identity: match &creds {
-                            Credentials::None => Account {
+                        credentials: match &creds {
+                            Credentials::None => GitCredentials::UsernamePassword {
                                 username: "".into(),
                                 password: "".into(),
                                 oauth_refresh_token: None,
                             },
-                            Credentials::Token(token) => Account {
+                            Credentials::Token(token) => GitCredentials::UsernamePassword {
                                 username: token.clone(),
                                 password: "".into(),
                                 oauth_refresh_token: None,
                             },
-                            Credentials::UsernamePassword { username, password } => Account {
-                                username: username.clone(),
-                                password: password.clone(),
-                                oauth_refresh_token: None,
-                            },
+                            Credentials::UsernamePassword { username, password } => {
+                                GitCredentials::UsernamePassword {
+                                    username: username.clone(),
+                                    password: password.clone(),
+                                    oauth_refresh_token: None,
+                                }
+                            }
                         },
                         next: ctx.into(),
                     })),
