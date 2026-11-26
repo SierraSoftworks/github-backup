@@ -504,6 +504,24 @@ impl GitEngine {
         Ok(state)
     }
 
+    /// Maps our configured credentials onto the username/password pair which
+    /// gix hands to the remote when it asks for authentication.
+    fn git_credentials(creds: &Credentials) -> GitCredentials {
+        let (username, password) = match creds {
+            Credentials::None => (String::new(), String::new()),
+            Credentials::Token(token) => (token.clone(), String::new()),
+            Credentials::UsernamePassword { username, password } => {
+                (username.clone(), password.clone())
+            }
+        };
+
+        GitCredentials::UsernamePassword {
+            username,
+            password,
+            oauth_refresh_token: None,
+        }
+    }
+
     fn authenticate_connection<T: Transport>(
         connection: &mut Connection<'_, '_, '_, T>,
         creds: &Credentials,
@@ -516,25 +534,7 @@ impl GitEngine {
                 #[allow(clippy::result_large_err)]
                 connection.set_credentials(move |a| match a {
                     Action::Get(ctx) => Ok(Some(gix::credentials::protocol::Outcome {
-                        credentials: match &creds {
-                            Credentials::None => GitCredentials::UsernamePassword {
-                                username: "".into(),
-                                password: "".into(),
-                                oauth_refresh_token: None,
-                            },
-                            Credentials::Token(token) => GitCredentials::UsernamePassword {
-                                username: token.clone(),
-                                password: "".into(),
-                                oauth_refresh_token: None,
-                            },
-                            Credentials::UsernamePassword { username, password } => {
-                                GitCredentials::UsernamePassword {
-                                    username: username.clone(),
-                                    password: password.clone(),
-                                    oauth_refresh_token: None,
-                                }
-                            }
-                        },
+                        credentials: Self::git_credentials(&creds),
                         next: ctx.into(),
                     })),
                     _ => Ok(None),
@@ -634,6 +634,25 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+
+    #[rstest]
+    #[case(Credentials::None, "", "")]
+    #[case(Credentials::Token("token".into()), "token", "")]
+    #[case(Credentials::UsernamePassword { username: "user".into(), password: "pass".into() }, "user", "pass")]
+    fn test_git_credentials(
+        #[case] creds: Credentials,
+        #[case] username: &str,
+        #[case] password: &str,
+    ) {
+        assert_eq!(
+            GitEngine::git_credentials(&creds),
+            GitCredentials::UsernamePassword {
+                username: username.into(),
+                password: password.into(),
+                oauth_refresh_token: None,
+            }
+        );
+    }
 
     #[cfg_attr(feature = "pure_tests", ignore)]
     #[rstest]
